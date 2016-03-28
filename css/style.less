@@ -1,0 +1,289 @@
+// Mixins
+
+@import url('cards.less');
+
+
+// Main
+
+body {
+    font-family: 'helvetica';
+    background-color: #dedede;
+    background-image: url("../img/board_back.png");
+    background-size: 100%;
+    
+    h1 {
+        color: #fff;
+        -webkit-text-stroke-width: 2px;
+        -webkit-text-stroke-color: #000;
+        //text-shadow: 2px 0 0 #000, -2px 0 0 #000, 0 2px 0 #000, 0 -2px 0 #000, 1px 1px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    }
+}
+
+#button_wrapper{
+    margin-bottom: 10px;
+}
+
+.menu {
+    position: absolute;
+    right: 0;
+    top: 35%;
+    padding: 30px;
+}
+
+.wrapper {
+    margin-top: 15%;
+    width: 400px;
+    height: 400px;
+    font-size: 82px;
+    overflow: hidden;
+    background-image: url("../img/board.png");
+    background-size: 100%;
+    border-radius: 5px;
+    box-shadow:2px 2px 10px 10px rgba(0, 0, 0, .2);
+}
+
+/* flipping */
+.flip-container {
+    perspective: 1000;
+    transform-style: preserve-3d;
+    height: 100px;
+    display: table;
+    -webkit-transform-style: preserve-3d;
+    -webkit-perspective: 1000px;
+
+    .flip{
+        transform: rotateY(180deg);
+        -webkit-transform: rotateY(180deg);
+    }
+
+    .flipper {
+        transition: 0.6s;
+        -webkit-transition: -webkit-transform 0.6s;
+        transform-style: preserve-3d;
+        -webkit-transform-style: preserve-3d;
+        position: relative;
+    }
+
+    .box{
+        height: 100%;
+        width: 185px;
+        border: 1px dashed rgba(0, 0, 0, .2);
+        display: table-cell;
+    }
+
+    .box > div{
+        position: absolute;
+        top: 50%;
+        left: 35%;
+        transform: translateY(-50%);
+        -webkit-transform: translateY(-50%);
+    }
+
+    .box:hover{
+        background-color: rgba(0, 0, 0, .2);
+        background-size: 100%;
+    }
+
+    .opened > div{
+        font-weight: bold;
+        color: red;
+    }
+
+    .opened-p1.flip {
+        background-image: url("../img/piece_p1.png");
+        background-size: 100%;
+    }
+
+    .opened-p1.flip.shielded {
+        background-image: url("../img/piece_p1_shielded.png");
+        background-size: 100%;
+    }
+
+    .opened-p2.flip {
+        background-image: url("../img/piece_p2.png");
+        background-size: 100%;
+    }
+
+    .opened-p2.flip.shielded {
+        background-image: url("../img/piece_p2_shielded.png");
+        background-size: 100%;
+    }
+
+    .frost1 {
+        background-image: url("../img/frost1.png");
+        background-size: 100%;
+    }
+
+    .frost2 {
+        background-image: url("../img/frost2.png");
+        background-size: 100%;
+    }
+
+    .rock1 {
+        background-image: url("../img/rock1.png");
+        background-size: 100%;
+    }
+
+    .rock2 {
+        background-image: url("../img/rock2.png");
+        background-size: 100%;
+    }
+
+    .rock3 {
+        background-image: url("../img/rock3.png");
+        background-size: 100%;
+    }
+}
+
+.wrapper.p1-turn {
+    .box:not(.opened):not(.frost1):not(.frost2):not(.rock1):not(.rock2):not(.rock3):hover{
+        background-image: url("../img/piece_p1.png");
+        background-size: 100%;
+        opacity: 0.5;
+    }
+}
+
+.wrapper.p2-turn {
+    .box:not(.opened):not(.frost1):not(.frost2):not(.rock1):not(.rock2):not(.rock3):hover{
+        background-image: url("../img/piece_p2.png");
+        background-size: 100%;
+        opacity: 0.5;
+    }
+}
+
+.hand.p1-hand {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+}
+
+.hand.p2-hand {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.card {
+    position: relative;
+    width: 150px;
+    height: 223px;
+    text-align: center;
+    float: left;
+    background-color: grey;
+    background-size: 100%;
+    border-radius: 9px;
+    margin: 5px;
+    margin-right: -50px;
+    box-shadow: 10px 10px 5px rgba(0, 0, 0, .2);
+    transition: 0.2s;//remove for smooth sorting()
+
+    .cardName,
+    .cardEffects {
+        color: #545252;
+        background-image: url("../img/textBG.png");
+        background-repeat: no-repeat;
+        background-size: 100%;
+        background-size: 100% 100%;
+        width: 80%;
+        margin: auto;
+        padding: 3px;
+    }
+
+    .cardName {
+        margin-top: 5px;
+    }
+
+    .cardEffects {
+        margin-top: 115px;
+        min-height: 60px;
+    }
+}
+
+.card.playable {
+	box-shadow: 10px 10px 5px rgba(0, 0, 0, .2),  0px 0px 10px #32CD32;
+}
+
+.card.drawn:hover{
+    z-index: 100;
+    transform: scale(1.1, 1.1);
+}
+
+.debug_box {
+	position: absolute;
+	top: 20px;
+	left: 20px;
+	text-align: left;
+}
+
+//#endTurnButton.finished {
+//#endTurnButton.notFinished {
+#endTurnButton {
+	box-shadow: 0px 0px 10px #32CD32;
+}
+
+button {
+	padding: 10px;
+	border: none;
+	border-radius: 3px;
+	font-weight: bold;
+}
+
+// ---------------------------- Deck Builder ------------------------------ //
+
+.card.drawn.spaced {
+    margin-right: 10px !important;
+}
+
+.cardSelector {
+    padding: 5px;
+    margin: 2px;
+    border-radius: 2px;
+    background-color: white;
+    color: black;
+}
+
+.cardSelector:hover{
+    transform: scale(1.1, 1.1);
+}
+
+.cardSelector.2::before{
+    content: '2';
+}
+
+.cardPool {
+    width: 66%;
+    float: left;
+}
+
+.cardList {
+    width: 30%;
+    height: 100%;
+    float: left;
+    background-color: grey;
+}
+
+
+
+// --------------------------- Cursor ---------------------------------- //
+
+html,
+.box.opened.flipper.flip {
+	cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76012), auto;
+	//cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), pointer;
+}
+
+.card {
+	//cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76023), auto;
+	cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), auto;
+}
+
+button {
+	cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), auto;
+}
+
+.box:not(.frost1):not(.frost2),
+.wrapper,
+.flip-container,
+li {
+	cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), auto;
+}

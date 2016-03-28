@@ -1,0 +1,22 @@
+deck_p1 = '["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"]';
+/*
+deck_p1 = '{
+	"decks": [
+		"Fire Blast",
+		"Floods",
+		"Fire Blast",
+		"Floods",
+		"Fire Blast",
+		"Floods",
+		"Fire Blast",
+		"Floods",
+		"Taxes",
+		"Floods",
+		"Fire Blast",
+		"Floods",
+		"Fire Blast",
+		"Floods",
+		"Taxes",
+		"Floods"
+	]
+}''*/

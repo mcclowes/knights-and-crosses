@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Sigil Crosses | MCC Dissertation</title>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link type="text/css" href="css/style.css" rel="stylesheet">
+
+        <script src="js/jquery-2.1.4.min.js"></script>
+        <script src="js/jquery-ui-1.11.4/jquery-ui.min.js"></script>
+        <script src="js/sigil.js"></script>
+
+        <script type="text/javascript" src="js/cards.json"></script>
+        <script type="text/javascript" src="js/deck_p1.json"></script>
+        <script type="text/javascript" src="js/deck_p2.json"></script>
+
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+        <![endif]-->
+    </head>
+    <body>
+        <center>
+            <h1> Sigil Crosses</h1>
+            <div id="button_wrapper">
+                <button type="submit" id="submitter">New Game</button>
+            </div>
+            <div class="wrapper p1-turn">
+                <div class="flip-container">
+                    <div class="box flipper"><div id="1"></div></div>
+                    <div class="box flipper"><div id="2"></div></div>
+                    <div class="box flipper"><div id="3"></div></div>
+                    <div class="box flipper"><div id="4"></div></div>
+                </div>
+                <div class="flip-container">
+                    <div class="box flipper"><div id="5"></div></div>
+                    <div class="box flipper"><div id="6"></div></div>
+                    <div class="box flipper"><div id="7"></div></div>
+                    <div class="box flipper"><div id="8"></div></div>
+                </div>
+                <div class="flip-container">
+                    <div class="box flipper"><div id="9"></div></div>
+                    <div class="box flipper"><div id="10"></div></div>
+                    <div class="box flipper"><div id="11"></div></div>
+                    <div class="box flipper"><div id="12"></div></div>
+                </div>
+                <div class="flip-container">
+                    <div class="box flipper"><div id="13"></div></div>
+                    <div class="box flipper"><div id="14"></div></div>
+                    <div class="box flipper"><div id="15"></div></div>
+                    <div class="box flipper"><div id="16"></div></div>
+                </div>
+            </div>
+
+            <div class="hand p1-hand sortable">
+            </div>
+            <div class="hand p2-hand sortable">
+            </div>
+
+            <div class="deck p1-deck"></div>
+            <div class="deck p2-deck"></div>
+
+        </center>
+    </body>
+</html>
