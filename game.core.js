@@ -1,11 +1,3 @@
-/*  Copyright (c) 2012 Sven "FuzzYspo0N" Bergström
-    
-    written by : http://underscorediscovery.com
-    written for : http://buildnewgames.com/real-time-multiplayer/
-    
-    MIT Licensed.
-*/
-
 //The main update loop runs on requestAnimationFrame,
 //Which falls back to a setTimeout loop on the server
 //Code below is from Three.js, and sourced from links below
@@ -62,11 +54,11 @@ var game_core = function(game_instance){
     this.turn = 1;
 
     //We create a player set, passing them to the game that is running them, as well
-    if (this.server) { // if this is server side??
+    if (this.server) { // if this is server side
 
         this.players = {
-            self : new game_player(this,this.instance.player_host),
-            other : new game_player(this,this.instance.player_client)
+            self : new game_player(this, this.instance.player_host),
+            other : new game_player(this, this.instance.player_client)
         };
 
        this.players.self.pos = {x:20, y:20};
@@ -218,6 +210,45 @@ var game_board = function( game_instance ) {
 };
 
 
+/* Card class */
+
+var game_card = function( card_name, player ) {
+    this.cardName = '';
+    this.cardEffects = [];
+    this.cardImage = '';
+    this.cardBody = '';
+
+    this.pos = { x:0, y:0 };
+    this.size = { x:80, y:120, hx:40, hy:60 };
+    this.color = 'rgba(255,255,255,0.1)';
+    this.info_color = 'rgba(255,255,255,0.1)';
+    this.id = '';
+
+}
+
+game_card.prototype.draw = function(){ //draw card
+    //Set the color for this player
+    game.ctx.fillStyle = this.color;
+
+    //Draw a rectangle for us
+    game.ctx.fillRect(this.pos.x - this.size.hx + i * 20, this.pos.y - this.size.hy + i * 5, this.size.x, this.size.y);
+
+    //Draw a status update
+    game.ctx.fillStyle = this.info_color;
+    game.ctx.fillText(this.state, this.pos.x+10, this.pos.y + 4);
+
+}; 
+
+//Check card can be played
+game_card.prototype.checkPlayable = function(){
+    window.console.log("Check card is playable");
+    return true;
+}
+
+//activate card
+game_card.prototype.playCard = function(targetCard, playerNo, board){
+    window.console.log();
+}
 /*
     The player class
 
@@ -238,11 +269,28 @@ var game_player = function( game_instance, player_instance ) {
     this.info_color = 'rgba(255,255,255,0.1)';
     this.id = '';
 
+    var cards_to_play, damagingA, damagingE, damagingS, destroyingA, destroyingE, destroyingS, discarding, shielding, deshielding, freezing, thawing, blocking;
+    cards_to_play = 1;
+    damagingA = 0;
+    damagingE = 0;
+    damagingS = 0;
+    destroyingA = 0;
+    destroyingE = 0;
+    destroyingS = 0;
+    discarding = 0;
+    shielding = 0;
+    deshielding = 0;
+    freezing = 0;
+    thawing = 0;
+    blocking = 0;
+
     //Player arrays
     //this.playerNo = number,
     this.deck = [],
     this.hand = [1,2,3],
     this.pieces = [];
+
+    //this.deck = JSON.parse(deck_p1); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
 
     //These are used in moving us around later
     this.old_state = {pos: {x:0, y:0}};
@@ -260,10 +308,9 @@ var game_player = function( game_instance, player_instance ) {
         y_max: this.game.world.height - this.size.hy
     };
 
-    //The 'host' of a game gets created with a player instance since
-    //the server already knows who they are. If the server starts a game
+    //The 'host' of a game gets created with a player instance since the server already knows who they are. If the server starts a game
     //with only a host, the other player is set up in the 'else' below
-    if(player_instance) {
+    if (player_instance) {
         this.pos = { x:20, y:20 };
     } else {
         this.pos = { x:500, y:200 };
@@ -299,13 +346,10 @@ game_player.prototype.draw = function(){
 }; //game_player.draw
 
 /*
-
- Common functions
- 
+    Common functions
     These functions are shared between client and server, and are generic
     for the game state. The client functions are client_* and server functions
     are server_* so these have no prefix.
-
 */
 
 //Main update loop
@@ -317,7 +361,7 @@ game_core.prototype.update = function(t) {
     this.lastframetime = t;
 
     //Update the game specifics
-    if(!this.server) { // client
+    if (!this.server) { // client
         this.client_update();
     } else { // server
         this.server_update();
@@ -335,25 +379,21 @@ game_core.prototype.update = function(t) {
 */
 game_core.prototype.check_collision = function( item ) {
     //Left wall.
-    if(item.pos.x <= item.pos_limits.x_min) {
+    if (item.pos.x <= item.pos_limits.x_min) {
         item.pos.x = item.pos_limits.x_min;
     }
-
     //Right wall
-    if(item.pos.x >= item.pos_limits.x_max ) {
+    if (item.pos.x >= item.pos_limits.x_max ) {
         item.pos.x = item.pos_limits.x_max;
     }
-    
     //Roof wall.
-    if(item.pos.y <= item.pos_limits.y_min) {
+    if (item.pos.y <= item.pos_limits.y_min) {
         item.pos.y = item.pos_limits.y_min;
     }
-
     //Floor wall
-    if(item.pos.y >= item.pos_limits.y_max ) {
+    if (item.pos.y >= item.pos_limits.y_max ) {
         item.pos.y = item.pos_limits.y_max;
     }
-
     //Fixed point helps be more deterministic
     item.pos.x = item.pos.x.fixed(4);
     item.pos.y = item.pos.y.fixed(4);
@@ -367,17 +407,19 @@ game_core.prototype.process_input = function( player ) {
     var y_dir = 0;
     var ic = player.inputs.length;
 
-    if(ic) {
+    if (ic) {
         for(var j = 0; j < ic; ++j) {
             //don't process ones we already have simulated locally
-            if(player.inputs[j].seq <= player.last_input_seq) continue;
+            if (player.inputs[j].seq <= player.last_input_seq) continue;
 
             var input = player.inputs[j].inputs;
             var c = input.length;
-            for(var i = 0; i < c; ++i) {
+
+            for (var i = 0; i < c; ++i) {
                 var key = input[i];
-                if(key == 'l') {
-                    x_dir -= 1;
+                window.console.log(key);
+                if(key == 'r') {
+                    x_dir += 1;
                 }
             } //for all input values
 
@@ -399,8 +441,7 @@ game_core.prototype.process_input = function( player ) {
 
 
 game_core.prototype.physics_movement_vector_from_direction = function(x,y) {
-
-        //Must be fixed step, at physics sync speed.
+    //Must be fixed step, at physics sync speed.
     return {
         x : (x * (this.playerspeed * 0.015)).fixed(3),
         y : (y * (this.playerspeed * 0.015)).fixed(3)
@@ -410,7 +451,6 @@ game_core.prototype.physics_movement_vector_from_direction = function(x,y) {
 
 
 game_core.prototype.update_physics = function() {
-
     if(this.server) {
         this.server_update_physics();
     } else {
@@ -430,18 +470,17 @@ game_core.prototype.update_physics = function() {
 
     //Updated at 15ms , simulates the world state
 game_core.prototype.server_update_physics = function() {
-
-        //Handle player one
+    //Handle player one
     this.players.self.old_state.pos = this.pos( this.players.self.pos );
     var new_dir = this.process_input(this.players.self);
     this.players.self.pos = this.v_add( this.players.self.old_state.pos, new_dir );
 
-        //Handle player two
+    //Handle player two
     this.players.other.old_state.pos = this.pos( this.players.other.pos );
     var other_new_dir = this.process_input(this.players.other);
     this.players.other.pos = this.v_add( this.players.other.old_state.pos, other_new_dir);
 
-        //Keep the physics position in the world
+    //Keep the physics position in the world
     this.check_collision( this.players.self );
     this.check_collision( this.players.other );
 
@@ -508,9 +547,9 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
     var input = [];
     this.client_has_input = false;
 
-    if( this.keyboard.pressed('A') || this.keyboard.pressed('left')) {
-        x_dir = -1;
-        input.push('l');
+    if( this.keyboard.pressed('D') || this.keyboard.pressed('right')) {
+        x_dir = 1;
+        input.push('r');
     } //left
 
     if( this.keyboard.pressed('esc') || this.keyboard.pressed('Q')) {
@@ -547,27 +586,24 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 }; //game_core.client_handle_input
 
 game_core.prototype.client_process_net_prediction_correction = function() {
-
-        //No updates...
+    //No updates...
     if(!this.server_updates.length) return;
 
-        //The most recent server update
+    //The most recent server update
     var latest_server_data = this.server_updates[this.server_updates.length-1];
 
-        //Our latest server position
+    //Our latest server position
     var my_server_pos = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
 
-        //Update the debug server position block
+    //Update the debug server position block
     this.ghosts.server_pos_self.pos = this.pos(my_server_pos);
 
-            //here we handle our local input prediction ,
-            //by correcting it with the server and reconciling its differences
-
+        //here we handle our local input prediction, by correcting it with the server and reconciling its differences
         var my_last_input_on_server = this.players.self.host ? latest_server_data.his : latest_server_data.cis;
         if(my_last_input_on_server) {
-                //The last input sequence index in my local input list
+            //The last input sequence index in my local input list
             var lastinputseq_index = -1;
-                //Find this input in the list, and store the index
+            //Find this input in the list, and store the index
             for(var i = 0; i < this.players.self.inputs.length; ++i) {
                 if(this.players.self.inputs[i].seq == my_last_input_on_server) {
                     lastinputseq_index = i;

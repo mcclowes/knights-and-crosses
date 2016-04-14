@@ -1,12 +1,4 @@
-/*  Copyright (c) 2012 Sven "FuzzYspo0N" Bergström
-    
-    written by : http://underscorediscovery.com
-    written for : http://buildnewgames.com/real-time-multiplayer/
-    
-    MIT Licensed.
-*/
-var
-    game_server = module.exports = { games : {}, game_count:0 },
+var game_server = module.exports = { games : {}, game_count:0 },
     UUID        = require('node-uuid'),
     verbose     = true;
 
@@ -66,7 +58,7 @@ game_server._onMessage = function(client, message) {
     } else if (message_type == 'c') {    //Client changed their color!
         if (other_client) // if other player exists, forward
             other_client.send('s.c.' + message_parts[1]);
-    } else if (message_type == 'l') {    //A client is asking for lag simulation
+    } else if (message_type == 'r') {    //A client is asking for lag simulation
         this.fake_latency = parseFloat(message_parts[1]);
     }
 
