@@ -67,26 +67,6 @@ var game_core = function(game_instance){
 			self : new game_player(this),
 			other : new game_player(this)
 		};
-
-		//Debugging ghosts, to help visualise things
-		this.ghosts = {
-			server_pos_self : new game_player(this), //Our ghost position on the server
-			server_pos_other : new game_player(this), //The other players server position as we receive it
-			pos_other : new game_player(this) //The other players ghost destination position (the lerp)
-		};
-
-		this.ghosts.pos_other.state = 'dest_pos';
-		this.ghosts.pos_other.info_color = 'rgba(255,255,255,0.1)';
-
-		this.ghosts.server_pos_self.info_color = 'rgba(255,255,255,0.2)';
-		this.ghosts.server_pos_other.info_color = 'rgba(255,255,255,0.2)';
-
-		this.ghosts.server_pos_self.state = 'server_pos';
-		this.ghosts.server_pos_other.state = 'server_pos';
-
-		this.ghosts.server_pos_self.pos = { x:20, y:20 };
-		this.ghosts.pos_other.pos = { x:500, y:200 };
-		this.ghosts.server_pos_other.pos = { x:500, y:200 };
 	}
 
 	//The speed at which the clients move.
@@ -667,9 +647,6 @@ game_core.prototype.client_process_net_prediction_correction = function() {
 	//Our latest server position
 	var my_server_pos = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
 
-	//Update the debug server position block
-	this.ghosts.server_pos_self.pos = this.pos(my_server_pos);
-
 	//here we handle our local input prediction, by correcting it with the server and reconciling its differences
 	var my_last_input_on_server = this.players.self.host ? latest_server_data.his : latest_server_data.cis;
 
@@ -773,40 +750,6 @@ game_core.prototype.client_process_net_updates = function() {
 		//The other players positions in this timeline, behind us and in front of us
 		var other_target_pos = this.players.self.host ? target.cp : target.hp;
 		var other_past_pos = this.players.self.host ? previous.cp : previous.hp;
-
-		//update the dest block, this is a simple lerp to the target from the previous point in the server_updates buffer
-		this.ghosts.server_pos_other.pos = this.pos(other_server_pos);
-		this.ghosts.pos_other.pos = this.v_lerp(other_past_pos, other_target_pos, time_point);
-
-		if(this.client_smoothing) {
-			this.players.other.pos = this.v_lerp( this.players.other.pos, this.ghosts.pos_other.pos, this._pdt*this.client_smooth);
-		} else {
-			this.players.other.pos = this.pos(this.ghosts.pos_other.pos);
-		}
-
-		//Now, if not predicting client movement , we will maintain the local player position
-		//using the same method, smoothing the players information from the past.
-		if(!this.client_predict && !this.naive_approach) {
-
-			//These are the exact server positions from this tick, but only for the ghost
-			var my_server_pos = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
-
-			//The other players positions in this timeline, behind us and in front of us
-			var my_target_pos = this.players.self.host ? target.hp : target.cp;
-			var my_past_pos = this.players.self.host ? previous.hp : previous.cp;
-
-			//Snap the ghost to the new server position
-			this.ghosts.server_pos_self.pos = this.pos(my_server_pos);
-			var local_target = this.v_lerp(my_past_pos, my_target_pos, time_point);
-
-			//Smoothly follow the destination position
-			if(this.client_smoothing) {
-				this.players.self.pos = this.v_lerp( this.players.self.pos, local_target, this._pdt*this.client_smooth);
-			} else {
-				this.players.self.pos = this.pos( local_target );
-			}
-		}
-
 
 		/// enwneiwojjeijfojwoeofjwef
 
@@ -918,17 +861,6 @@ game_core.prototype.client_update = function() {
 	this.players.other.draw(); // draw other player (post server update)
 	this.client_update_local_position(); //When we are doing client side prediction, we smooth out our position across frames using local input states we have stored.
 	this.players.self.draw(); //Draw self
-
-	//and these ???? remove ghosts
-	if(this.show_dest_pos && !this.naive_approach) {
-		this.ghosts.pos_other.draw();
-	}
-
-	//and lastly draw these
-	if(this.show_server_pos && !this.naive_approach) {
-		this.ghosts.server_pos_self.draw();
-		this.ghosts.server_pos_other.draw();
-	}
 
 	//Work out the fps average
 	this.client_refresh_fps();
@@ -1064,13 +996,6 @@ game_core.prototype.client_reset_positions = function() {
 	this.players.self.old_state.pos = this.pos(this.players.self.pos);
 	this.players.self.pos = this.pos(this.players.self.pos);
 	this.players.self.cur_state.pos = this.pos(this.players.self.pos);
-
-	//Position all debug view items to their owners position
-	this.ghosts.server_pos_self.pos = this.pos(this.players.self.pos);
-
-	this.ghosts.server_pos_other.pos = this.pos(this.players.other.pos);
-	this.ghosts.pos_other.pos = this.pos(this.players.other.pos);
-
 }; //game_core.client_reset_positions
 
 game_core.prototype.client_onreadygame = function(data) {
