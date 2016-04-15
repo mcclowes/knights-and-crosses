@@ -28,20 +28,7 @@ setInterval(function(){
 }, 4);
 
 game_server.onMessage = function(client,message) {
-
-    if(this.fake_latency && message.split('.')[0].substr(0,1) == 'i') {
-        game_server.messages.push({client:client, message:message}); //store all input message
-
-        setTimeout(function(){
-            if(game_server.messages.length) {
-                game_server._onMessage( game_server.messages[0].client, game_server.messages[0].message );
-                game_server.messages.splice(0,1);
-            }
-        }.bind(this), this.fake_latency);
-
-    } else {
-        game_server._onMessage(client, message);
-    }
+    game_server._onMessage(client, message);
 };
 
 game_server._onMessage = function(client, message) {

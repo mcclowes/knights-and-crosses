@@ -52,7 +52,7 @@ window.onload = function(){
 					server_packet += game.local_time.toFixed(3).replace('.','-') + '.';
 					server_packet += game.input_seq;
 
-				game.socket.send(  server_packet  );
+				game.socket.send( server_packet );
 
 				return;
 			}

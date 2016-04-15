@@ -330,30 +330,13 @@ var game_player = function( game_instance, player_instance ) {
 		y_min: this.size.hy,
 		y_max: this.game.world.height - this.size.hy
 	};
-
-	//The 'host' of a game gets created with a player instance since the server already knows who they are. If the server starts a game
-	//with only a host, the other player is set up in the 'else' below
-	if (player_instance) {
-		this.pos = { x:20, y:20 };
-	} else {
-		this.pos = { x:500, y:200 };
-	}
-
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){
 	//Set the color for this player
-	game.ctx.fillStyle = this.color;
-
-	//Draw a rectangle for us
-	for (var i = 0; i < this.hand.length; i++) { // for card in hand
-		game.ctx.fillRect(this.pos.x - this.size.hx + i * 20, this.pos.y - this.size.hy + i * 5, this.size.x, this.size.y);
-	}
-
-	//Draw a status update
+	game.ctx.fillStyle = this.color; //remove
 	game.ctx.fillStyle = this.info_color;
-	game.ctx.fillText(this.state, this.pos.x+10, this.pos.y + 4);
-
+	game.ctx.fillText(this.state, 10, this.pos.y + 450);
 	//draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
 		this.hand[i].pos.x = canvasWidth/2 - (this.hand[i].size.x * this.hand.length / 2) + i * 30
@@ -369,7 +352,6 @@ game_player.prototype.draw_card = function(){
 	} else {
 		window.console.log("Hand full - " + this.deck.length + ", " + this.hand.length);
 	}
-	//window.console.log(this.hand);
 }
 
 
@@ -405,37 +387,13 @@ game_core.prototype.endTurn = function( item ) {
 	} else {
 		this.turn = 1;
 	}
-}
-
-game_core.prototype.check_collision = function( item ) {
-	//Left wall.
-	if (item.pos.x <= item.pos_limits.x_min) {
-		item.pos.x = item.pos_limits.x_min;
-	}
-	//Right wall
-	if (item.pos.x >= item.pos_limits.x_max ) {
-		item.pos.x = item.pos_limits.x_max;
-	}
-	//Roof wall.
-	if (item.pos.y <= item.pos_limits.y_min) {
-		item.pos.y = item.pos_limits.y_min;
-	}
-	//Floor wall
-	if (item.pos.y >= item.pos_limits.y_max ) {
-		item.pos.y = item.pos_limits.y_max;
-	}
-	//Fixed point helps be more deterministic
-	item.pos.x = item.pos.x.fixed(4);
-	item.pos.y = item.pos.y.fixed(4);
-	
-}; //game_core.check_collision
+}; // end turn
 
 game_core.prototype.process_input = function( player ) {
 	//It's possible to have recieved multiple inputs by now, so we process each one
 	var x_dir = 0;
 	var y_dir = 0;
 	var ic = player.inputs.length;
-	//window.console.log(game.players.self.inputs);
 
 	if (ic) {
 		for(var j = 0; j < ic; ++j) {
@@ -471,41 +429,19 @@ game_core.prototype.process_input = function( player ) {
 			} else if (input_parts[0] == 'sq') { // square
 				target = input_parts[1];
 			}
-
-			/*for (var i = 0; i < c; ++i) {
-				var key = input[i];
-				window.console.log(key);
-				if(key == 'r') {
-					x_dir += 1;
-				}
-			}*/ //for all input values
-
 		} //for each input command
 	} //if we have inputs
 
 	//we have a direction vector now, so apply the same physics as the client
-	var resulting_vector = this.physics_movement_vector_from_direction(x_dir,y_dir);
 	if(player.inputs.length) {
 		//we can now clear the array since these have been processed
 		player.last_input_time = player.inputs[ic-1].time;
 		player.last_input_seq = player.inputs[ic-1].seq;
 	}
-
-		//give it back
-	return resulting_vector;
+	//give it back
+	return;
 
 }; //game_core.process_input
-
-
-game_core.prototype.physics_movement_vector_from_direction = function(x,y) {
-	//Must be fixed step, at physics sync speed.
-	return {
-		x : (x * (this.playerspeed * 0.015)).fixed(3),
-		y : (y * (this.playerspeed * 0.015)).fixed(3)
-	};
-
-}; //game_core.physics_movement_vector_from_direction
-
 
 game_core.prototype.update_physics = function() {
 	if(this.server) {
@@ -513,7 +449,6 @@ game_core.prototype.update_physics = function() {
 	} else {
 		this.client_update_physics();
 	}
-
 }; //game_core.prototype.update_physics
 
 
@@ -526,30 +461,15 @@ game_core.prototype.update_physics = function() {
 
 //Updated at 15ms , simulates the world state
 game_core.prototype.server_update_physics = function() {
-	//Handle player one
-	this.players.self.old_state.pos = this.pos( this.players.self.pos );
-	var new_dir = this.process_input(this.players.self);
-	this.players.self.pos = this.v_add( this.players.self.old_state.pos, new_dir );
-
-	//Handle player two
-	this.players.other.old_state.pos = this.pos( this.players.other.pos );
-	var other_new_dir = this.process_input(this.players.other);
-	this.players.other.pos = this.v_add( this.players.other.old_state.pos, other_new_dir);
-
-	//Keep the physics position in the world
-	this.check_collision( this.players.self );
-	this.check_collision( this.players.other );
-
+	//Removed all player physics from here
 	this.players.self.inputs = []; //we have cleared the input buffer, so remove this
 	this.players.other.inputs = []; //we have cleared the input buffer, so remove this
-
 }; //game_core.server_update_physics
 
 //Makes sure things run smoothly and notifies clients of changes on the server side
 game_core.prototype.server_update = function(){
 	//Update the state of our local clock to match the timer
 	this.server_time = this.local_time;
-
 	//Make a snapshot of the current state, for updating the clients
 	this.laststate = {
 		//turn?
@@ -562,23 +482,21 @@ game_core.prototype.server_update = function(){
 		t   : this.server_time                      // our current local time on the server
 	};
 
-	//Send the snapshot to the 'host' player
-	if (this.players.self.instance) {
+	if (this.players.self.instance) { //Send the snapshot to the 'host' player
 		this.players.self.instance.emit( 'onserverupdate', this.laststate );
 	}
-
-	//Send the snapshot to the 'client' player
-	if (this.players.other.instance) {
+	if (this.players.other.instance) { //Send the snapshot to the 'client' player
 		this.players.other.instance.emit( 'onserverupdate', this.laststate );
 	}
 
 }; //game_core.server_update
 
-//Handle server input
+//Handle server input (input into the server, from a client)
 game_core.prototype.handle_server_input = function(client, input, input_time, input_seq) {
+	window.console.log(input);
 	//Fetch which client this refers to out of the two
 	var player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
-
+	
 	//Store the input on the player instance for processing in the physics loop
 	player_client.inputs.push({
 		inputs	:   input, 
@@ -598,15 +516,11 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 	//this.lit = this.local_time+0.5; //one second delay
 	//This takes input from the client and keeps a record,
 	//It also sends the input information to the server immediately as it is pressed. It also tags each input with a sequence number.
-	var x_dir = 0;
-	var y_dir = 0;
-	var input = [];
-	this.client_has_input = false;
+	var x_dir = 0,
+		y_dir = 0,
+		input = [];
 
-	if( this.keyboard.pressed('D') || this.keyboard.pressed('right')) {
-		x_dir = 1;
-		input.push('r');
-	} //left
+	this.client_has_input = false;
 
 	if( this.keyboard.pressed('esc') || this.keyboard.pressed('Q')) {
 		input.push('q');
@@ -615,7 +529,6 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 	if(input.length) {
 		//Update what sequence we are on now
 		this.input_seq += 1;
-
 		//Store the input state as a snapshot of what happened.
 		this.players.self.inputs.push({
 			inputs : input,
@@ -628,27 +541,23 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 			server_packet += input.join('-') + '.';
 			server_packet += this.local_time.toFixed(3).replace('.','-') + '.';
 			server_packet += this.input_seq;
-
 		//Go
 		this.socket.send( server_packet );
 
 		//Return the direction if needed
-		return this.physics_movement_vector_from_direction( x_dir, y_dir );
+		return;
 	} else {
-		return {x:0, y:0};
+		return;
 	}
 }; //game_core.client_handle_input
 
 game_core.prototype.client_process_net_prediction_correction = function() {
 	//No updates...
 	if (!this.server_updates.length) return;
-
 	//The most recent server update
 	var latest_server_data = this.server_updates[this.server_updates.length-1];
-
 	//Our latest server position
 	var my_server_pos = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
-
 	//here we handle our local input prediction, by correcting it with the server and reconciling its differences
 	var my_last_input_on_server = this.players.self.host ? latest_server_data.his : latest_server_data.cis;
 
@@ -679,10 +588,8 @@ game_core.prototype.client_process_net_prediction_correction = function() {
 				//but also confirm the server position at the same time.
 			this.client_update_physics();
 			this.client_update_local_position();
-
 		} // if(lastinputseq_index != -1)
 	} //if my_last_input_on_server
-
 }; //game_core.client_process_net_prediction_correction
 
 game_core.prototype.client_process_net_updates = function() {
@@ -723,10 +630,8 @@ game_core.prototype.client_process_net_updates = function() {
 		previous = this.server_updates[0];
 	}
 
-		//Now that we have a target and a previous destination,
-		//We can interpolate between then based on 'how far in between' we are.
-		//This is simple percentage maths, value/target = [0,1] range of numbers.
-		//lerp requires the 0,1 value to lerp to? thats the one.
+		//Now that we have a target and a previous destination, We can interpolate between then based on 'how far in between' we are.
+		//This is simple percentage maths, value/target = [0,1] range of numbers. lerp requires the 0,1 value to lerp to? thats the one.
 
 	 if(target && previous) {
 
@@ -824,22 +729,13 @@ game_core.prototype.client_update_local_position = function(){
 		var old_state = this.players.self.old_state.pos;
 		var current_state = this.players.self.cur_state.pos;
 
-		//Make sure the visual position matches the states we have stored
-		//this.players.self.pos = this.v_add( old_state, this.v_mul_scalar( this.v_sub(current_state,old_state), t )  );
-		this.players.self.pos = current_state;
-		
-		//We handle collision on client if predicting.
-		this.check_collision( this.players.self );
-
 	}  //if(this.client_predict)
 }; //game_core.prototype.client_update_local_position
 
 game_core.prototype.client_update_physics = function() {
 	//Fetch the new direction from the input buffer, and apply it to the state so we can smooth it in the visual state
 	if (this.client_predict) {
-		this.players.self.old_state.pos = this.pos( this.players.self.cur_state.pos );
 		var nd = this.process_input(this.players.self);
-		this.players.self.cur_state.pos = this.v_add( this.players.self.old_state.pos, nd);
 		this.players.self.state_time = this.local_time;
 
 	}
@@ -939,8 +835,7 @@ game_core.prototype.client_create_debug_gui = function() {
 
 		this.colorcontrol = _playersettings.addColor(this, 'color');
 
-			//We want to know when we change our color so we can tell
-			//the server to tell the other clients for us
+		//We want to know when we change our color so we can tell the server to tell the other clients for us
 		this.colorcontrol.onChange(function(value) {
 			this.players.self.color = value;
 			localStorage.setItem('color', value);
@@ -990,14 +885,7 @@ game_core.prototype.client_reset_positions = function() {
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
 
-	//Host always spawns at the top left.
-	player_host.pos = { x:20,y:20 };
-	player_client.pos = { x:500, y:200 };
-
-	//Make sure the local player physics is updated
-	this.players.self.old_state.pos = this.pos(this.players.self.pos);
-	this.players.self.pos = this.pos(this.players.self.pos);
-	this.players.self.cur_state.pos = this.pos(this.players.self.pos);
+	//removed pos resets
 }; //game_core.client_reset_positions
 
 game_core.prototype.client_onreadygame = function(data) {
