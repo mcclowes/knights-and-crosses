@@ -234,7 +234,11 @@ game_card.prototype.draw = function(){ //draw card
 	this.cardBody = new Image();
 	this.cardBody.src = "img/card_barrage.png";
 	this.cardBack = new Image();
-	this.cardBack.src = "img/card_back1.png"; // eval
+	if (game.players.self.host === true) { // Based on host
+		this.cardBack.src = "img/card_back1.png";
+	} else {
+		this.cardBack.src = "img/card_back2.png";
+	}
 
 	game.ctx.fillStyle = 'rgba(140,120,100,0.7)';;
 	game.ctx.fillRect(this.pos.x, this.pos.y, 60, 120);
@@ -253,10 +257,13 @@ game_card.prototype.contains = function(mx, my) {
 //Check card can be played
 game_card.prototype.checkPlayable = function(){
 	window.console.log("Check card is playable");
-	if (this.owner.turnNo !== game.turn){
+	if (game.players.self.host === true && game.turn === -1) { // not players turn
 		return false;
+	} else if (game.players.self.host === false && game.turn === 1) { // not players turn (can condense)
+		return false;
+	} else {
+		return true; // It's players turn
 	}
-	return true;
 }
 
 //activate card
@@ -273,11 +280,6 @@ var game_player = function( game_instance, player_instance ) {
 	//Store the instance, if any
 	this.instance = player_instance; //dont need these?
 	this.game = game_instance; //??
-	if (this.game.players === undefined) {
-		this.turnNo = 1;
-	} else {
-		this.turnNo = -1;
-	}
 
 	//Set up initial values for our state information
 	this.pos = { x:0, y:0 };
@@ -310,7 +312,7 @@ var game_player = function( game_instance, player_instance ) {
 	for (var i = 0; i < this.deck_temp.length; i++) {
 		this.deck.push(new game_card(this.deck_temp[i], this));
 	}
-	window.console.log(this.deck)
+	//window.console.log(this.deck)
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
 
 	//These are used in moving us around later

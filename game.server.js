@@ -108,9 +108,8 @@ game_server.createGame = function(player) {
 game_server.endGame = function(gameid, userid) {
     var thegame = this.games[gameid];
 
-    if(thegame) {
-        //stop the game updates immediate
-        thegame.gamecore.stop_update();
+    if (thegame) {
+        thegame.gamecore.stop_update(); //stop the game updates immediate
 
         //if the game has two players, the one is leaving
         if(thegame.player_count > 1) {
