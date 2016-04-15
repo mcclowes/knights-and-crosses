@@ -1,17 +1,15 @@
 //The main update loop runs on requestAnimationFrame,
 //Which falls back to a setTimeout loop on the server
-//Code below is from Three.js, and sourced from links below
 
-	// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-	// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
-
-	// requestAnimationFrame polyfill by Erik Möller
-	// fixes from Paul Irish and Tino Zijdel
+/*  ----------------------------- Key variables  -----------------------------   */
 
 var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 480;
+
+
+/*  -----------------------------  WHat is this bit  -----------------------------   */
 
 if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
 
@@ -39,11 +37,11 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	}
 
 }() );
+ 
 
-//Now the main game class. 
+/* ----------------------------- The game_core class (the main class) -----------------------------  */
 //This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
 
-/* The game_core class */
 var game_core = function(game_instance){
 	this.instance = game_instance; //Store the instance, if any
 	this.server = this.instance !== undefined; //Store a flag if we are the server
@@ -164,7 +162,7 @@ game_core.prototype.lerp = function(p, n, t) { var _t = Number(t); _t = (Math.ma
 game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x, t), y:this.lerp(v.y, tv.y, t) }; };
 
 
-/* The board classs */
+/*  -----------------------------  The board classs  -----------------------------  */
 
 var game_board = function() {
 	this.x = 0;
@@ -231,15 +229,13 @@ game_board.prototype.draw = function(){
 	}
 }
 
-// extend to a square by square basis?
 game_board.prototype.contains = function(mx, my) {
-	//window.console.log(this.x + ' vs. ' + mx + ' and ' + this.y + ' vs. ' + my);
 	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return (this.x <= mx) && (this.x + this.w >= mx) && (this.y <= my) && (this.y + this.h >= my);
 }
 
 
-/* Card class */
+/*  -----------------------------  Card class  -----------------------------  */
 
 var game_card = function( card_name, player ) {
 	this.cardName = card_name;
@@ -277,6 +273,9 @@ game_card.prototype.contains = function(mx, my) {
 //Check card can be played
 game_card.prototype.checkPlayable = function(){
 	window.console.log("Check card is playable");
+	if (this.owner.turnNo !== game.turn){
+		return false;
+	}
 	return true;
 }
 
@@ -285,8 +284,8 @@ game_card.prototype.playCard = function(targetCard, playerNo, board){
 	window.console.log();
 }
 
-/* The player class
-	A simple class to maintain state of a player on screen,
+/*  -----------------------------  The player class -----------------------------  */
+/*	A simple class to maintain state of a player on screen,
 	as well as to draw that state when required.
 */
 
@@ -398,8 +397,8 @@ game_player.prototype.draw_card = function(){
 	//window.console.log(this.hand);
 }
 
-/*
-	Common functions
+
+/*  -----------------------------  Common Core Game functions  -----------------------------  
 	These functions are shared between client and server, and are generic
 	for the game state. The client functions are client_* and server functions
 	are server_* so these have no prefix.
@@ -407,11 +406,9 @@ game_player.prototype.draw_card = function(){
 
 //Main update loop
 game_core.prototype.update = function(t) {
-	//Work out the delta time
-	this.dt = this.lastframetime ? ( (t - this.lastframetime)/1000.0).fixed() : 0.016;
+	this.dt = this.lastframetime ? ( (t - this.lastframetime)/1000.0).fixed() : 0.016; // delta time
 
-	//Store the last frame time
-	this.lastframetime = t;
+	this.lastframetime = t; //Store the last frame time
 
 	//Update the game specifics
 	if (!this.server) { // client
@@ -419,16 +416,13 @@ game_core.prototype.update = function(t) {
 	} else { // server
 		this.server_update();
 	}
-
 	//schedule the next update
 	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
-
 }; //game_core.update
 
 
-/*
-	Shared between server and client.
-	In this example, `item` is always of type game_player.
+/*  -----------------------------  Shared between server and client.  -----------------------------  
+	`item` is type game_player.
 */
 game_core.prototype.endTurn = function( item ) {
 	if (this.turn === 1) {
@@ -460,7 +454,6 @@ game_core.prototype.check_collision = function( item ) {
 	item.pos.y = item.pos.y.fixed(4);
 	
 }; //game_core.check_collision
-
 
 game_core.prototype.process_input = function( player ) {
 	//It's possible to have recieved multiple inputs by now, so we process each one
@@ -548,16 +541,15 @@ game_core.prototype.update_physics = function() {
 
 }; //game_core.prototype.update_physics
 
-/*
 
- Server side functions
- 
+
+/*  -----------------------------  Server side functions  -----------------------------  
 	These functions below are specific to the server side only,
 	and usually start with server_* to make things clearer.
 
 */
 
-	//Updated at 15ms , simulates the world state
+//Updated at 15ms , simulates the world state
 game_core.prototype.server_update_physics = function() {
 	//Handle player one
 	this.players.self.old_state.pos = this.pos( this.players.self.pos );
@@ -621,7 +613,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 }; //game_core.handle_server_input
 
 
-/* Client side functions
+/* -----------------------------  Client side functions  -----------------------------   
 	These functions below are specific to the client side only,
 	and usually start with client_* to make things clearer.
 */
@@ -629,10 +621,8 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 game_core.prototype.client_handle_input = function(){ // change to client_handle_keyboard_input??
 	//if(this.lit > this.local_time) return;
 	//this.lit = this.local_time+0.5; //one second delay
-
 	//This takes input from the client and keeps a record,
 	//It also sends the input information to the server immediately as it is pressed. It also tags each input with a sequence number.
-
 	var x_dir = 0;
 	var y_dir = 0;
 	var input = [];
@@ -665,19 +655,18 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 			server_packet += this.input_seq;
 
 		//Go
-		this.socket.send(  server_packet  );
+		this.socket.send( server_packet );
 
 		//Return the direction if needed
 		return this.physics_movement_vector_from_direction( x_dir, y_dir );
 	} else {
 		return {x:0, y:0};
 	}
-
 }; //game_core.client_handle_input
 
 game_core.prototype.client_process_net_prediction_correction = function() {
 	//No updates...
-	if(!this.server_updates.length) return;
+	if (!this.server_updates.length) return;
 
 	//The most recent server update
 	var latest_server_data = this.server_updates[this.server_updates.length-1];
@@ -688,43 +677,43 @@ game_core.prototype.client_process_net_prediction_correction = function() {
 	//Update the debug server position block
 	this.ghosts.server_pos_self.pos = this.pos(my_server_pos);
 
-		//here we handle our local input prediction, by correcting it with the server and reconciling its differences
-		var my_last_input_on_server = this.players.self.host ? latest_server_data.his : latest_server_data.cis;
-		if(my_last_input_on_server) {
-			//The last input sequence index in my local input list
-			var lastinputseq_index = -1;
-			//Find this input in the list, and store the index
-			for(var i = 0; i < this.players.self.inputs.length; ++i) {
-				if(this.players.self.inputs[i].seq == my_last_input_on_server) {
-					lastinputseq_index = i;
-					break;
-				}
+	//here we handle our local input prediction, by correcting it with the server and reconciling its differences
+	var my_last_input_on_server = this.players.self.host ? latest_server_data.his : latest_server_data.cis;
+
+	if (my_last_input_on_server) {
+		//The last input sequence index in my local input list
+		var lastinputseq_index = -1;
+		//Find this input in the list, and store the index
+		for(var i = 0; i < this.players.self.inputs.length; ++i) {
+			if(this.players.self.inputs[i].seq == my_last_input_on_server) {
+				lastinputseq_index = i;
+				break;
 			}
+		}
 
-			//Now we can crop the list of any updates we have already processed
-			if(lastinputseq_index != -1) {
-				//so we have now gotten an acknowledgement from the server that our inputs here have been accepted
-				//and that we can predict from this known position instead
+		//Now we can crop the list of any updates we have already processed
+		if (lastinputseq_index != -1) {
+			//so we have now gotten an acknowledgement from the server that our inputs here have been accepted
+			//and that we can predict from this known position instead
 
-					//remove the rest of the inputs we have confirmed on the server
-				var number_to_clear = Math.abs(lastinputseq_index - (-1));
-				this.players.self.inputs.splice(0, number_to_clear);
-					//The player is now located at the new server position, authoritive server
-				this.players.self.cur_state.pos = this.pos(my_server_pos);
-				this.players.self.last_input_seq = lastinputseq_index;
-					//Now we reapply all the inputs that we have locally that
-					//the server hasn't yet confirmed. This will 'keep' our position the same,
-					//but also confirm the server position at the same time.
-				this.client_update_physics();
-				this.client_update_local_position();
+				//remove the rest of the inputs we have confirmed on the server
+			var number_to_clear = Math.abs(lastinputseq_index - (-1));
+			this.players.self.inputs.splice(0, number_to_clear);
+				//The player is now located at the new server position, authoritive server
+			this.players.self.cur_state.pos = this.pos(my_server_pos);
+			this.players.self.last_input_seq = lastinputseq_index;
+				//Now we reapply all the inputs that we have locally that
+				//the server hasn't yet confirmed. This will 'keep' our position the same,
+				//but also confirm the server position at the same time.
+			this.client_update_physics();
+			this.client_update_local_position();
 
-			} // if(lastinputseq_index != -1)
-		} //if my_last_input_on_server
+		} // if(lastinputseq_index != -1)
+	} //if my_last_input_on_server
 
 }; //game_core.client_process_net_prediction_correction
 
 game_core.prototype.client_process_net_updates = function() {
-
 	//No updates...
 	if(!this.server_updates.length) return;
 
@@ -825,6 +814,12 @@ game_core.prototype.client_process_net_updates = function() {
 			}
 		}
 
+
+		/// enwneiwojjeijfojwoeofjwef
+
+		//this.players.self.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
+		//this.players.other.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
+
 	} //if target && previous
 
 }; //game_core.client_process_net_updates
@@ -883,7 +878,6 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 }; //game_core.client_onserverupdate_recieved
 
 game_core.prototype.client_update_local_position = function(){
-
 	if (this.client_predict) {
 		//Work out the time we have since we updated the state
 		var t = (this.local_time - this.players.self.state_time) / this._pdt;
@@ -905,7 +899,6 @@ game_core.prototype.client_update_local_position = function(){
 game_core.prototype.client_update_physics = function() {
 	//Fetch the new direction from the input buffer, and apply it to the state so we can smooth it in the visual state
 	if (this.client_predict) {
-
 		this.players.self.old_state.pos = this.pos( this.players.self.cur_state.pos );
 		var nd = this.process_input(this.players.self);
 		this.players.self.cur_state.pos = this.v_add( this.players.self.old_state.pos, nd);
@@ -916,14 +909,11 @@ game_core.prototype.client_update_physics = function() {
 }; //game_core.client_update_physics
 
 game_core.prototype.client_update = function() {
-	//Clear the screen area
-	this.ctx.clearRect(0,0,canvasWidth,canvasHeight);
-
-	//draw help/information if required
-	this.client_draw_info();
-
-	//Capture inputs from the player
-	this.client_handle_input();
+	this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
+	
+	this.client_draw_info(); //draw help/information if required
+	
+	this.client_handle_input(); //Capture inputs from the player
 
 	//Network player just gets drawn normally, with interpolation from the server updates, smoothing out the positions from the past.
 	//Note that if we don't have prediction enabled - this will also update the actual local client position on screen as well.
@@ -931,25 +921,21 @@ game_core.prototype.client_update = function() {
 		this.client_process_net_updates();
 	}
 
-	this.board.draw();
-
-	//Now they should have updated, we can draw the entity
-	this.players.other.draw();
-	//When we are doing client side prediction, we smooth out our position across frames using local input states we have stored.
-	this.client_update_local_position();
-	//And then we finally draw
-	this.players.self.draw();
+	this.board.draw(); // Draw board
+	this.players.other.draw(); // draw other player (post server update)
+	this.client_update_local_position(); //When we are doing client side prediction, we smooth out our position across frames using local input states we have stored.
+	this.players.self.draw(); Draw self
 
 	//draw drawn cards
 	for (var i = 0; i < this.players.self.hand.length; i++) {
-		this.players.self.hand[i].pos.x = 360 - (this.players.self.hand[i].size.x * this.players.self.hand.length / 2) + i * 30
+		this.players.self.hand[i].pos.x = canvasWidth/2 - (this.players.self.hand[i].size.x * this.players.self.hand.length / 2) + i * 30
 		this.players.self.hand[i].pos.y = 400;
 		this.players.self.hand[i].draw();
 	}
 
 	//draw drawn cards
 	for (var i = 0; i < this.players.other.hand.length; i++) {
-		this.players.other.hand[i].pos.x = 360 - (this.players.other.hand[i].size.x * this.players.other.hand.length / 2) + i * 30
+		this.players.other.hand[i].pos.x = canvasWidth/2 - (this.players.other.hand[i].size.x * this.players.other.hand.length / 2) + i * 30
 		this.players.other.hand[i].pos.y = 50;
 		this.players.other.hand[i].draw();
 	}
@@ -1228,28 +1214,26 @@ game_core.prototype.client_connect_to_server = function() {
 		//Store a local reference to our connection to the server
 		this.socket = io.connect();
 
-		//When we connect, we are not 'connected' until we have a server id
-		//and are placed in a game by the server. The server sends us a message for that.
+		//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
 		this.socket.on('connect', function(){
 			this.players.self.state = 'connecting';
 		}.bind(this));
 
-			//Sent when we are disconnected (network, server down, etc)
+		//Sent when we are disconnected (network, server down, etc)
 		this.socket.on('disconnect', this.client_ondisconnect.bind(this));
-			//Sent each tick of the server simulation. This is our authoritive update
+		//Sent each tick of the server simulation. This is our authoritive update
 		this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this));
-			//Handle when we connect to the server, showing state and storing id's.
+		//Handle when we connect to the server, showing state and storing id's.
 		this.socket.on('onconnected', this.client_onconnected.bind(this));
-			//On error we just show that we are not connected for now. Can print the data.
+		//On error we just show that we are not connected for now. Can print the data.
 		this.socket.on('error', this.client_ondisconnect.bind(this));
-			//On message from the server, we parse the commands and send it to the handlers
+		//On message from the server, we parse the commands and send it to the handlers
 		this.socket.on('message', this.client_onnetmessage.bind(this));
 
 }; //game_core.client_connect_to_server
 
 game_core.prototype.client_refresh_fps = function() {
-
-		//We store the fps for 10 frames, by adding it to this accumulator
+	//We store the fps for 10 frames, by adding it to this accumulator
 	this.fps = 1/this.dt;
 	this.fps_avg_acc += this.fps;
 	this.fps_avg_count++;
