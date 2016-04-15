@@ -32,23 +32,34 @@ window.onload = function(){
 			//window.console.log(shapes);
 
 			for (var i = shapes.length - 1; i >= 0; i--) {
-				window.console.log(shapes[i].contains(mx, my));
+				//window.console.log(shapes[i].contains(mx, my));
 			  	if (shapes[i].contains(mx, my)) {
 			  		input = '';
 			  		if (shapes[i] == game.board) {
-			  			input = 'sq.' + (100 + mx).toString()[0] + (100 + my).toString()[0];
+			  			input = 'sq-' + (100 + mx).toString()[0] + (100 + my).toString()[0];
 			  		} else {
-			  			input = 'ca.' + shapes[i].cardName;
+			  			input = 'ca-' + shapes[i].cardName;
 			  		}
 					var mySel = shapes[i];
 
 					window.console.log('pushing clicked input > ' + input);
+
+					game.input_seq += 1;
 
 					game.players.self.inputs.push({
 						inputs : input,
 						time : game.local_time.fixed(3),
 						seq : game.input_seq
 					});
+
+					var server_packet = 'i.';
+						server_packet += input + '.';
+						server_packet += game.local_time.toFixed(3).replace('.','-') + '.';
+						server_packet += game.input_seq;
+
+					//Go
+					game.socket.send(  server_packet  );
+
 					return;
 				}
 			}

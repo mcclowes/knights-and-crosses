@@ -167,8 +167,6 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
 /* The board classs */
 
 var game_board = function() {
-	this.boardImage = new Image();
-	this.boardImage.src = "img/board.png";
 	this.x = 0;
 	this.y = 0;
 	this.w = 400;
@@ -196,6 +194,8 @@ var game_board = function() {
 };
 
 game_board.prototype.draw = function(){
+	this.boardImage = new Image();
+	this.boardImage.src = "img/board.png";
 	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
 	game.ctx.fillRect(0, 0, 400, 400);
 	game.ctx.drawImage(this.boardImage,0,0,400,400);
@@ -233,7 +233,7 @@ game_board.prototype.draw = function(){
 
 // extend to a square by square basis?
 game_board.prototype.contains = function(mx, my) {
-	window.console.log(this.x + ' vs. ' + mx + ' and ' + this.y + ' vs. ' + my);
+	//window.console.log(this.x + ' vs. ' + mx + ' and ' + this.y + ' vs. ' + my);
 	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return (this.x <= mx) && (this.x + this.w >= mx) && (this.y <= my) && (this.y + this.h >= my);
 }
@@ -245,10 +245,6 @@ var game_card = function( card_name, player ) {
 	this.cardName = card_name;
 	this.cardEffects = [];
 	this.cardImage = '';
-	this.cardBody = new Image();
-	this.cardBody.src = "img/card_barrage.png";
-	this.cardBack = new Image();
-	this.cardBack.src = "img/card_back1.png";
 	this.owner = player;
 
 	this.pos = { x:0, y:0 };
@@ -259,6 +255,11 @@ var game_card = function( card_name, player ) {
 }
 
 game_card.prototype.draw = function(){ //draw card
+	this.cardBody = new Image();
+	this.cardBody.src = "img/card_barrage.png";
+	this.cardBack = new Image();
+	this.cardBack.src = "img/card_back1.png"; // eval
+
 	game.ctx.fillStyle = 'rgba(140,120,100,0.7)';;
 	game.ctx.fillRect(this.pos.x, this.pos.y, 60, 120);
 	if (game.players.self = this.owner) {
@@ -292,7 +293,13 @@ game_card.prototype.playCard = function(targetCard, playerNo, board){
 var game_player = function( game_instance, player_instance ) {
 	//Store the instance, if any
 	this.instance = player_instance; //dont need these?
-	this.game = game_instance;
+	this.game = game_instance; //??
+	if (this.game.players === undefined) {
+		this.turnNo = 1;
+	} else {
+		this.turnNo = -1;
+	}
+	//window.console.log(this.game.players.self === this);
 
 	//Set up initial values for our state information
 	this.pos = { x:0, y:0 };
@@ -320,7 +327,6 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [],
 	this.pieces = [];
-
 
 	this.deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	for (var i = 0; i < this.deck_temp.length; i++) {
@@ -424,6 +430,14 @@ game_core.prototype.update = function(t) {
 	Shared between server and client.
 	In this example, `item` is always of type game_player.
 */
+game_core.prototype.endTurn = function( item ) {
+	if (this.turn === 1) {
+		this.turn = -1;
+	} else {
+		this.turn = 1;
+	}
+}
+
 game_core.prototype.check_collision = function( item ) {
 	//Left wall.
 	if (item.pos.x <= item.pos_limits.x_min) {
@@ -453,6 +467,7 @@ game_core.prototype.process_input = function( player ) {
 	var x_dir = 0;
 	var y_dir = 0;
 	var ic = player.inputs.length;
+	//window.console.log(game.players.self.inputs);
 
 	if (ic) {
 		for(var j = 0; j < ic; ++j) {
@@ -463,13 +478,28 @@ game_core.prototype.process_input = function( player ) {
 			window.console.log(input);
 			var c = input.length;
 
-			var input_parts = input.split('.');
-			window.console.log(input_parts);
+			try {
+			    var input_parts = input.split('.');
+			}
+			catch(err) {
+			    var input_parts = input;
+			}
+			
+			window.console.log("Input parts: " + input_parts);
 			target = [];
 			if (input_parts[0] == 'en') { //end turn
 
 			} else if (input_parts[0] == 'ca') { // card
 				target = input_parts[1];
+				window.console.log('HMmmmm2 > ');
+				//window.console.log(player.hand);
+				for (var i = player.hand.length - 1; i >= 0; i--) {
+					window.console.log('HMmmmm');
+				    if (player.hand[i].cardName === target) {
+				       player.hand.splice(i, 1);
+				       break;
+				    }
+				}
 			} else if (input_parts[0] == 'sq') { // square
 				target = input_parts[1];
 			}
@@ -480,7 +510,7 @@ game_core.prototype.process_input = function( player ) {
 				if(key == 'r') {
 					x_dir += 1;
 				}
-			} //for all input values*/
+			}*/ //for all input values
 
 		} //for each input command
 	} //if we have inputs
@@ -556,8 +586,10 @@ game_core.prototype.server_update = function(){
 	//Make a snapshot of the current state, for updating the clients
 	this.laststate = {
 		//turn?
-		hp  : this.players.self.pos,                //'host position', the game creators position
-		cp  : this.players.other.pos,               //'client position', the person that joined, their position
+		tu 	: this.turn,
+		b 	: this.board,
+		hp  : this.players.self.hand,                //'host position', the game creators position
+		cp  : this.players.other.hand,               //'client position', the person that joined, their position
 		his : this.players.self.last_input_seq,     //'host input sequence', the last input we processed for the host
 		cis : this.players.other.last_input_seq,    //'client input sequence', the last input we processed for the client
 		t   : this.server_time                      // our current local time on the server
@@ -581,7 +613,11 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 	var player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
 
 	//Store the input on the player instance for processing in the physics loop
-	player_client.inputs.push({inputs:input, time:input_time, seq:input_seq});
+	player_client.inputs.push({
+		inputs	:   input, 
+		time	:   input_time, 
+		seq		:   input_seq
+	});
 }; //game_core.handle_server_input
 
 
@@ -1230,7 +1266,6 @@ game_core.prototype.client_refresh_fps = function() {
 }; //game_core.client_refresh_fps
 
 game_core.prototype.client_draw_info = function() {
-
 	//We don't want this to be too distracting
 	this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
 
