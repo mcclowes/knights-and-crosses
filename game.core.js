@@ -231,8 +231,15 @@ var end_turn_button = function() {
 };
 
 end_turn_button.prototype.draw = function(){
+	if (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1){ // players turn
+		game.ctx.shadowBlur = 20;
+		game.ctx.shadowColor="green";
+	}		
+
 	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
 	game.ctx.fillRect(450, canvasHeight/2, this.w, this.h);
+	game.ctx.shadowBlur=0;
+
 	game.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
 	game.ctx.fillText(this.text, 460, canvasHeight/2 + 30);
 };
@@ -255,7 +262,6 @@ var game_card = function( card_name, player ) {
 	this.size = { x:80, y:120, hx:40, hy:60 };
 	this.color = 'rgba(255,255,255,0.7)';
 	this.info_color = 'rgba(255,255,255,0.7)';
-	this.id = ''; // remove?
 };
 
 game_card.prototype.draw = function(){ //draw card
@@ -268,6 +274,11 @@ game_card.prototype.draw = function(){ //draw card
 	} else {
 		this.cardBack.src = "img/card_back2.png";
 	}
+
+	if (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1){ // players turn
+		game.ctx.shadowBlur = 20;
+		game.ctx.shadowColor="green";
+	}	
 
 	game.ctx.fillStyle = 'rgba(140,120,100,0.7)';;
 	game.ctx.fillRect(this.pos.x, this.pos.y, 60, 120);

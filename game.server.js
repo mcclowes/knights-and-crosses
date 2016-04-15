@@ -153,8 +153,7 @@ game_server.startGame = function(game) {
     //make players draw cards
     for (var i = 0; i < 3; i++) {
         window.console.log('doot');
-        var server_packet = 'i.';
-            server_packet += 'dr.';
+        var server_packet = 'i.dr.';
             server_packet += this.local_time.toFixed(3).replace('.','-') + '.';
             server_packet += game.input_seq;
         game_server._onMessage(game.player_client, server_packet);
