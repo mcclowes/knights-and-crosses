@@ -32,6 +32,7 @@ game_server.onMessage = function(client,message) {
 };
 
 game_server._onMessage = function(client, message) {
+    window.console.log(message);
     var message_parts = message.split('.'); //Cut the message up into sub components
     var message_type = message_parts[0]; //The first is always the type of message
     var other_client = (client.game.player_host.userid == client.userid) ? client.game.player_client : client.game.player_host;
@@ -53,6 +54,21 @@ game_server.onInput = function(client, parts) {
     var input_commands = parts[1].split('-');
     var input_time = parts[2].replace('-','.');
     var input_seq = parts[3];
+
+    window.console.log('handling input > ' + input_commands[0]);
+    window.console.log(client);
+    window.console.log("arghhhhh");
+    window.console.log(client.game.gamecore.players);
+
+    if (input_commands[0] === 'dr') {
+        window.console.log('drawing card');
+        if (client.game.gamecore.players.self.deck.length > 0 && client.game.gamecore.players.self.hand.length < client.game.gamecore.maxHandSize) {
+            client.game.gamecore.players.self.hand.push(client.game.gamecore.players.self.deck[0]);
+            client.game.gamecore.players.self.deck.splice(0, 1);
+        } else {
+            window.console.log("Hand full - " + client.game.gamecore.players.self.deck.length + ", " + client.game.gamecore.players.self.hand.length);
+        }
+    }
 
     //the client should be in a game, so we can tell that game to handle the input
     if(client && client.game && client.game.gamecore) {
@@ -102,21 +118,15 @@ game_server.endGame = function(gameid, userid) {
         if(thegame.player_count > 1) {
             //send the players the message the game is ending
             if(userid == thegame.player_host.userid) {
-                //the host left, oh snap. Lets try join another game
-                if(thegame.player_client) {
+                if(thegame.player_client) { //the host left, oh snap. Lets try join another game
                     thegame.player_client.send('s.e'); //tell them the game is over
                     this.findGame(thegame.player_client); //now look for/create a new game.
                 }
-                
             } else {
-                //the other player left, we were hosting
-                if(thegame.player_host) {
-                    //tell the client the game is ended
-                    thegame.player_host.send('s.e');
-                    //I am no longer hosting, this game is going down
-                    thegame.player_host.hosting = false;
-                    //now look for/create a new game.
-                    this.findGame(thegame.player_host);
+                if (thegame.player_host) { //the other player left, we were hosting
+                    thegame.player_host.send('s.e'); //tell the client the game is ended
+                    thegame.player_host.hosting = false; //I am no longer hosting, this game is going down
+                    this.findGame(thegame.player_host); //now look for/create a new game.
                 }
             }
         }
@@ -140,16 +150,24 @@ game_server.startGame = function(game) {
     game.player_client.send('s.r.'+ String(game.gamecore.local_time).replace('.','-'));
     game.player_host.send('s.r.'+ String(game.gamecore.local_time).replace('.','-'));
 
+    //make players draw cards
+    for (var i = 0; i < 3; i++) {
+        window.console.log('doot');
+        var server_packet = 'i.';
+            server_packet += 'dr.';
+            server_packet += this.local_time.toFixed(3).replace('.','-') + '.';
+            server_packet += game.input_seq;
+        game_server._onMessage(game.player_client, server_packet);
+        game_server._onMessage(game.player_host, server_packet);
+    }
+
     //set this flag, so that the update loop can run it.
     game.active = true;
 }; //game_server.startGame
 
 game_server.findGame = function(player) {
     this.log('looking for a game. We have : ' + this.game_count);
-
-    //so there are games active, lets see if one needs another player
-    if (this.game_count) {
-            
+    if (this.game_count) { //so there are games active, lets see if one needs another player
         var joined_a_game = false;
         //Check the list of games for an open game
         for (var gameid in this.games) {

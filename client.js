@@ -20,18 +20,26 @@ window.onload = function(){
 	// Handle clicking
 	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
 	game.ctx.canvas.addEventListener('click', function(e) { // Click detection (Only type of interaction)
+		if (game.players.self.host === true && game.turn === -1) { // not players turn
+			return;
+		} else if (game.players.self.host === false && game.turn === 1) { // not players turn (can condense)
+			return;
+		}
+
 		var mx = event.clientX,
 			my = event.clientY,
 			shapes = [game.board];
 		
-		shapes = shapes.concat(game.players.self.hand, game.players.other.hand); // create array of all clickable objects
+		shapes = shapes.concat(game.end_turn_button, game.players.self.hand, game.players.other.hand); // create array of all clickable objects
 
 		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
 			//window.console.log(shapes[i].contains(mx, my));
 		  	if (shapes[i].contains(mx, my)) {
 		  		input = '';
-		  		if (shapes[i] == game.board) {
+		  		if (shapes[i] === game.board) {
 		  			input = 'sq-' + (100 + mx).toString()[0] + (100 + my).toString()[0];
+		  		} else if (shapes[i] === game.end_turn_button) {
+		  			input = 'en'
 		  		} else {
 		  			input = 'ca-' + shapes[i].cardName;
 		  		}

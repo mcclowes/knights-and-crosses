@@ -37,6 +37,12 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	}
 
 }() );
+
+// Array shuffle function
+function shuffle(o){
+    for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+    return o;
+}
  
 
 /* ----------------------------- The game_core class (the main class) -----------------------------  */
@@ -51,6 +57,7 @@ var game_core = function(game_instance){
 	};
 
 	this.board = new game_board();
+	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
 
 	//We create a player set, passing them to the game that is running them, as well
@@ -207,12 +214,33 @@ game_board.prototype.draw = function(){
 			} 
 		}
 	}
-}
+};
 
 game_board.prototype.contains = function(mx, my) {
 	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return (this.x <= mx) && (this.x + this.w >= mx) && (this.y <= my) && (this.y + this.h >= my);
-}
+};
+
+
+/*  -----------------------------  The board classs  -----------------------------  */
+
+var end_turn_button = function() {
+	this.w = 100;
+	this.h = 50;
+	this.text = "End Turn";
+};
+
+end_turn_button.prototype.draw = function(){
+	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
+	game.ctx.fillRect(450, canvasHeight/2, this.w, this.h);
+	game.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
+	game.ctx.fillText(this.text, 460, canvasHeight/2 + 30);
+};
+
+end_turn_button.prototype.contains = function(mx, my) {
+	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
+	return  (450 <= mx) && (450 + this.w >= mx) && (canvasHeight/2 <= my) && (canvasHeight/2 + this.h >= my);
+};
 
 
 /*  -----------------------------  Card class  -----------------------------  */
@@ -227,12 +255,13 @@ var game_card = function( card_name, player ) {
 	this.size = { x:80, y:120, hx:40, hy:60 };
 	this.color = 'rgba(255,255,255,0.7)';
 	this.info_color = 'rgba(255,255,255,0.7)';
-	this.id = '';
-}
+	this.id = ''; // remove?
+};
 
 game_card.prototype.draw = function(){ //draw card
 	this.cardBody = new Image();
-	this.cardBody.src = "img/card_barrage.png";
+	//this.cardBody.src = "img/card_barrage.png";
+	this.cardBody.src = eval("img/card_" + this.cardName.toLowerCase().split("").join("_") + ".png"); //hmmm
 	this.cardBack = new Image();
 	if (game.players.self.host === true) { // Based on host
 		this.cardBack.src = "img/card_back1.png";
@@ -252,7 +281,7 @@ game_card.prototype.draw = function(){ //draw card
 game_card.prototype.contains = function(mx, my) {
 	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return  (this.pos.x <= mx) && (this.pos.x + this.size.x >= mx) && (this.pos.y <= my) && (this.pos.y + this.size.y >= my);
-}
+};
 
 //Check card can be played
 game_card.prototype.checkPlayable = function(){
@@ -264,12 +293,12 @@ game_card.prototype.checkPlayable = function(){
 	} else {
 		return true; // It's players turn
 	}
-}
+};
 
 //activate card
 game_card.prototype.playCard = function(targetCard, playerNo, board){
-	window.console.log();
-}
+	window.console.log("EEk");
+};
 
 /*  -----------------------------  The player class -----------------------------  */
 /*	A simple class to maintain state of a player on screen,
@@ -282,8 +311,6 @@ var game_player = function( game_instance, player_instance ) {
 	this.game = game_instance; //??
 
 	//Set up initial values for our state information
-	this.pos = { x:0, y:0 };
-	this.size = { x:40, y:60, hx:20, hy:30 }; //hx = half x
 	this.state = 'not-connected';
 	this.color = 'rgba(255,255,255,0.1)';
 	this.info_color = 'rgba(255,255,255,0.1)';
@@ -308,9 +335,11 @@ var game_player = function( game_instance, player_instance ) {
 	this.hand = [],
 	this.pieces = [];
 
-	this.deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
-	for (var i = 0; i < this.deck_temp.length; i++) {
-		this.deck.push(new game_card(this.deck_temp[i], this));
+	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	deck_temp = shuffle(deck_temp);
+
+	for (var i = 0; i < deck_temp.length; i++) {
+		this.deck.push(new game_card(deck_temp[i], this));
 	}
 	//window.console.log(this.deck)
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -322,21 +351,13 @@ var game_player = function( game_instance, player_instance ) {
 
 	//Our local history of inputs
 	this.inputs = [];
-
-	//The world bounds we are confined to
-	this.pos_limits = {
-		x_min: this.size.hx,
-		x_max: this.game.world.width - this.size.hx,
-		y_min: this.size.hy,
-		y_max: this.game.world.height - this.size.hy
-	};
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){
 	//Set the color for this player
 	game.ctx.fillStyle = this.color; //remove
 	game.ctx.fillStyle = this.info_color;
-	game.ctx.fillText(this.state, 10, this.pos.y + 450);
+	game.ctx.fillText(this.state, 10, 450);
 	//draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
 		this.hand[i].pos.x = canvasWidth/2 - (this.hand[i].size.x * this.hand.length / 2) + i * 30
@@ -496,7 +517,35 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 	window.console.log(input);
 	//Fetch which client this refers to out of the two
 	var player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
-	
+
+	if (input) {
+		var c = input.length;
+
+		try {
+		    var input_parts = input.split('.');
+		}
+		catch(err) {
+		    var input_parts = input;
+		}
+		
+		target = [];
+		if (input_parts[0] == 'en') { //end turn
+		} else if (input_parts[0] == 'ca') { // card
+			target = input_parts[1];
+			window.console.log('HMmmmm2 > ');
+			window.console.log(player_client);
+			for (var i = player_client.hand.length - 1; i >= 0; i--) {
+				window.console.log('HMmmmm ' + target + ' vs. ' + player_client.hand[i].cardName);
+			    if (player_client.hand[i].cardName === target) {
+			       player_client.hand.splice(i, 1);
+			       break;
+			    }
+			}
+		} else if (input_parts[0] == 'sq') { // square
+			target = input_parts[1];
+		}
+	} //if we have inputs
+
 	//Store the input on the player instance for processing in the physics loop
 	player_client.inputs.push({
 		inputs	:   input, 
@@ -504,6 +553,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		seq		:   input_seq
 	});
 }; //game_core.handle_server_input
+
 
 
 /* -----------------------------  Client side functions  -----------------------------   
@@ -607,10 +657,10 @@ game_core.prototype.client_process_net_updates = function() {
 	var target = null;
 	var previous = null;
 
-		//We look from the 'oldest' updates, since the newest ones
-		//are at the end (list.length-1 for example). This will be expensive
-		//only when our time is not found on the timeline, since it will run all
-		//samples. Usually this iterates very little before breaking out with a target.
+	//We look from the 'oldest' updates, since the newest ones
+	//are at the end (list.length-1 for example). This will be expensive
+	//only when our time is not found on the timeline, since it will run all
+	//samples. Usually this iterates very little before breaking out with a target.
 	for (var i = 0; i < count; ++i) {
 		var point = this.server_updates[i];
 		var next_point = this.server_updates[i+1];
@@ -623,18 +673,15 @@ game_core.prototype.client_process_net_updates = function() {
 		}
 	}
 
-		//With no target we store the last known
-		//server position and move to that instead
+	//With no target we store the last known server position and move to that instead
 	if (!target) {
 		target = this.server_updates[0];
 		previous = this.server_updates[0];
 	}
 
-		//Now that we have a target and a previous destination, We can interpolate between then based on 'how far in between' we are.
-		//This is simple percentage maths, value/target = [0,1] range of numbers. lerp requires the 0,1 value to lerp to? thats the one.
-
-	 if(target && previous) {
-
+	//Now that we have a target and a previous destination, We can interpolate between then based on 'how far in between' we are.
+	//This is simple percentage maths, value/target = [0,1] range of numbers. lerp requires the 0,1 value to lerp to? thats the one.
+	if(target && previous) {
 		this.target_time = target.t;
 
 		var difference = this.target_time - current_time;
@@ -687,7 +734,6 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 		//even more so. See 'the bouncing ball problem' on Wikipedia.
 
 		if(this.naive_approach) {
-
 			if(data.hp) {
 				player_host.pos = this.pos(data.hp);
 			}
@@ -755,6 +801,7 @@ game_core.prototype.client_update = function() {
 		this.client_process_net_updates();
 	}
 
+	this.end_turn_button.draw();
 	this.board.draw(); // Draw board
 	this.players.other.draw(); // draw other player (post server update)
 	this.client_update_local_position(); //When we are doing client side prediction, we smooth out our position across frames using local input states we have stored.
@@ -949,11 +996,6 @@ game_core.prototype.client_onconnected = function(data) {
 	this.players.self.info_color = '#cc0000';
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
-
-	this.players.self.draw_card();
-	this.players.self.draw_card();
-	this.players.self.draw_card();
-
 }; //client_onconnected
 
 game_core.prototype.client_on_otherclientcolorchange = function(data) {
