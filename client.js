@@ -14,9 +14,45 @@ window.onload = function(){
 
 		//Fetch the rendering contexts
 		game.ctx = game.viewport.getContext('2d');
-
 		//Set the draw style for the font
 		game.ctx.font = '11px "Helvetica"';
+
+		//window.console.log(game.ctx);
+		// Handle clicking
+		game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false);
+		// Up, down, and move are for dragging
+		game.ctx.canvas.addEventListener('click', function(e) {
+			//var mouse = this.getMouse(e);
+			//var mx = mouse.x;
+			//var my = mouse.y;
+			var mx = event.clientX,
+				my = event.clientY;
+			var shapes = [game.board];
+			shapes = shapes.concat(game.players.self.hand, game.players.other.hand);
+			//window.console.log(shapes);
+
+			for (var i = shapes.length - 1; i >= 0; i--) {
+				window.console.log(shapes[i].contains(mx, my));
+			  	if (shapes[i].contains(mx, my)) {
+			  		input = '';
+			  		if (shapes[i] == game.board) {
+			  			input = 'sq.' + (100 + mx).toString()[0] + (100 + my).toString()[0];
+			  		} else {
+			  			input = 'ca.' + shapes[i].cardName;
+			  		}
+					var mySel = shapes[i];
+
+					window.console.log('pushing clicked input > ' + input);
+
+					game.players.self.inputs.push({
+						inputs : input,
+						time : game.local_time.fixed(3),
+						seq : game.input_seq
+					});
+					return;
+				}
+			}
+		}, true);
 
 		//Finally, start the loop
 	game.update( new Date().getTime() );
