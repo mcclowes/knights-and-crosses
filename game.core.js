@@ -298,7 +298,6 @@ var game_player = function( game_instance, player_instance ) {
 	} else {
 		this.turnNo = -1;
 	}
-	//window.console.log(this.game.players.self === this);
 
 	//Set up initial values for our state information
 	this.pos = { x:0, y:0 };
@@ -373,18 +372,12 @@ game_player.prototype.draw = function(){
 	game.ctx.fillStyle = this.info_color;
 	game.ctx.fillText(this.state, this.pos.x+10, this.pos.y + 4);
 
-	/*
-	// Trying to add mouse touches
-	target.addEventListener("mousedown", mouseDown, false);
-	target.addEventListener("mouseup", mouseUp, false);
-
-	function mouseDown() {
-		can.color = 'rgba(255,0,0,0.1)';
+	//draw drawn cards
+	for (var i = 0; i < this.hand.length; i++) {
+		this.hand[i].pos.x = canvasWidth/2 - (this.hand[i].size.x * this.hand.length / 2) + i * 30
+		this.hand[i].pos.y = 400;
+		this.hand[i].draw();
 	}
-
-	function mouseUp() {
-		can.color = 'rgba(255,255,255,0.1)';
-	}*/
 }; //game_player.draw
 
 game_player.prototype.draw_card = function(){
@@ -924,23 +917,9 @@ game_core.prototype.client_update = function() {
 	this.board.draw(); // Draw board
 	this.players.other.draw(); // draw other player (post server update)
 	this.client_update_local_position(); //When we are doing client side prediction, we smooth out our position across frames using local input states we have stored.
-	this.players.self.draw(); Draw self
+	this.players.self.draw(); //Draw self
 
-	//draw drawn cards
-	for (var i = 0; i < this.players.self.hand.length; i++) {
-		this.players.self.hand[i].pos.x = canvasWidth/2 - (this.players.self.hand[i].size.x * this.players.self.hand.length / 2) + i * 30
-		this.players.self.hand[i].pos.y = 400;
-		this.players.self.hand[i].draw();
-	}
-
-	//draw drawn cards
-	for (var i = 0; i < this.players.other.hand.length; i++) {
-		this.players.other.hand[i].pos.x = canvasWidth/2 - (this.players.other.hand[i].size.x * this.players.other.hand.length / 2) + i * 30
-		this.players.other.hand[i].pos.y = 50;
-		this.players.other.hand[i].draw();
-	}
-
-	//and these
+	//and these ???? remove ghosts
 	if(this.show_dest_pos && !this.naive_approach) {
 		this.ghosts.pos_other.draw();
 	}
