@@ -60,15 +60,26 @@ var game_core = function(game_instance){
 	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
 
+	/*this.laststate = {
+		tu 	: 0,
+		bo 	: 0,
+		hp  : 0,
+		hh  : 0,
+		hd  : 0,
+		cp  : 0,
+		ch  : 0,
+		cd  : 0,
+		his : 0,
+		cis : 0,
+		t   : 0
+	};*/
+
 	//We create a player set, passing them to the game that is running them, as well
 	if (this.server) { // if this is server side
 		this.players = {
 			self : new game_player(this, this.instance.player_host),
 			other : new game_player(this, this.instance.player_client)
 		};
-
-	   this.players.self.pos = {x:20, y:20};
-
 	} else { // if this is client side - also handle visuals
 		this.players = {
 			self : new game_player(this),
@@ -157,23 +168,24 @@ var game_board = function() {
 	this.w = 400;
 	this.h = 400;
 
-	this.results = [];
-	this.frost = [];
-	this.rock = [];
-	this.shields = [];
-
+	this.board_state = {
+		results : [],
+		frost 	: [],
+		rock 	: [],
+		shields : []
+	}
 	// initialise game board arrays
 	for (var i = 0; i < 4; i++){
-		this.results[i] = [];
-		this.frost[i] = [];
-		this.rock[i] = [];
-		this.shields[i] = [];
+		this.board_state.results[i] = [];
+		this.board_state.frost[i] = [];
+		this.board_state.rock[i] = [];
+		this.board_state.shields[i] = [];
 
 		for (var j = 0; j < 4; j++){
-			this.results[i][j] = 0;
-			this.frost[i][j] = 0;
-			this.rock[i][j] = 0;
-			this.shields[i][j] = 0;
+			this.board_state.results[i][j] = 0;
+			this.board_state.frost[i][j] = 0;
+			this.board_state.rock[i][j] = 0;
+			this.board_state.shields[i][j] = 0;
 		}
 	}
 };
@@ -200,16 +212,16 @@ game_board.prototype.draw = function(){
 	//for each square, draw the relevant piece
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
-			if (this.results[i][j] == 1) {
+			if (this.board_state.results[i][j] == 1) {
 				//needs to check for player
-				if (this.shields[i][j] == 0) {
+				if (this.board_state.shields[i][j] == 0) {
 					game.ctx.drawImage(this.shieldImage, i*100, j*100, 100, 100);
 				} else {
 					game.ctx.drawImage(this.p1PieceImage, i*100, j*100, 100, 100);
 				}
-			} else if (this.frost[i][j] == 2) {
+			} else if (this.board_state.frost[i][j] == 2) {
 				game.ctx.drawImage(this.frostImage, i*100, j*100, 100, 100);
-			} else if (this.rock[i][j] == 3) {
+			} else if (this.board_state.rock[i][j] == 3) {
 				game.ctx.drawImage(this.blockedImage, i*100, j*100, 100, 100);
 			} 
 		}
@@ -256,7 +268,7 @@ var game_card = function( card_name, player ) {
 	this.cardName = card_name;
 	this.cardEffects = [];
 	this.cardImage = '';
-	this.owner = player;
+	//this.owner = player.play;
 
 	this.pos = { x:0, y:0 };
 	this.size = { x:80, y:120, hx:40, hy:60 };
@@ -282,11 +294,12 @@ game_card.prototype.draw = function(){ //draw card
 
 	game.ctx.fillStyle = 'rgba(140,120,100,0.7)';;
 	game.ctx.fillRect(this.pos.x, this.pos.y, 60, 120);
-	if (game.players.self = this.owner) {
+	/*if (game.players.self = this.owner) {
 		game.ctx.drawImage(this.cardBody, this.pos.x,this.pos.y, 60, 120);
 	} else {
 		game.ctx.drawImage(this.cardBack, this.pos.x,this.pos.y, 60, 120);
-	}
+	}*/
+	game.ctx.drawImage(this.cardBack, this.pos.x,this.pos.y, 60, 120);
 }; 
 
 game_card.prototype.contains = function(mx, my) {
@@ -319,7 +332,7 @@ game_card.prototype.playCard = function(targetCard, playerNo, board){
 var game_player = function( game_instance, player_instance ) {
 	//Store the instance, if any
 	this.instance = player_instance; //dont need these?
-	this.game = game_instance; //??
+	//this.game = game_instance; //??
 
 	//Set up initial values for our state information
 	this.state = 'not-connected';
@@ -327,24 +340,25 @@ var game_player = function( game_instance, player_instance ) {
 	this.info_color = 'rgba(255,255,255,0.1)';
 	this.id = '';
 
-	this.cards_to_play = 1;
-	this.damagingA = 0;
-	this.damagingE = 0;
-	this.damagingS = 0;
-	this.destroyingA = 0;
-	this.destroyingE = 0;
-	this.destroyingS = 0;
-	this.discarding = 0;
-	this.shielding = 0;
-	this.deshielding = 0;
-	this.freezing = 0;
-	this.thawing = 0;
-	this.blocking = 0;
+	this.player_state = {
+		cards_to_play 	: 1,
+		damagingA 		: 0,
+		damagingE 		: 0,
+		damagingS 		: 0,
+		destroyingA 	: 0,
+		destroyingE 	: 0,
+		destroyingS 	: 0,
+		discarding 		: 0,
+		shielding 		: 0,
+		deshielding 	: 0,
+		freezing 		: 0,
+		thawing 		: 0,
+		blocking 		: 0
+	}
 
 	//Player arrays
 	this.deck = [],
-	this.hand = [],
-	this.pieces = [];
+	this.hand = [];
 
 	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	deck_temp = shuffle(deck_temp);
@@ -354,11 +368,6 @@ var game_player = function( game_instance, player_instance ) {
 	}
 	//window.console.log(this.deck)
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
-
-	//These are used in moving us around later
-	this.old_state = {pos: {x:0, y:0}};
-	this.cur_state = {pos: {x:0, y:0}};
-	this.state_time = new Date().getTime();
 
 	//Our local history of inputs
 	this.inputs = [];
@@ -503,16 +512,23 @@ game_core.prototype.server_update = function(){
 	//Update the state of our local clock to match the timer
 	this.server_time = this.local_time;
 	//Make a snapshot of the current state, for updating the clients
+
 	this.laststate = {
 		//turn?
 		tu 	: this.turn,
-		b 	: this.board,
-		hp  : this.players.self.hand,                //'host position', the game creators position
-		cp  : this.players.other.hand,               //'client position', the person that joined, their position
+		bo 	: this.board,
+		hp  : this.players.self.player_state,
+		hh  : this.players.self.hand,  
+		hd  : this.players.self.deck,               
+		cp  : this.players.other.player_state,
+		ch  : this.players.other.hand,  
+		cd  : this.players.other.deck,             
 		his : this.players.self.last_input_seq,     //'host input sequence', the last input we processed for the host
 		cis : this.players.other.last_input_seq,    //'client input sequence', the last input we processed for the client
 		t   : this.server_time                      // our current local time on the server
 	};
+
+	//window.console.log(this.laststate);
 
 	if (this.players.self.instance) { //Send the snapshot to the 'host' player
 		this.players.self.instance.emit( 'onserverupdate', this.laststate );
@@ -534,8 +550,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 
 		try {
 		    var input_parts = input.split('.');
-		}
-		catch(err) {
+		} catch(err) {
 		    var input_parts = input;
 		}
 		
@@ -544,9 +559,9 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		} else if (input_parts[0] == 'ca') { // card
 			target = input_parts[1];
 			window.console.log('HMmmmm2 > ');
-			window.console.log(player_client);
+			//window.console.log(player_client);
 			for (var i = player_client.hand.length - 1; i >= 0; i--) {
-				window.console.log('HMmmmm ' + target + ' vs. ' + player_client.hand[i].cardName);
+				window.console.log('Hmmmm ' + target + ' vs. ' + player_client.hand[i].cardName);
 			    if (player_client.hand[i].cardName === target) {
 			       player_client.hand.splice(i, 1);
 			       break;
@@ -718,8 +733,8 @@ game_core.prototype.client_process_net_updates = function() {
 
 		/// enwneiwojjeijfojwoeofjwef
 
-		//this.players.self.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
-		//this.players.other.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
+		this.players.self.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
+		this.players.other.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
 
 	} //if target && previous
 
@@ -778,19 +793,23 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 }; //game_core.client_onserverupdate_recieved
 
 game_core.prototype.client_update_local_position = function(){
-	if (this.client_predict) {
-		//Work out the time we have since we updated the state
-		var t = (this.local_time - this.players.self.state_time) / this._pdt;
 
-		//Then store the states for clarity,
-		var old_state = this.players.self.old_state.pos;
-		var current_state = this.players.self.cur_state.pos;
-
-	}  //if(this.client_predict)
 }; //game_core.prototype.client_update_local_position
 
 game_core.prototype.client_update_physics = function() {
 	//Fetch the new direction from the input buffer, and apply it to the state so we can smooth it in the visual state
+	/*this.turn = game.laststate.tu;
+	this.board = game.laststate.bo;
+	this.players.self.player_state = game.laststate.hp;
+	this.players.self.hand = game.laststate.hh;
+	this.players.self.deck = game.laststate.hd;            
+	this.players.other.player_state = game.laststate.cp;
+	this.players.other.hand = game.laststate.ch;
+	this.players.other.deck = game.laststate.cd;         
+	this.players.self.last_input_seq = game.laststate.his;    //'host input sequence', the last input we processed for the host
+	this.players.other.last_input_seq = game.laststate.cis;   //'client input sequence', the last input we processed for the client
+	this.server_time = game.laststate.t;   // our current local time on the server*/
+
 	if (this.client_predict) {
 		var nd = this.process_input(this.players.self);
 		this.players.self.state_time = this.local_time;
@@ -801,9 +820,7 @@ game_core.prototype.client_update_physics = function() {
 
 game_core.prototype.client_update = function() {
 	this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
-	
 	this.client_draw_info(); //draw help/information if required
-	
 	this.client_handle_input(); //Capture inputs from the player
 
 	//Network player just gets drawn normally, with interpolation from the server updates, smoothing out the positions from the past.

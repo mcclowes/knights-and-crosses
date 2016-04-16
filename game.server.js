@@ -2,6 +2,13 @@ var game_server = module.exports = { games : {}, game_count:0 },
     UUID        = require('node-uuid'),
     verbose     = true;
 
+/*  ----------------------------- Key variables  -----------------------------   */
+
+var maxHandSize = 10;
+
+
+/*  ----------------------------- Key variables  -----------------------------   */
+
 //Since we are sharing code with the browser, we are going to include some values to handle that.
 global.window = global.document = global;
 
@@ -56,13 +63,17 @@ game_server.onInput = function(client, parts) {
     var input_seq = parts[3];
 
     window.console.log('handling input > ' + input_commands[0]);
-    window.console.log(client);
-    window.console.log("arghhhhh");
-    window.console.log(client.game.gamecore.players);
+    //window.console.log(client);
+    //window.console.log("arghhhhh");
 
     if (input_commands[0] === 'dr') {
         window.console.log('drawing card');
-        if (client.game.gamecore.players.self.deck.length > 0 && client.game.gamecore.players.self.hand.length < client.game.gamecore.maxHandSize) {
+        window.console.log(client.game.gamecore.players.self.deck.length);
+        window.console.log(client.game.gamecore.players.self.hand.length);
+        window.console.log(maxHandSize);
+        window.console.log(client.game.gamecore.laststate);
+
+        if (client.game.gamecore.players.self.deck.length > 0 && client.game.gamecore.players.self.hand.length < maxHandSize) {
             client.game.gamecore.players.self.hand.push(client.game.gamecore.players.self.deck[0]);
             client.game.gamecore.players.self.deck.splice(0, 1);
         } else {
@@ -152,7 +163,7 @@ game_server.startGame = function(game) {
 
     //make players draw cards
     for (var i = 0; i < 3; i++) {
-        window.console.log('doot');
+        window.console.log('\n');
         var server_packet = 'i.dr.';
             server_packet += this.local_time.toFixed(3).replace('.','-') + '.';
             server_packet += game.input_seq;
