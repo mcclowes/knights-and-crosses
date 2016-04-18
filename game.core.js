@@ -516,7 +516,7 @@ game_core.prototype.server_update = function(){
 	this.laststate = {
 		//turn?
 		tu 	: this.turn,
-		bo 	: this.board,
+		bo 	: this.board.board_state,
 		hp  : this.players.self.player_state,
 		hh  : this.players.self.hand,  
 		hd  : this.players.self.deck,               
@@ -741,55 +741,32 @@ game_core.prototype.client_process_net_updates = function() {
 }; //game_core.client_process_net_updates
 
 game_core.prototype.client_onserverupdate_recieved = function(data){
-		//Lets clarify the information we have locally. One of the players is 'hosting' and
-		//the other is a joined in client, so we name these host and client for making sure
-		//the positions we get from the server are mapped onto the correct local sprites
-		var player_host = this.players.self.host ?  this.players.self : this.players.other;
-		var player_client = this.players.self.host ?  this.players.other : this.players.self;
-		var this_player = this.players.self;
-		
-		//Store the server time (this is offset by the latency in the network, by the time we get it)
-		this.server_time = data.t;
-		//Update our local offset time from the last server update
-		this.client_time = this.server_time - (this.net_offset/1000);
+	//Lets clarify the information we have locally. One of the players is 'hosting' and
+	//the other is a joined in client, so we name these host and client for making sure
+	//the positions we get from the server are mapped onto the correct local sprites
+	var player_host = this.players.self.host ?  this.players.self : this.players.other;
+	var player_client = this.players.self.host ?  this.players.other : this.players.self;
+	var this_player = this.players.self;
+	
+	//Store the server time (this is offset by the latency in the network, by the time we get it)
+	this.server_time = data.t;
+	//Update our local offset time from the last server update
+	this.client_time = this.server_time - (this.net_offset/1000);
 
-		//One approach is to set the position directly as the server tells you.
-		//This is a common mistake and causes somewhat playable results on a local LAN, for example,
-		//but causes terrible lag when any ping/latency is introduced. The player can not deduce any
-		//information to interpolate with so it misses positions, and packet loss destroys this approach
-		//even more so. See 'the bouncing ball problem' on Wikipedia.
+	//window.console.log(data);
 
-		if(this.naive_approach) {
-			if(data.hp) {
-				player_host.pos = this.pos(data.hp);
-			}
-
-			if(data.cp) {
-				player_client.pos = this.pos(data.cp);
-			}
-
-		} else {
-			//Cache the data from the server, and then play the timeline
-			//back to the player with a small delay (net_offset), allowing interpolation between the points.
-			this.server_updates.push(data);
-
-			//we limit the buffer in seconds worth of updates 60fps*buffer seconds = number of samples
-			if(this.server_updates.length >= ( 60*this.buffer_size )) {
-				this.server_updates.splice(0,1);
-			}
-
-			//We can see when the last tick we know of happened.
-			//If client_time gets behind this due to latency, a snap occurs
-			//to the last tick. Unavoidable, and a reallly bad connection here.
-			//If that happens it might be best to drop the game after a period of time.
-			this.oldest_tick = this.server_updates[0].t;
-
-			//Handle the latest positions from the server
-			//and make sure to correct our local predictions, making the server have final say.
-			this.client_process_net_prediction_correction();
-			
-		} //non naive
-
+	// Store server's last state
+	this.turn = data.tu;
+	this.board.board_state = data.bo;
+	this.players.self.player_state = data.hp;
+	this.players.self.hand = data.hh;
+	this.players.self.deck = data.hd;            
+	this.players.other.player_state = data.cp;
+	this.players.other.hand = data.ch;
+	this.players.other.deck = data.cd;         
+	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
+	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
+	this.server_time = data.t;   // our current local time on the server
 }; //game_core.client_onserverupdate_recieved
 
 game_core.prototype.client_update_local_position = function(){
@@ -798,17 +775,6 @@ game_core.prototype.client_update_local_position = function(){
 
 game_core.prototype.client_update_physics = function() {
 	//Fetch the new direction from the input buffer, and apply it to the state so we can smooth it in the visual state
-	/*this.turn = game.laststate.tu;
-	this.board = game.laststate.bo;
-	this.players.self.player_state = game.laststate.hp;
-	this.players.self.hand = game.laststate.hh;
-	this.players.self.deck = game.laststate.hd;            
-	this.players.other.player_state = game.laststate.cp;
-	this.players.other.hand = game.laststate.ch;
-	this.players.other.deck = game.laststate.cd;         
-	this.players.self.last_input_seq = game.laststate.his;    //'host input sequence', the last input we processed for the host
-	this.players.other.last_input_seq = game.laststate.cis;   //'client input sequence', the last input we processed for the client
-	this.server_time = game.laststate.t;   // our current local time on the server*/
 
 	if (this.client_predict) {
 		var nd = this.process_input(this.players.self);
@@ -819,6 +785,8 @@ game_core.prototype.client_update_physics = function() {
 }; //game_core.client_update_physics
 
 game_core.prototype.client_update = function() {
+	//window.console.log(this.players.self.hand);
+
 	this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
 	this.client_draw_info(); //draw help/information if required
 	this.client_handle_input(); //Capture inputs from the player

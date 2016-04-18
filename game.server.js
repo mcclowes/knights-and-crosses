@@ -68,10 +68,6 @@ game_server.onInput = function(client, parts) {
 
     if (input_commands[0] === 'dr') {
         window.console.log('drawing card');
-        window.console.log(client.game.gamecore.players.self.deck.length);
-        window.console.log(client.game.gamecore.players.self.hand.length);
-        window.console.log(maxHandSize);
-        window.console.log(client.game.gamecore.laststate);
 
         if (client.game.gamecore.players.self.deck.length > 0 && client.game.gamecore.players.self.hand.length < maxHandSize) {
             client.game.gamecore.players.self.hand.push(client.game.gamecore.players.self.deck[0]);
@@ -81,10 +77,13 @@ game_server.onInput = function(client, parts) {
         }
     }
 
-    //the client should be in a game, so we can tell that game to handle the input
+    window.console.log(this.gamecore);
+    this.gamecore.server_update();
+
+    /*//the client should be in a game, so we can tell that game to handle the input
     if(client && client.game && client.game.gamecore) {
         client.game.gamecore.handle_server_input(client, input_commands, input_time, input_seq);
-    }
+    }*/
 
 }; //game_server.onInput
 
@@ -92,10 +91,10 @@ game_server.onInput = function(client, parts) {
 game_server.createGame = function(player) {
     //Create a new game instance
     var thegame = {
-            id : UUID(),                //generate a new id for the game
-            player_host:player,         //so we know who initiated the game
-            player_client:null,         //nobody else joined yet, since its new
-            player_count:1              //for simple checking of state
+            id: UUID(),                //generate a new id for the game
+            player_host: player,         //so we know who initiated the game
+            player_client: null,         //nobody else joined yet, since its new
+            player_count: 1              //for simple checking of state
         };
         
     this.games[ thegame.id ] = thegame; //Store it in the list of game
