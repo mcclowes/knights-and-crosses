@@ -66,24 +66,12 @@ game_server.onInput = function(client, parts) {
     //window.console.log(client);
     //window.console.log("arghhhhh");
 
-    if (input_commands[0] === 'dr') {
-        window.console.log('drawing card');
+    //this.gamecore.server_update();
 
-        if (client.game.gamecore.players.self.deck.length > 0 && client.game.gamecore.players.self.hand.length < maxHandSize) {
-            client.game.gamecore.players.self.hand.push(client.game.gamecore.players.self.deck[0]);
-            client.game.gamecore.players.self.deck.splice(0, 1);
-        } else {
-            window.console.log("Hand full - " + client.game.gamecore.players.self.deck.length + ", " + client.game.gamecore.players.self.hand.length);
-        }
-    }
-
-    window.console.log(this.gamecore);
-    this.gamecore.server_update();
-
-    /*//the client should be in a game, so we can tell that game to handle the input
+    //the client should be in a game, so we can tell that game to handle the input
     if(client && client.game && client.game.gamecore) {
         client.game.gamecore.handle_server_input(client, input_commands, input_time, input_seq);
-    }*/
+    }
 
 }; //game_server.onInput
 

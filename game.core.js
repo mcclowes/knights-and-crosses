@@ -44,6 +44,18 @@ function shuffle(o){
     return o;
 }
  
+var create_card_array = function(data) {
+	cards = []
+	for (var i = 0; i < data.length; i++) {
+		cards.push(create_card(data[i]));
+	}
+	return cards;
+}
+
+var create_card = function(data) {
+	card = new game_card(data.cardName);
+	return card;
+}
 
 /* ----------------------------- The game_core class (the main class) -----------------------------  */
 //This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
@@ -97,9 +109,6 @@ var game_core = function(game_instance){
 	this.local_time = 0.016;            //The local timer
 	this._dt = new Date().getTime();    //The local timer delta
 	this._dte = new Date().getTime();   //The local timer last frame time
-
-	//Start a physics loop, this is separate to the rendering as this happens at a fixed frequency
-	this.create_physics_simulation();
 
 	//Start a fast paced timer for measuring time easier
 	this.create_timer();
@@ -201,23 +210,32 @@ game_board.prototype.draw = function(){
 	this.p1PieceImage = new Image();
 	this.p1PieceImage.src = "img/piece_p1.png";
 	this.p2PieceImage = new Image();
-	this.p2PieceImage.src = "img/board.png";
+	this.p2PieceImage.src = "img/piece_p2.png";
 	this.frostImage = new Image();
 	this.frostImage.src = "img/frost2.png";
 	this.blockedImage = new Image();
 	this.blockedImage.src = "img/rock3.png";
-	this.shieldImage = new Image();
-	this.shieldImage.src = "img/piece_p1_shielded.png";
+	this.p1ShieldImage = new Image();
+	this.p1ShieldImage.src = "img/piece_p1_shielded.png";
+	this.p2ShieldImage = new Image();
+	this.p2ShieldImage.src = "img/piece_p2_shielded.png";
 
 	//for each square, draw the relevant piece
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
 			if (this.board_state.results[i][j] == 1) {
 				//needs to check for player
-				if (this.board_state.shields[i][j] == 0) {
+				if (this.board_state.shields[i][j] == 1) {
 					game.ctx.drawImage(this.shieldImage, i*100, j*100, 100, 100);
 				} else {
 					game.ctx.drawImage(this.p1PieceImage, i*100, j*100, 100, 100);
+				}
+			} else if (this.board_state.results[i][j] == -1) {
+				//needs to check for player
+				if (this.board_state.shields[i][j] == 1) {
+					game.ctx.drawImage(this.p2ShieldImage, i*100, j*100, 100, 100);
+				} else {
+					game.ctx.drawImage(this.p2PieceImage, i*100, j*100, 100, 100);
 				}
 			} else if (this.board_state.frost[i][j] == 2) {
 				game.ctx.drawImage(this.frostImage, i*100, j*100, 100, 100);
@@ -264,7 +282,7 @@ end_turn_button.prototype.contains = function(mx, my) {
 
 /*  -----------------------------  Card class  -----------------------------  */
 
-var game_card = function( card_name, player ) {
+var game_card = function( card_name ) {
 	this.cardName = card_name;
 	this.cardEffects = [];
 	this.cardImage = '';
@@ -276,10 +294,11 @@ var game_card = function( card_name, player ) {
 	this.info_color = 'rgba(255,255,255,0.7)';
 };
 
-game_card.prototype.draw = function(){ //draw card
+game_card.prototype.draw = function(self){ //draw card
 	this.cardBody = new Image();
 	//this.cardBody.src = "img/card_barrage.png";
-	this.cardBody.src = eval("img/card_" + this.cardName.toLowerCase().split("").join("_") + ".png"); //hmmm
+	this.cardBody.src = "img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
+
 	this.cardBack = new Image();
 	if (game.players.self.host === true) { // Based on host
 		this.cardBack.src = "img/card_back1.png";
@@ -287,19 +306,19 @@ game_card.prototype.draw = function(){ //draw card
 		this.cardBack.src = "img/card_back2.png";
 	}
 
-	if (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1){ // players turn
+	if ((self === true) && (game.players.self.player_state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 		game.ctx.shadowBlur = 20;
 		game.ctx.shadowColor="green";
 	}	
 
 	game.ctx.fillStyle = 'rgba(140,120,100,0.7)';;
-	game.ctx.fillRect(this.pos.x, this.pos.y, 60, 120);
+	game.ctx.fillRect(this.pos.x, this.pos.y, this.size.x, this.size.x);
 	/*if (game.players.self = this.owner) {
 		game.ctx.drawImage(this.cardBody, this.pos.x,this.pos.y, 60, 120);
 	} else {
 		game.ctx.drawImage(this.cardBack, this.pos.x,this.pos.y, 60, 120);
 	}*/
-	game.ctx.drawImage(this.cardBack, this.pos.x,this.pos.y, 60, 120);
+	game.ctx.drawImage(this.cardBody, this.pos.x, this.pos.y, this.size.x, this.size.y);
 }; 
 
 game_card.prototype.contains = function(mx, my) {
@@ -319,10 +338,6 @@ game_card.prototype.checkPlayable = function(){
 	}
 };
 
-//activate card
-game_card.prototype.playCard = function(targetCard, playerNo, board){
-	window.console.log("EEk");
-};
 
 /*  -----------------------------  The player class -----------------------------  */
 /*	A simple class to maintain state of a player on screen,
@@ -342,6 +357,7 @@ var game_player = function( game_instance, player_instance ) {
 
 	this.player_state = {
 		cards_to_play 	: 1,
+		pieces_to_play 	: 1,
 		damagingA 		: 0,
 		damagingE 		: 0,
 		damagingS 		: 0,
@@ -364,7 +380,7 @@ var game_player = function( game_instance, player_instance ) {
 	deck_temp = shuffle(deck_temp);
 
 	for (var i = 0; i < deck_temp.length; i++) {
-		this.deck.push(new game_card(deck_temp[i], this));
+		this.deck.push(new game_card(deck_temp[i]));
 	}
 	//window.console.log(this.deck)
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -381,20 +397,15 @@ game_player.prototype.draw = function(){
 	//draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
 		this.hand[i].pos.x = canvasWidth/2 - (this.hand[i].size.x * this.hand.length / 2) + i * 30
-		this.hand[i].pos.y = 400;
-		this.hand[i].draw();
+		if (game.players.self === this){
+			this.hand[i].pos.y = 400;
+			this.hand[i].draw(true);
+		} else {
+			this.hand[i].pos.y = 20;
+			this.hand[i].draw(false);
+		}
 	}
 }; //game_player.draw
-
-game_player.prototype.draw_card = function(){
-	if (this.deck.length > 0 && this.hand.length < maxHandSize) {
-		this.hand.push(this.deck[0]);
-		this.deck.splice(0,1);
-	} else {
-		window.console.log("Hand full - " + this.deck.length + ", " + this.hand.length);
-	}
-}
-
 
 /*  -----------------------------  Common Core Game functions  -----------------------------  
 	These functions are shared between client and server, and are generic
@@ -436,7 +447,7 @@ game_core.prototype.process_input = function( player ) {
 	var y_dir = 0;
 	var ic = player.inputs.length;
 
-	if (ic) {
+	/*if (ic) {
 		for(var j = 0; j < ic; ++j) {
 			//don't process ones we already have simulated locally
 			if (player.inputs[j].seq <= player.last_input_seq) continue;
@@ -471,7 +482,7 @@ game_core.prototype.process_input = function( player ) {
 				target = input_parts[1];
 			}
 		} //for each input command
-	} //if we have inputs
+	} //if we have inputs*/
 
 	//we have a direction vector now, so apply the same physics as the client
 	if(player.inputs.length) {
@@ -484,28 +495,12 @@ game_core.prototype.process_input = function( player ) {
 
 }; //game_core.process_input
 
-game_core.prototype.update_physics = function() {
-	if(this.server) {
-		this.server_update_physics();
-	} else {
-		this.client_update_physics();
-	}
-}; //game_core.prototype.update_physics
-
-
 
 /*  -----------------------------  Server side functions  -----------------------------  
 	These functions below are specific to the server side only,
 	and usually start with server_* to make things clearer.
 
 */
-
-//Updated at 15ms , simulates the world state
-game_core.prototype.server_update_physics = function() {
-	//Removed all player physics from here
-	this.players.self.inputs = []; //we have cleared the input buffer, so remove this
-	this.players.other.inputs = []; //we have cleared the input buffer, so remove this
-}; //game_core.server_update_physics
 
 //Makes sure things run smoothly and notifies clients of changes on the server side
 game_core.prototype.server_update = function(){
@@ -531,10 +526,10 @@ game_core.prototype.server_update = function(){
 	//window.console.log(this.laststate);
 
 	if (this.players.self.instance) { //Send the snapshot to the 'host' player
-		this.players.self.instance.emit( 'onserverupdate', this.laststate );
+		this.players.self.instance.emit( 'onserverupdate', JSON.stringify(this.laststate) );
 	}
 	if (this.players.other.instance) { //Send the snapshot to the 'client' player
-		this.players.other.instance.emit( 'onserverupdate', this.laststate );
+		this.players.other.instance.emit( 'onserverupdate', JSON.stringify(this.laststate) );
 	}
 
 }; //game_core.server_update
@@ -556,20 +551,31 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		
 		target = [];
 		if (input_parts[0] == 'en') { //end turn
+			this.turn = this.turn == 1 ? -1 : 1;
 		} else if (input_parts[0] == 'ca') { // card
 			target = input_parts[1];
-			window.console.log('HMmmmm2 > ');
-			//window.console.log(player_client);
 			for (var i = player_client.hand.length - 1; i >= 0; i--) {
 				window.console.log('Hmmmm ' + target + ' vs. ' + player_client.hand[i].cardName);
 			    if (player_client.hand[i].cardName === target) {
-			       player_client.hand.splice(i, 1);
-			       break;
+			    	window.console.log('FOund the card ' + target);
+					player_client.hand.splice(i, 1);
+					player_client.player_state.cards_to_play = player_client.player_state.cards_to_play - 1; 
+					break;
 			    }
 			}
 		} else if (input_parts[0] == 'sq') { // square
 			target = input_parts[1];
-		}
+			player_client.player_state.pieces_to_play = player_client.player_state.pieces_to_play - 1;
+			this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
+		} else if (input_parts[0] === 'dr') {
+	        window.console.log('drawing card');
+	        if (player_client.deck.length > 0 && player_client.hand.length < maxHandSize) {
+	            player_client.hand.push(player_client.deck[0]);
+	            player_client.deck.splice(0, 1);
+	        } else {
+	            window.console.log("Hand full - " + player_client.deck.length + ", " + player_client.hand.length);
+	        }
+	    }
 	} //if we have inputs
 
 	//Store the input on the player instance for processing in the physics loop
@@ -627,119 +633,6 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 	}
 }; //game_core.client_handle_input
 
-game_core.prototype.client_process_net_prediction_correction = function() {
-	//No updates...
-	if (!this.server_updates.length) return;
-	//The most recent server update
-	var latest_server_data = this.server_updates[this.server_updates.length-1];
-	//Our latest server position
-	var my_server_pos = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
-	//here we handle our local input prediction, by correcting it with the server and reconciling its differences
-	var my_last_input_on_server = this.players.self.host ? latest_server_data.his : latest_server_data.cis;
-
-	if (my_last_input_on_server) {
-		//The last input sequence index in my local input list
-		var lastinputseq_index = -1;
-		//Find this input in the list, and store the index
-		for(var i = 0; i < this.players.self.inputs.length; ++i) {
-			if(this.players.self.inputs[i].seq == my_last_input_on_server) {
-				lastinputseq_index = i;
-				break;
-			}
-		}
-
-		//Now we can crop the list of any updates we have already processed
-		if (lastinputseq_index != -1) {
-			//so we have now gotten an acknowledgement from the server that our inputs here have been accepted
-			//and that we can predict from this known position instead
-
-				//remove the rest of the inputs we have confirmed on the server
-			var number_to_clear = Math.abs(lastinputseq_index - (-1));
-			this.players.self.inputs.splice(0, number_to_clear);
-				//The player is now located at the new server position, authoritive server
-			this.players.self.cur_state.pos = this.pos(my_server_pos);
-			this.players.self.last_input_seq = lastinputseq_index;
-				//Now we reapply all the inputs that we have locally that
-				//the server hasn't yet confirmed. This will 'keep' our position the same,
-				//but also confirm the server position at the same time.
-			this.client_update_physics();
-			this.client_update_local_position();
-		} // if(lastinputseq_index != -1)
-	} //if my_last_input_on_server
-}; //game_core.client_process_net_prediction_correction
-
-game_core.prototype.client_process_net_updates = function() {
-	//No updates...
-	if(!this.server_updates.length) return;
-
-	//First : Find the position in the updates, on the timeline
-	//We call this current_time, then we find the past_pos and the target_pos using this,
-	//searching throught the server_updates array for current_time in between 2 other times.
-	// Then :  other player position = lerp ( past_pos, target_pos, current_time );
-
-	//Find the position in the timeline of updates we stored.
-	var current_time = this.client_time;
-	var count = this.server_updates.length-1;
-	var target = null;
-	var previous = null;
-
-	//We look from the 'oldest' updates, since the newest ones
-	//are at the end (list.length-1 for example). This will be expensive
-	//only when our time is not found on the timeline, since it will run all
-	//samples. Usually this iterates very little before breaking out with a target.
-	for (var i = 0; i < count; ++i) {
-		var point = this.server_updates[i];
-		var next_point = this.server_updates[i+1];
-
-		//Compare our point in time with the server times we have
-		if(current_time > point.t && current_time < next_point.t) {
-			target = next_point;
-			previous = point;
-			break;
-		}
-	}
-
-	//With no target we store the last known server position and move to that instead
-	if (!target) {
-		target = this.server_updates[0];
-		previous = this.server_updates[0];
-	}
-
-	//Now that we have a target and a previous destination, We can interpolate between then based on 'how far in between' we are.
-	//This is simple percentage maths, value/target = [0,1] range of numbers. lerp requires the 0,1 value to lerp to? thats the one.
-	if(target && previous) {
-		this.target_time = target.t;
-
-		var difference = this.target_time - current_time;
-		var max_difference = (target.t - previous.t).fixed(3);
-		var time_point = (difference/max_difference).fixed(3);
-
-		//Because we use the same target and previous in extreme cases
-		//It is possible to get incorrect values due to division by 0 difference
-		//and such. This is a safe guard and should probably not be here. lol.
-		if( isNaN(time_point) ) time_point = 0;
-		if(time_point == -Infinity) time_point = 0;
-		if(time_point == Infinity) time_point = 0;
-
-		//The most recent server update
-		var latest_server_data = this.server_updates[ this.server_updates.length-1 ];
-
-		//These are the exact server positions from this tick, but only for the ghost
-		var other_server_pos = this.players.self.host ? latest_server_data.cp : latest_server_data.hp;
-
-		//The other players positions in this timeline, behind us and in front of us
-		var other_target_pos = this.players.self.host ? target.cp : target.hp;
-		var other_past_pos = this.players.self.host ? previous.cp : previous.hp;
-
-		/// enwneiwojjeijfojwoeofjwef
-
-		this.players.self.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
-		this.players.other.hand = this.players.self.host ? latest_server_data.hp : latest_server_data.cp;
-
-	} //if target && previous
-
-}; //game_core.client_process_net_updates
-
 game_core.prototype.client_onserverupdate_recieved = function(data){
 	//Lets clarify the information we have locally. One of the players is 'hosting' and
 	//the other is a joined in client, so we name these host and client for making sure
@@ -753,59 +646,39 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	//Update our local offset time from the last server update
 	this.client_time = this.server_time - (this.net_offset/1000);
 
-	//window.console.log(data);
+	//window.console.log('Pre Parsed' + data.hh);
+
+	data = JSON.parse(data);
+
+	//window.console.log('JSON Parsed' + data.hh);
 
 	// Store server's last state
 	this.turn = data.tu;
 	this.board.board_state = data.bo;
 	this.players.self.player_state = data.hp;
-	this.players.self.hand = data.hh;
-	this.players.self.deck = data.hd;            
+	this.players.self.hand = create_card_array(data.hh);
+	this.players.self.deck = create_card_array(data.hd);            
 	this.players.other.player_state = data.cp;
-	this.players.other.hand = data.ch;
-	this.players.other.deck = data.cd;         
+	this.players.other.hand = create_card_array(data.ch);
+	this.players.other.deck = create_card_array(data.cd);         
 	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
 	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
 	this.server_time = data.t;   // our current local time on the server
 }; //game_core.client_onserverupdate_recieved
 
-game_core.prototype.client_update_local_position = function(){
-
-}; //game_core.prototype.client_update_local_position
-
-game_core.prototype.client_update_physics = function() {
-	//Fetch the new direction from the input buffer, and apply it to the state so we can smooth it in the visual state
-
-	if (this.client_predict) {
-		var nd = this.process_input(this.players.self);
-		this.players.self.state_time = this.local_time;
-
-	}
-
-}; //game_core.client_update_physics
-
 game_core.prototype.client_update = function() {
-	//window.console.log(this.players.self.hand);
-
+	// Only do if something has changed?
 	this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
 	this.client_draw_info(); //draw help/information if required
 	this.client_handle_input(); //Capture inputs from the player
 
-	//Network player just gets drawn normally, with interpolation from the server updates, smoothing out the positions from the past.
-	//Note that if we don't have prediction enabled - this will also update the actual local client position on screen as well.
-	if( !this.naive_approach ) {
-		this.client_process_net_updates();
-	}
-
 	this.end_turn_button.draw();
 	this.board.draw(); // Draw board
 	this.players.other.draw(); // draw other player (post server update)
-	this.client_update_local_position(); //When we are doing client side prediction, we smooth out our position across frames using local input states we have stored.
 	this.players.self.draw(); //Draw self
 
 	//Work out the fps average
 	this.client_refresh_fps();
-
 }; //game_core.update_client
 
 game_core.prototype.create_timer = function(){
@@ -816,15 +689,6 @@ game_core.prototype.create_timer = function(){
 	}.bind(this), 4);
 }
 
-game_core.prototype.create_physics_simulation = function() {
-	setInterval(function(){
-		this._pdt = (new Date().getTime() - this._pdte)/1000.0;
-		this._pdte = new Date().getTime();
-		this.update_physics();
-	}.bind(this), 15);
-
-}; //game_core.client_create_physics_simulation
-
 game_core.prototype.client_create_ping_timer = function() {
 	//Set a ping timer to 1 second, to maintain the ping/latency between
 	//client and server and calculated roughly how our connection is doing
@@ -833,7 +697,6 @@ game_core.prototype.client_create_ping_timer = function() {
 		this.socket.send('p.' + (this.last_ping_time) );
 
 	}.bind(this), 1000);
-	
 }; //game_core.client_create_ping_timer
 
 game_core.prototype.client_create_configuration = function() {
