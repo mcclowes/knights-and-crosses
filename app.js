@@ -8,8 +8,7 @@
     Usage : node app.js
 */
 
-    var
-        gameport        = process.env.PORT || 4004,
+    var gameport        = process.env.PORT || 4004,
 
         io              = require('socket.io'),
         express         = require('express'),
@@ -28,10 +27,15 @@
 //so keep this in mind - this is not a production script but a development teaching tool.
 
         //Tell the server to listen for incoming connections
-    server.listen(gameport)
+    //server.listen(gameport)
 
+    require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+        server.listen(gameport, add);
         //Log something so we know that it succeeded.
-    console.log('\t :: Express :: Listening on port ' + gameport );
+        console.log('\t :: Express :: Listening on ' + add + ', on port ' + gameport );
+    })
+
+        
 
         //By default, we forward the / path to index.html automatically.
     app.get( '/', function( req, res ){

@@ -39,7 +39,7 @@ window.onload = function(){
 		  		input = '';
 		  		if (shapes[i] === game.board) {
 		  			if (game.players.self.player_state.pieces_to_play > 0) {
-		  				input = 'sq-' + (100 + mx).toString()[0] + (100 + my).toString()[0];
+		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
 		  			}
 		  		} else if (shapes[i] === game.end_turn_button) {
 		  			input = 'en'

@@ -6,7 +6,9 @@
 var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
-	canvasHeight = 480;
+	canvasHeight = 720;
+
+var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces, return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
@@ -40,22 +42,106 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 
 // Array shuffle function
 function shuffle(o){
-    for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
-    return o;
+	for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	return o;
 }
  
+// initialise an array of cards - e.g. for new hand or deck
 var create_card_array = function(data) {
-	cards = []
+	var cards = []
 	for (var i = 0; i < data.length; i++) {
 		cards.push(create_card(data[i]));
 	}
+
 	return cards;
 }
 
+//initialise a card
 var create_card = function(data) {
-	card = new game_card(data.cardName);
+	if (data.cardName !== undefined){
+		var card = new game_card(data.cardName);
+	} else {
+		var card = new game_card(data);
+	}
 	return card;
 }
+
+// Create a rounded clipping area
+function roundedImage(x, y, width, height, radius){
+	game.ctx.beginPath();
+	game.ctx.moveTo(x + radius, y);
+	game.ctx.lineTo(x + width - radius, y);
+	game.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+	game.ctx.lineTo(x + width, y + height - radius);
+	game.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+	game.ctx.lineTo(x + radius, y + height);
+	game.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+	game.ctx.lineTo(x, y + radius);
+	game.ctx.quadraticCurveTo(x, y, x + radius, y);
+	game.ctx.closePath();
+}
+
+function layout_text(canvas, x, y, w, h, text, fh, spl) {
+	// The painting properties Normally I would write this as an input parameter
+	var Paint = {
+		RECTANGLE_STROKE_STYLE : 'black',
+		RECTANGLE_LINE_WIDTH : 1,
+		VALUE_FONT : '12px Arial',
+		VALUE_FILL_STYLE : 'red'
+	}
+
+	var split_lines = function(ctx, mw, font, text) {
+		// We give a little "padding" This should probably be an input param but for the sake of simplicity we will keep it this way
+		mw = mw - 10;
+		// We setup the text font to the context (if not already)
+		ctx2d.font = font;
+		// We split the text by words 
+		var words = text.split(' ');
+		var new_line = words[0];
+		var lines = [];
+		for(var i = 1; i < words.length; ++i) {
+		   if (ctx.measureText(new_line + " " + words[i]).width < mw) {
+			   new_line += " " + words[i];
+		   } else {
+			   lines.push(new_line);
+			   new_line = words[i];
+		   }
+		}
+		lines.push(new_line);
+		return lines;
+	}
+	// Obtains the context 2d of the canvas It may return null
+	ctx2d = canvas;
+	if (ctx2d) {
+		game.ctx.textAlign = "start"; 
+		game.ctx.fillStyle = 'rgba(255,255,255,1)';
+		// draw rectangular
+		ctx2d.strokeStyle=Paint.RECTANGLE_STROKE_STYLE;
+		ctx2d.lineWidth = Paint.RECTANGLE_LINE_WIDTH;
+		ctx2d.strokeRect(x, y, w, h);
+		// Paint text
+		var lines = split_lines(ctx2d, w, Paint.VALUE_FONT, text);
+		// Block of text height
+		var both = lines.length * (fh + spl);
+		if (both >= h) {
+			// We won't be able to wrap the text inside the area
+			// the area is too small. We should inform the user 
+			// about this in a meaningful way
+		} else {
+			// We determine the y of the first line
+			var ly = (h - both)/2 + y + spl*lines.length;
+			var lx = 0;
+			for (var j = 0, ly; j < lines.length; ++j, ly+=fh+spl) {
+				// We continue to centralize the lines
+				lx = x+w/2-ctx2d.measureText(lines[j]).width/2;
+				// DEBUG 
+				//window.console.log("ctx2d.fillText('"+ lines[j] +"', "+ lx +", " + ly + ")");
+				ctx2d.fillText(lines[j], lx, ly);
+			}
+		}
+	}
+}
+
 
 /* ----------------------------- The game_core class (the main class) -----------------------------  */
 //This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
@@ -71,20 +157,6 @@ var game_core = function(game_instance){
 	this.board = new game_board();
 	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
-
-	/*this.laststate = {
-		tu 	: 0,
-		bo 	: 0,
-		hp  : 0,
-		hh  : 0,
-		hd  : 0,
-		cp  : 0,
-		ch  : 0,
-		cd  : 0,
-		his : 0,
-		cis : 0,
-		t   : 0
-	};*/
 
 	//We create a player set, passing them to the game that is running them, as well
 	if (this.server) { // if this is server side
@@ -172,10 +244,10 @@ game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x,
 /*  -----------------------------  The board classs  -----------------------------  */
 
 var game_board = function() {
-	this.x = 0;
-	this.y = 0;
 	this.w = 400;
 	this.h = 400;
+	this.x = canvasWidth / 2 - this.w / 2;
+	this.y = canvasWidth / 2 - this.h / 2;
 
 	this.board_state = {
 		results : [],
@@ -203,18 +275,24 @@ game_board.prototype.draw = function(){
 	this.boardImage = new Image();
 	this.boardImage.src = "img/board.png";
 	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
-	game.ctx.fillRect(0, 0, 400, 400);
-	game.ctx.drawImage(this.boardImage,0,0,400,400);
+	game.ctx.fillRect(this.x, this.y, 400, 400);
+	game.ctx.drawImage(this.boardImage, this.x, this.y, 400, 400);
 
 	//Assign images
 	this.p1PieceImage = new Image();
 	this.p1PieceImage.src = "img/piece_p1.png";
 	this.p2PieceImage = new Image();
 	this.p2PieceImage.src = "img/piece_p2.png";
-	this.frostImage = new Image();
-	this.frostImage.src = "img/frost2.png";
-	this.blockedImage = new Image();
-	this.blockedImage.src = "img/rock3.png";
+	this.frostImage1 = new Image();
+	this.frostImage1.src = "img/frost1.png";
+	this.frostImage2 = new Image();
+	this.frostImage2.src = "img/frost2.png";
+	this.blockedImage1 = new Image();
+	this.blockedImage1.src = "img/rock1.png";
+	this.blockedImage2 = new Image();
+	this.blockedImage2.src = "img/rock2.png";
+	this.blockedImage3 = new Image();
+	this.blockedImage3.src = "img/rock3.png";
 	this.p1ShieldImage = new Image();
 	this.p1ShieldImage.src = "img/piece_p1_shielded.png";
 	this.p2ShieldImage = new Image();
@@ -226,21 +304,27 @@ game_board.prototype.draw = function(){
 			if (this.board_state.results[i][j] == 1) {
 				//needs to check for player
 				if (this.board_state.shields[i][j] == 1) {
-					game.ctx.drawImage(this.shieldImage, i*100, j*100, 100, 100);
+					game.ctx.drawImage(this.shieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
-					game.ctx.drawImage(this.p1PieceImage, i*100, j*100, 100, 100);
+					game.ctx.drawImage(this.p1PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
 			} else if (this.board_state.results[i][j] == -1) {
 				//needs to check for player
 				if (this.board_state.shields[i][j] == 1) {
-					game.ctx.drawImage(this.p2ShieldImage, i*100, j*100, 100, 100);
+					game.ctx.drawImage(this.p2ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
-					game.ctx.drawImage(this.p2PieceImage, i*100, j*100, 100, 100);
+					game.ctx.drawImage(this.p2PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
-			} else if (this.board_state.frost[i][j] == 4) {
-				game.ctx.drawImage(this.frostImage, i*100, j*100, 100, 100);
-			} else if (this.board_state.rock[i][j] == 6) {
-				game.ctx.drawImage(this.blockedImage, i*100, j*100, 100, 100);
+			} else if (this.board_state.frost[i][j] == 4 || this.board_state.frost[i][j] == 3) {
+				game.ctx.drawImage(this.frostImage2, i*100 + this.x, j*100 + this.y, 100, 100);
+			} else if (this.board_state.frost[i][j] == 2 || this.board_state.frost[i][j] == 1) {
+				game.ctx.drawImage(this.frostImage1, i*100 + this.x, j*100 + this.y, 100, 100);
+			} else if (this.board_state.rock[i][j] == 6 || this.board_state.rock[i][j] == 5) {
+				game.ctx.drawImage(this.blockedImage3, i*100 + this.x, j*100 + this.y, 100, 100);
+			} else if (this.board_state.rock[i][j] == 4 || this.board_state.rock[i][j] == 3) {
+				game.ctx.drawImage(this.blockedImage2, i*100 + this.x, j*100 + this.y, 100, 100);
+			} else if (this.board_state.rock[i][j] == 2 || this.board_state.rock[i][j] == 1) {
+				game.ctx.drawImage(this.blockedImage1, i*100 + this.x, j*100 + this.y, 100, 100);
 			} 
 		}
 	}
@@ -264,54 +348,55 @@ game_board.prototype.reduce_state = function(){
 
 //Calls all win condition checks
 game_board.prototype.check_win = function(){
-    if (this.checkRows() !== undefined){
-        return this.checkRows();
-    }
-    if (this.checkCols() !== undefined){
-        return this.checkCols();
-    }
-    if (this.checkDiagonals() !== undefined){
-        return this.checkDiagonals();
-    }
+	if (this.checkRows() !== undefined){
+		return this.checkRows();
+	}
+	if (this.checkCols() !== undefined){
+		return this.checkCols();
+	}
+	if (this.checkDiagonals() !== undefined){
+		return this.checkDiagonals();
+	}
 };
 
 game_board.prototype.checkRows = function(){
-    for (var i = 0; i < 4; i++){
-        var sum = this.board_state.results[i][0] + this.board_state.results[i][1] + this.board_state.results[i][2] + this.board_state.results[i][3];
-        if (sum === 4 || sum === -4){
-            return this.board_state.results[i][0];
-        }
-    }
+	for (var i = 0; i < 4; i++){
+		var sum = this.board_state.results[i][0] + this.board_state.results[i][1] + this.board_state.results[i][2] + this.board_state.results[i][3];
+		if (sum === 4 || sum === -4){
+			return this.board_state.results[i][0];
+		}
+	}
 };
 
 game_board.prototype.checkCols = function(){
-    for (var i = 0; i < 4; i++){
-        var sum = this.board_state.results[0][i] + this.board_state.results[1][i] + this.board_state.results[2][i] + this.board_state.results[3][i];
-        if (sum === 4 || sum === -4){
-            return this.board_state.results[0][i];
-        }
-    }
+	for (var i = 0; i < 4; i++){
+		var sum = this.board_state.results[0][i] + this.board_state.results[1][i] + this.board_state.results[2][i] + this.board_state.results[3][i];
+		if (sum === 4 || sum === -4){
+			return this.board_state.results[0][i];
+		}
+	}
 };
 
 game_board.prototype.checkDiagonals = function(){
-    // Right-wards diagonal
-    var sum = this.board_state.results[0][0] + this.board_state.results[1][1] + this.board_state.results[2][2] + this.board_state.results[3][3];
-    if (sum === 4 || sum === -4){
-        return this.board_state.results[1][1];
-    }
-    // Left-wards diagonal
-    sum = this.board_state.results[0][3] + this.board_state.results[1][2] + this.board_state.results[2][1] + this.board_state.results[3][0];
-    if (sum === 4 || sum === -4){
-        return this.board_state.results[1][1];
-    }
+	// Right-wards diagonal
+	var sum = this.board_state.results[0][0] + this.board_state.results[1][1] + this.board_state.results[2][2] + this.board_state.results[3][3];
+	if (sum === 4 || sum === -4){
+		return this.board_state.results[1][1];
+	}
+	// Left-wards diagonal
+	sum = this.board_state.results[0][3] + this.board_state.results[1][2] + this.board_state.results[2][1] + this.board_state.results[3][0];
+	if (sum === 4 || sum === -4){
+		return this.board_state.results[1][1];
+	}
 };
 
 
-/*  -----------------------------  The board classs  -----------------------------  */
+/*  -----------------------------  End turn button classs  -----------------------------  */
 
 var end_turn_button = function() {
 	this.w = 100;
 	this.h = 50;
+	this.x = 20;
 	this.text = "End Turn";
 };
 
@@ -322,16 +407,26 @@ end_turn_button.prototype.draw = function(){
 	}		
 
 	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
-	game.ctx.fillRect(450, canvasHeight/2, this.w, this.h);
+	game.ctx.fillRect(this.x, canvasHeight/2, this.w, this.h);
 	game.ctx.shadowBlur=0;
 
+	// Set faux rounded corners
+	/*context.lineJoin = "round";
+	context.lineWidth = cornerRadius;
+
+	// Change origin and dimensions to match true size (a stroke makes the shape a bit larger)
+	context.strokeRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
+	context.fillRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);*/
+
 	game.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
-	game.ctx.fillText(this.text, 460, canvasHeight/2 + 30);
+	game.ctx.textAlign="center"; 
+	game.ctx.fillText(this.text, 20 + this.w/2, canvasHeight/2 + 30);
+	//game.ctx.textAlign="start"; 
 };
 
 end_turn_button.prototype.contains = function(mx, my) {
 	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
-	return  (450 <= mx) && (450 + this.w >= mx) && (canvasHeight/2 <= my) && (canvasHeight/2 + this.h >= my);
+	return  (this.x <= mx) && (this.x + this.w >= mx) && (canvasHeight/2 <= my) && (canvasHeight/2 + this.h >= my);
 };
 
 
@@ -339,41 +434,65 @@ end_turn_button.prototype.contains = function(mx, my) {
 
 var game_card = function( card_name ) {
 	this.cardName = card_name;
-	this.cardEffects = [];
 	this.cardImage = '';
 	//this.owner = player.play;
 
 	this.pos = { x:0, y:0 };
-	this.size = { x:80, y:120, hx:40, hy:60 };
+	this.size = { x:120, y:180, hx:0, hy:0 };
+	this.size.hx = this.size.x/2;
+	this.size.hy = this.size.y/2;
 	this.color = 'rgba(255,255,255,0.7)';
 	this.info_color = 'rgba(255,255,255,0.7)';
 };
 
 game_card.prototype.draw = function(self){ //draw card
+	var cardEffects = [];
+
+	for (var i = 0; i < cards.length; i++){
+		if (cards[i].name === this.cardName){
+			cardEffects = cards[i].effects;
+		}
+	}
+
 	this.cardBody = new Image();
-	//this.cardBody.src = "img/card_barrage.png";
 	this.cardBody.src = "img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
 
 	this.cardBack = new Image();
 	if (game.players.self.host === true) { // Based on host
-		this.cardBack.src = "img/card_back1.png";
-	} else {
 		this.cardBack.src = "img/card_back2.png";
+	} else {
+		this.cardBack.src = "img/card_back1.png";
 	}
 
+	game.ctx.shadowBlur = 20;
 	if ((self === true) && (game.players.self.player_state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
-		game.ctx.shadowBlur = 20;
-		game.ctx.shadowColor="green";
-	}	
-
-	game.ctx.fillStyle = 'rgba(140,120,100,0.7)';;
-	game.ctx.fillRect(this.pos.x, this.pos.y, this.size.x, this.size.x);
-	/*if (game.players.self = this.owner) {
-		game.ctx.drawImage(this.cardBody, this.pos.x,this.pos.y, 60, 120);
+		game.ctx.shadowColor = "green";
 	} else {
-		game.ctx.drawImage(this.cardBack, this.pos.x,this.pos.y, 60, 120);
-	}*/
-	game.ctx.drawImage(this.cardBody, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		game.ctx.shadowColor = "black";
+	}
+
+	//Just makes the glow
+	game.ctx.fillStyle = 'rgba(140,120,100,1)';
+	//game.ctx.fillRect(this.pos.x, this.pos.y, this.size.x, this.size.y);
+	roundedImage(this.pos.x, this.pos.y, this.size.x, this.size.y, 5);
+	game.ctx.fill();
+
+	//Clipping
+	game.ctx.save();
+	//roundedImage(this.pos.x, this.pos.y, this.size.x, this.size.y, 10);
+	game.ctx.clip();
+	
+	if (self === true) {
+		game.ctx.drawImage(this.cardBody, this.pos.x, this.pos.y, this.size.x, this.size.y);
+	} else {
+		game.ctx.drawImage(this.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
+	}
+
+	game.ctx.restore();
+	game.ctx.shadowBlur = 0;
+	if (self === true) {
+		layout_text(game.ctx, this.pos.x + 10, this.pos.y + this.size.y / 2, this.size.x - 20, this.size.y / 2 - 10, cardEffects.join('. ') + '.', 12, 2);
+	}
 }; 
 
 game_card.prototype.contains = function(mx, my) {
@@ -434,10 +553,12 @@ var game_player = function( game_instance, player_instance ) {
 	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	deck_temp = shuffle(deck_temp);
 
-	for (var i = 0; i < deck_temp.length; i++) {
+	/*for (var i = 0; i < deck_temp.length; i++) {
 		this.deck.push(new game_card(deck_temp[i]));
-	}
-	//window.console.log(this.deck)
+	}*/
+
+	this.deck = create_card_array(deck_temp);
+
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
 
 	//Our local history of inputs
@@ -451,9 +572,10 @@ game_player.prototype.draw = function(){
 	game.ctx.fillText(this.state, 10, 450);
 	//draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
-		this.hand[i].pos.x = canvasWidth/2 - (this.hand[i].size.x * this.hand.length / 2) + i * 30
+		this.hand[i].pos.x = canvasWidth / 2 - (this.hand[i].size.hx / 2 * (this.hand.length + 1)) + (this.hand[i].size.hx * i) ;
+
 		if (game.players.self === this){
-			this.hand[i].pos.y = 400;
+			this.hand[i].pos.y = 520;
 			this.hand[i].draw(true);
 		} else {
 			this.hand[i].pos.y = 20;
@@ -476,7 +598,7 @@ game_core.prototype.update = function(t) {
 
 	//Update the game specifics
 	if (!this.server) { // client
-		this.client_update();
+		//this.client_update(false);
 	} else { // server
 		this.server_update();
 	}
@@ -512,10 +634,10 @@ game_core.prototype.process_input = function( player ) {
 			var c = input.length;
 
 			try {
-			    var input_parts = input.split('.');
+				var input_parts = input.split('.');
 			}
 			catch(err) {
-			    var input_parts = input;
+				var input_parts = input;
 			}
 			
 			window.console.log("Input parts: " + input_parts);
@@ -528,10 +650,10 @@ game_core.prototype.process_input = function( player ) {
 				//window.console.log(player.hand);
 				for (var i = player.hand.length - 1; i >= 0; i--) {
 					window.console.log('HMmmmm');
-				    if (player.hand[i].cardName === target) {
-				       player.hand.splice(i, 1);
-				       break;
-				    }
+					if (player.hand[i].cardName === target) {
+					   player.hand.splice(i, 1);
+					   break;
+					}
 				}
 			} else if (input_parts[0] == 'sq') { // square
 				target = input_parts[1];
@@ -563,7 +685,7 @@ game_core.prototype.server_update = function(){
 	this.server_time = this.local_time;
 	//Make a snapshot of the current state, for updating the clients
 
-	this.laststate = {
+	this.tempstate = {
 		//turn?
 		tu 	: this.turn,
 		bo 	: this.board.board_state,
@@ -578,15 +700,31 @@ game_core.prototype.server_update = function(){
 		t   : this.server_time                      // our current local time on the server
 	};
 
-	//window.console.log(this.laststate);
+	if ( this.laststate.tu !== this.tempstate.tu || // If values are different
+		this.laststate.bo !== this.tempstate.bo ||
+		this.laststate.hp !== this.tempstate.hp ||
+		this.laststate.hh !== this.tempstate.hh ||
+		this.laststate.hd !== this.tempstate.hd ||
+		this.laststate.cp !== this.tempstate.cp ||
+		this.laststate.ch !== this.tempstate.ch ||
+		this.laststate.cd !== this.tempstate.cd ||
+		this.tempstate.t - this.laststate.t >= 0.1) { // Time based refresh.... not ideal, arbitrary
+			/*window.console.log("FFFFFFFSFSFSFSFFSFS");
+			window.console.log(this.laststate.bo !== this.tempstate.bo);
+			window.console.log(this.laststate.bo);
+			window.console.log(this.tempstate.bo);*/
 
-	if (this.players.self.instance) { //Send the snapshot to the 'host' player
-		this.players.self.instance.emit( 'onserverupdate', JSON.stringify(this.laststate) );
-	}
-	if (this.players.other.instance) { //Send the snapshot to the 'client' player
-		this.players.other.instance.emit( 'onserverupdate', JSON.stringify(this.laststate) );
-	}
+			this.laststate = this.tempstate;
 
+			if (this.players.self.instance) { //Send the snapshot to the 'host' player
+				this.players.self.instance.emit( 'onserverupdate', JSON.stringify(this.laststate) );
+			}
+			if (this.players.other.instance) { //Send the snapshot to the 'client' player
+				this.players.other.instance.emit( 'onserverupdate', JSON.stringify(this.laststate) );
+			}
+	} else {
+		//pass
+	}
 }; //game_core.server_update
 
 //Handle server input (input into the server, from a client)
@@ -600,9 +738,9 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		var c = input.length;
 
 		try {
-		    var input_parts = input.split('.');
+			var input_parts = input.split('.');
 		} catch(err) {
-		    var input_parts = input;
+			var input_parts = input;
 		}
 		
 		target = [];
@@ -629,42 +767,43 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 
 			window.console.log(this.board.check_win());
 
-			if (this.board.check_win() !== undefined){
-				this.board.check_win();
+			if (this.board.check_win() !== undefined){ //check for win
+				this.win = this.board.check_win();
+			} else {
+				this.board.reduce_state();
+
+				window.console.log('drawing card');
+				if (player_other.deck.length > 0 && player_other.hand.length < maxHandSize) {
+					player_other.hand.push(player_other.deck[0]);
+					player_other.deck.splice(0, 1);
+				} else {
+					window.console.log("Hand full - " + player_other.deck.length + ", " + player_other.hand.length);
+				}
 			}
-
-			this.board.reduce_state();
-
-			window.console.log('drawing card');
-	        if (player_other.deck.length > 0 && player_other.hand.length < maxHandSize) {
-	            player_other.hand.push(player_other.deck[0]);
-	            player_other.deck.splice(0, 1);
-	        } else {
-	            window.console.log("Hand full - " + player_other.deck.length + ", " + player_other.hand.length);
-	        }
-
 		} else if (input_parts[0] == 'ca') { // Clicked card
 			target = input_parts[1];
 			for (var i = player_client.hand.length - 1; i >= 0; i--) {
-			    if (player_client.hand[i].cardName === target) {
+				if (player_client.hand[i].cardName === target) {
 					player_client.hand.splice(i, 1);
-					player_client.player_state.cards_to_play = player_client.player_state.cards_to_play - 1; 
+					player_client.player_state.cards_to_play = player_client.player_state.cards_to_play - 1;
+					this.resolve_card(target, player_client);
 					break;
-			    }
+				}
 			}
 		} else if (input_parts[0] == 'sq') { // Clicked square
 			target = input_parts[1];
-			player_client.player_state.pieces_to_play = player_client.player_state.pieces_to_play - 1;
-			this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
+			window.console.log(target);
+			this.handle_card(target[0] - 1, target[1] - 1, player_client);
+
 		} else if (input_parts[0] === 'dr') {
-	        window.console.log('drawing card');
-	        if (player_client.deck.length > 0 && player_client.hand.length < maxHandSize) {
-	            player_client.hand.push(player_client.deck[0]);
-	            player_client.deck.splice(0, 1);
-	        } else {
-	            window.console.log("Hand full - " + player_client.deck.length + ", " + player_client.hand.length);
-	        }
-	    }
+			window.console.log('drawing card');
+			if (player_client.deck.length > 0 && player_client.hand.length < maxHandSize) {
+				player_client.hand.push(player_client.deck[0]);
+				player_client.deck.splice(0, 1);
+			} else {
+				window.console.log("Hand full - " + player_client.deck.length + ", " + player_client.hand.length);
+			}
+		}
 	} //if we have inputs
 
 	//Store the input on the player instance for processing in the physics loop
@@ -674,6 +813,93 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		seq		:   input_seq
 	});
 }; //game_core.handle_server_input
+
+		/*results : [],
+		frost 	: [],
+		rock 	: [],
+		shields : []*/
+
+game_core.prototype.handle_card = function(row, col, player) {
+	window.console.log('Target square >>> ' + row + ', ' + col);
+
+	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
+		window.console.log("The cell is occupied!");
+		if (this.board.board_state.results[row][col] !== 0) { // Piece
+			if (player.player_state.destroyingA > 0) { //Destroying enemy
+				window.console.log('Destroying any piece');
+				this.board.board_state.results[row][col] = 0;
+				player.player_state.destroyingA--;
+			} else if (player.player_state.destroyingE > 0) { //Destroying enemy
+				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
+					window.console.log('Destroying an enemy');
+					this.board.board_state.results[row][col] = 0;
+					player.player_state.destroyingE--;
+				}
+			} else if (player.player_state.destroyingS > 0) { //Destroying
+				if (this.board.board_state.results[row][col] === this.currentPlayer) {
+					window.console.log('Destroying own piece');
+					this.board.board_state.results[row][col] = 0;
+					player.player_state.destroyingS--;
+				}
+			} else if (player.player_state.damagingA > 0) { //Damaging
+				window.console.log('Damaging any');
+				if (this.board.board_state.shields[row][col] === 1) {
+					this.board.board_state.shields[row][col] = 0;
+				} else {
+					this.board.board_state.results[row][col] = 0;
+				}
+				player.player_state.damagingA--;
+			} else if (player.player_state.damagingE > 0) { //Damaging
+				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
+					window.console.log('Damaging enemy');
+					if (this.board.board_state.shields[row][col] === 1) {
+						this.board.board_state.shields[row][col] = 0;
+					} else {
+						this.board.board_state.results[row][col] = 0;
+					}
+					player.player_state.damagingE--;
+				}
+			} else if (player.player_state.damagingS > 0) { //Damaging
+				if (this.board.board_state.results[row][col] === this.currentPlayer) {
+					window.console.log('Damaging own piece');
+					if (this.board.board_state.shields[row][col] === 1) {
+						this.board.board_state.shields[row][col] = 0;
+					} else {
+						this.board.board_state.results[row][col] = 0;
+					}
+					player.player_state.damagingS--;
+				}
+			} else if (player.player_state.shielding > 0) {
+				this.board.board_state.shields[row][col] = 1;
+				player.player_state.shielding--;
+			} else if (player.player_state.deshielding > 0) {
+				this.board.board_state.shields[row][col] = 0;
+				player.player_state.deshielding--;
+			}
+		} else if (this.board.board_state.frost[row][col] >= 1 && player.player_state.thawing > 0) {
+			window.console.log ("Thawing out a square");
+			this.board.board_state.frost[row][col] = 0;
+			player.player_state.thawing -= 1;
+		} else if (this.board.board_state.rock[row][col] >= 1 && player.player_state.deblocking > 0) {
+			window.console.log ("Deblocking a square");
+			this.board.board_state.rock[row][col] = 0;
+			player.player_state.blocking--;
+		}
+	} else { // Cell is empty
+		if (player.player_state.freezing > 0) {
+			this.board.board_state.frost[row][col] = 4;
+			player.player_state.freezing--;
+		} else if (player.player_state.blocking > 0) {
+			this.board.board_state.rock[row][col] = 6;
+			player.player_state.blocking--;
+		} else { //place piece
+			if (this.board.board_state.results[target[0] - 1][target[1] - 1] === 0){ // check unoccupied
+				player.player_state.pieces_to_play = player.player_state.pieces_to_play - 1;
+				this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
+			}
+		}
+	}
+};
 
 
 
@@ -753,18 +979,22 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
 	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
 	this.server_time = data.t;   // our current local time on the server
+
+	this.client_update(true);
 }; //game_core.client_onserverupdate_recieved
 
-game_core.prototype.client_update = function() {
+game_core.prototype.client_update = function(visual_change) {
 	// Only do if something has changed?
-	this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
-	this.client_draw_info(); //draw help/information if required
-	this.client_handle_input(); //Capture inputs from the player
+	if (visual_change === true){
+		this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
+		this.client_draw_info(); //draw help/information if required
+		this.client_handle_input(); //Capture inputs from the player
 
-	this.end_turn_button.draw();
-	this.board.draw(); // Draw board
-	this.players.other.draw(); // draw other player (post server update)
-	this.players.self.draw(); //Draw self
+		this.end_turn_button.draw();
+		this.board.draw(); // Draw board
+		this.players.other.draw(); // draw other player (post server update)
+		this.players.self.draw(); //Draw self
+	}
 
 	//Work out the fps average
 	this.client_refresh_fps();
@@ -1062,3 +1292,234 @@ game_core.prototype.client_draw_info = function() {
 	this.ctx.fillStyle = 'rgba(255,255,255,1)';
 
 }; //game_core.client_draw_help
+
+game_core.prototype.resolve_card = function(card, player) {
+	cardEffects = [];
+	for (var j = 0; j < cards.length; j++){
+		if (cards[j].name === card){
+			cardEffects = cards[j].effects;
+		}
+	}
+
+	var conditionIf = new RegExp("^if$", "i"),
+		deal = new RegExp("^deal$|^damage$", "i");     // ^x$ dictates explicit regex matching
+		destroy = new RegExp("^destroy$|^remove$", "i"),
+		draw = new RegExp("^draw$|^draws$", "i"),
+		one = new RegExp("^a$|^1$", "i"),
+		every = new RegExp("^all$|^every$", "i"),
+		endTurn = new RegExp("^end$", "i"),
+		targetSelf = new RegExp("^your$|^yours$", "i"),
+		targetEnemy = new RegExp("^enemy$|^opponent$", "i"),
+		freeze = new RegExp("^freeze$", "i"),
+		thaw = new RegExp("^thaw$", "i"),
+		shield = new RegExp("^shield$|^shields$", "i"),
+		block = new RegExp("^block$", "i"),
+		discard = new RegExp("^discard$", "i"),
+		hand = new RegExp("^hand$|^hands$", "i");
+		//= new RegExp("", "i"),
+
+	window.console.log(card);
+	window.console.log(cardEffects);
+
+	for (var i = 0; i < cardEffects.length; i++){
+		window.console.log(card + ' -> ' + cardEffects[i]);
+		var effect = cardEffects[i].split(' ');
+
+		if (effect[0] && effect[0].match(endTurn)) { // End turn
+			window.console.log("End turn");
+			player.player_state.cards_to_play = 0;
+			player.player_state.pieces_to_play = 0;
+		} else if (effect[0] && effect[0].match(deal)) { // Dealing damage
+			if (effect[1] && effect[1].match(one)){ // Damage one
+				if (effect[4] && effect[4].match(targetSelf)){
+					window.console.log("Target self");
+					player.player_state.damagingS = 1;
+				} else if (effect[4] && effect[4].match(targetEnemy)){
+					window.console.log("Target enemy");
+					player.player_state.damagingE = 1;
+				} else {
+					player.player_state.damagingA = 1;
+				}
+			} else if (effect[1] && effect[1].match(every)) { // Damage all
+				window.console.log("Damaging all!");
+				for (var k = 0; k < 4; k++) {
+					for (var l = 0; l < 4; l++) {
+						if (this.board.board_state.shields[k][l] === 1) {
+							this.board.board_state.shields[k][l] = 0;
+						} else if (this.board.board_state.results[k][l] !== 0) {
+							this.board.board_state.results[k][l] = 0;
+						}
+					}
+				}
+			} else { // else damage many
+				if (effect[4] && effect[4].match(targetSelf)) {
+					window.console.log("Target self");
+					player.player_state.damagingS = effect[1];
+				} else if (effect[4] && effect[4].match(targetEnemy)){
+					window.console.log("Target enemy");
+					player.player_state.damagingE = effect[1];
+				} else {
+					player.player_state.damagingA = effect[1];
+				}
+			}
+		} else if (effect[0] && effect[0].match(destroy)) { // Destroying piece or shield
+			if (effect[2] && effect[2].match(shield)){ //if shield
+				if (effect[1] && effect[1].match(one)){
+					window.console.log("deshield 1");
+					player.player_state.deshielding = 1;
+				} else if (effect[1] && effect[1].match(every)) { // Deshield all
+					window.console.log("Unshielding all!");
+					for (var k = 0; k < 4; k++) {
+						for (var l = 0; l < 4; l++) {
+							this.board.board_state.shields[k][l] = 0;
+						}
+					}
+				} else { //else deshield many
+					window.console.log("deshield lots");
+					deshielding = effect[1];
+				}
+			} else { //
+				if (effect[1] && effect[1].match(one)){
+					if (effect[4] && effect[4].match(targetSelf)) {
+						window.console.log("Target self");
+						player.player_state.destroyingS = 1;
+					}  else if (effect[4] && effect[4].match(targetEnemy)){
+						window.console.log("Target enemy");
+						player.player_state.destroyingE = 1;
+					} else {
+						window.console.log("Destroying one piece");
+						player.player_state.destroyingA = 1;
+					}
+				} else if (effect[1] && effect[1].match(every)) { // Destroy all
+					window.console.log('Destroy all pieces');
+					for (var k = 0; k < 4; k++){ 
+						for (var l = 0; l < 4; l++){
+							this.board.board_state.results[k][l] = 0;
+							this.board.board_state.shields[k][l] = 0;
+						}
+					}
+				} else { //else many
+					if (effect[4] && effect[4].match(targetSelf)) {
+						window.console.log("Target self");
+						player.player_state.destroyingS = effect[1];
+					} else if (effect[4] && effect[4].match(targetEnemy)){
+						window.console.log("Target enemy");
+						player.player_state.destroyingE = effect[1];
+					} else {
+						player.player_state.destroyingA = effect[1];
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(draw)){ // Drawing cards
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				window.console.log("Draw card");
+			} else { //else many
+				window.console.log("Draw card");
+			}
+		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
+			window.console.log(effect[1]);
+			window.console.log(effect[1].match(one));
+
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				window.console.log("Doing a single frost... spoopy!");
+				player.player_state.freezing = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				window.console.log("Freezing all!");
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+							this.board.board_state.frost[i][j] = 4;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.freezing = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(thaw)){ // Thaw
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				window.console.log("Thawing a square");
+				player.player_state.thawing = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				window.console.log("Thawing all squares");
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.frost[i][j] >= 1) {
+							this.board.board_state.frost[i][j] = 0;
+						}
+					}
+				}
+			} else { //else many
+				window.console.log("Thawing some squares");
+				player.player_state.thawing = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(block)){ // Block/Rock
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				window.console.log("Doing a single block");
+				player.player_state.blocking = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				window.console.log("Blocking all!");
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0) {
+							this.board.board_state.rock[i][j] = 6;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.blocking = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(shield)){ // Shielding
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				window.console.log("Doing a shield");
+				player.player_state.shielding = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				window.console.log("Shielding all!");
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.shields[i][j] === 0) {
+							this.board.board_state.shields[i][j] = 1;
+						}
+					}
+				}
+			} else { //else many
+				window.console.log("Shielding many!");
+				player.player_state.shielding = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(discard)){ //Discarding
+			window.console.log("Discarding");
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.discarding = 1;
+			} else if (effect[1] && effect[1].match(every)) {
+				window.console.log("Discarding all");
+			} else {
+				player.player_state.discarding = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(targetSelf)){ //Your
+			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
+				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
+					window.console.log("Your enemy draws cards")
+					var playerEnemy = 1; 
+					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+						window.console.log("Enemy draws");
+					} else {
+						window.console.log("Enemy draws");
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(conditionIf)){ //Discarding
+			window.console.log("Doign an if");
+			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'a'
+				if (effect[3] && effect[3].match(conditionLeast)) {
+					if (effect[3] && effect[3].match(piece)) {
+						
+					} else if (effect[3] && effect[3].match(shield)) {
+					
+					}
+				}
+			}
+		} else {
+			//do nothing
+		} 
+	}
+
+}

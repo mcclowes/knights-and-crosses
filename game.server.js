@@ -139,8 +139,7 @@ game_server.endGame = function(gameid, userid) {
 }; //game_server.endGame
 
 game_server.startGame = function(game) {
-    //so a game has 2 players and wants to begin the host already knows they are hosting,
-    //tell the other client they are joining a game s=server message, j=you are joining, send them the host id
+    //so a game has 2 players and wants to begin the host already knows they are hosting, tell the other client they are joining a game s=server message, j=you are joining, send them the host id
     game.player_client.send('s.j.' + game.player_host.userid);
     game.player_client.game = game;
 
