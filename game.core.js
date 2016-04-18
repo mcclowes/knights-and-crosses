@@ -237,18 +237,73 @@ game_board.prototype.draw = function(){
 				} else {
 					game.ctx.drawImage(this.p2PieceImage, i*100, j*100, 100, 100);
 				}
-			} else if (this.board_state.frost[i][j] == 2) {
+			} else if (this.board_state.frost[i][j] == 4) {
 				game.ctx.drawImage(this.frostImage, i*100, j*100, 100, 100);
-			} else if (this.board_state.rock[i][j] == 3) {
+			} else if (this.board_state.rock[i][j] == 6) {
 				game.ctx.drawImage(this.blockedImage, i*100, j*100, 100, 100);
 			} 
 		}
 	}
 };
 
+// Check if co-ordinates are within Board object
 game_board.prototype.contains = function(mx, my) {
 	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return (this.x <= mx) && (this.x + this.w >= mx) && (this.y <= my) && (this.y + this.h >= my);
+};
+
+// Decrement frost and rock array values
+game_board.prototype.reduce_state = function(){
+	for (var i = 0; i < 4; i++){
+		for (var j = 0; j < 4; j++){
+			if(this.board_state.frost[i][j] > 0) { this.board_state.frost[i][j]--};
+			if(this.board_state.rock[i][j] > 0) { this.board_state.rock[i][j]--};
+		}
+	}
+};
+
+//Calls all win condition checks
+game_board.prototype.check_win = function(){
+    if (this.checkRows() !== undefined){
+        return this.checkRows();
+    }
+    if (this.checkCols() !== undefined){
+        return this.checkCols();
+    }
+    if (this.checkDiagonals() !== undefined){
+        return this.checkDiagonals();
+    }
+};
+
+game_board.prototype.checkRows = function(){
+    for (var i = 0; i < 4; i++){
+        var sum = this.board_state.results[i][0] + this.board_state.results[i][1] + this.board_state.results[i][2] + this.board_state.results[i][3];
+        if (sum === 4 || sum === -4){
+            return this.board_state.results[i][0];
+        }
+    }
+};
+
+game_board.prototype.checkCols = function(){
+    for (var i = 0; i < 4; i++){
+        var sum = this.board_state.results[0][i] + this.board_state.results[1][i] + this.board_state.results[2][i] + this.board_state.results[3][i];
+        if (sum === 4 || sum === -4){
+            return this.board_state.results[0][i];
+        }
+    }
+};
+
+game_board.prototype.checkDiagonals = function(){
+    // Right-wards diagonal
+    var sum = this.board_state.results[0][0] + this.board_state.results[1][1] + this.board_state.results[2][2] + this.board_state.results[3][3];
+    if (sum === 4 || sum === -4){
+        return this.board_state.results[1][1];
+    }
+    // Left-wards diagonal
+    sum = this.board_state.results[0][3] + this.board_state.results[1][2] + this.board_state.results[2][1] + this.board_state.results[3][0];
+    if (sum === 4 || sum === -4){
+        return this.board_state.results[1][1];
+    }
 };
 
 
@@ -539,6 +594,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 	window.console.log(input);
 	//Fetch which client this refers to out of the two
 	var player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
+	var player_other = (client.userid == this.players.self.instance.userid) ?  this.players.other : this.players.self;
 
 	if (input) {
 		var c = input.length;
@@ -552,18 +608,51 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		target = [];
 		if (input_parts[0] == 'en') { //end turn
 			this.turn = this.turn == 1 ? -1 : 1;
-		} else if (input_parts[0] == 'ca') { // card
+
+			//resets
+			player_client.player_state = {
+				cards_to_play 	: 1,
+				pieces_to_play 	: 1,
+				damagingA 		: 0,
+				damagingE 		: 0,
+				damagingS 		: 0,
+				destroyingA 	: 0,
+				destroyingE 	: 0,
+				destroyingS 	: 0,
+				discarding 		: 0,
+				shielding 		: 0,
+				deshielding 	: 0,
+				freezing 		: 0,
+				thawing 		: 0,
+				blocking 		: 0
+			}
+
+			window.console.log(this.board.check_win());
+
+			if (this.board.check_win() !== undefined){
+				this.board.check_win();
+			}
+
+			this.board.reduce_state();
+
+			window.console.log('drawing card');
+	        if (player_other.deck.length > 0 && player_other.hand.length < maxHandSize) {
+	            player_other.hand.push(player_other.deck[0]);
+	            player_other.deck.splice(0, 1);
+	        } else {
+	            window.console.log("Hand full - " + player_other.deck.length + ", " + player_other.hand.length);
+	        }
+
+		} else if (input_parts[0] == 'ca') { // Clicked card
 			target = input_parts[1];
 			for (var i = player_client.hand.length - 1; i >= 0; i--) {
-				window.console.log('Hmmmm ' + target + ' vs. ' + player_client.hand[i].cardName);
 			    if (player_client.hand[i].cardName === target) {
-			    	window.console.log('FOund the card ' + target);
 					player_client.hand.splice(i, 1);
 					player_client.player_state.cards_to_play = player_client.player_state.cards_to_play - 1; 
 					break;
 			    }
 			}
-		} else if (input_parts[0] == 'sq') { // square
+		} else if (input_parts[0] == 'sq') { // Clicked square
 			target = input_parts[1];
 			player_client.player_state.pieces_to_play = player_client.player_state.pieces_to_play - 1;
 			this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
@@ -655,12 +744,12 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	// Store server's last state
 	this.turn = data.tu;
 	this.board.board_state = data.bo;
-	this.players.self.player_state = data.hp;
-	this.players.self.hand = create_card_array(data.hh);
-	this.players.self.deck = create_card_array(data.hd);            
-	this.players.other.player_state = data.cp;
-	this.players.other.hand = create_card_array(data.ch);
-	this.players.other.deck = create_card_array(data.cd);         
+	player_host.player_state = data.hp;
+	player_host.hand = create_card_array(data.hh);
+	player_host.deck = create_card_array(data.hd);            
+	player_client.player_state = data.cp;
+	player_client.hand = create_card_array(data.ch);
+	player_client.deck = create_card_array(data.cd);         
 	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
 	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
 	this.server_time = data.t;   // our current local time on the server
