@@ -52,7 +52,7 @@ window.onload = function(){
 		  		} else if (shapes[i] === game.end_turn_button) {
 		  			input = 'en'
 		  		} else {
-		  			if (game.players.self.player_state.cards_to_play > 0) {
+		  			if (game.players.self.player_state.cards_to_play > 0 || game.players.self.player_state.discarding > 0) {
 		  				input = 'ca-' + shapes[i].cardName;
 		  			}
 		  		}

@@ -8,7 +8,7 @@ var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
-var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces, return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
+var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
@@ -41,7 +41,7 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 
 // Array shuffle function
 var shuffle = function(o){
-	for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
+	for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
 }
  
@@ -55,14 +55,10 @@ var create_card_array = function(data) {
 	return cards;
 }
 
-//initialise a card
+//Initialise a card
 var create_card = function(data) {
-	if (data.cardName !== undefined){
-		var card = new game_card(data.cardName);
-	} else {
-		var card = new game_card(data);
-	}
-	return card;
+	//Depends on format of input data
+	return data.cardName !== undefined ? new game_card(data.cardName) : new game_card(data);
 }
 
 // Create a rounded clipping area
@@ -81,8 +77,9 @@ var roundedImage = function(x, y, width, height, radius){
 }
 
 // Draw text in box
+// #TODO refactor this
 var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
-	// The painting properties Normally I would write this as an input parameter
+	// Drawing variables
 	var Paint = {
 		RECTANGLE_STROKE_STYLE : 'black',
 		RECTANGLE_LINE_WIDTH : 1,
@@ -182,11 +179,6 @@ var game_core = function(game_instance){
 		this.server_updates = []; //A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
 		this.client_connect_to_server(); //Connect to the socket.io server!
 		this.client_create_ping_timer(); //We start pinging the server to determine latency
-
-		//Make this only if requested
-		if(String(window.location).indexOf('debug') != -1) {
-			this.client_create_debug_gui();
-		}
 	} else { //server side
 		this.server_time = 0;
 		this.laststate = {};
@@ -521,23 +513,27 @@ var game_player = function( game_instance, player_instance ) {
 
 	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	deck_temp = shuffle(deck_temp);
-
-	/*for (var i = 0; i < deck_temp.length; i++) {
-		this.deck.push(new game_card(deck_temp[i]));
-	}*/
-
 	this.deck = create_card_array(deck_temp);
-
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
-
 	//Our local history of inputs
 	this.inputs = [];
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){
 	//Set the color for this player
+	game.ctx.clearRect(0, 0, 120, 120); //Clear the screen area
+	game.ctx.textAlign = "start"; 
 	game.ctx.fillStyle = "black";
 	game.ctx.fillText(this.state, 10, 10);
+	//Draw player_state variables
+	var key_counter = 0;
+	for (var key in this.player_state) {
+		if (this.player_state[key] > 0) {
+			game.ctx.fillText(key + ": " + this.player_state[key], 10, 20 + 10 * key_counter);
+			key_counter++;
+		}
+	}
+
 	//draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
 		this.hand[i].pos.x = canvasWidth / 2 - (this.hand[i].size.hx / 2 * (this.hand.length + 1)) + (this.hand[i].size.hx * i) ;
@@ -755,7 +751,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		} else if (input_parts[0] == 'sq') { // Clicked square
 			target = input_parts[1];
 			window.console.log(target);
-			this.handle_card(target[0] - 1, target[1] - 1, player_client);
+			this.resolve_square(target[0] - 1, target[1] - 1, player_client);
 
 		} else if (input_parts[0] === 'dr') {
 			window.console.log('drawing card');
@@ -781,7 +777,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		rock 	: [],
 		shields : []*/
 
-game_core.prototype.handle_card = function(row, col, player) {
+game_core.prototype.resolve_square = function(row, col, player) {
 	window.console.log('Target square >>> ' + row + ', ' + col);
 
 	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
@@ -858,6 +854,7 @@ game_core.prototype.handle_card = function(row, col, player) {
 			if (this.board.board_state.results[target[0] - 1][target[1] - 1] === 0){ // check unoccupied
 				player.player_state.pieces_to_play = player.player_state.pieces_to_play - 1;
 				this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
+				player.player_state.cards_to_play = 0;
 			}
 		}
 	}
@@ -944,7 +941,7 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 game_core.prototype.client_update = function(visual_change) {
 	// Only do if something has changed?
 	if (visual_change === true){
-		this.ctx.clearRect(0,0,canvasWidth,canvasHeight); //Clear the screen area
+		this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
 		this.client_draw_info(); //draw help/information if required
 		this.client_handle_input(); //Capture inputs from the player
 
@@ -952,29 +949,7 @@ game_core.prototype.client_update = function(visual_change) {
 		this.board.draw(); // Draw board
 		this.players.other.draw(); // draw other player (post server update)
 		this.players.self.draw(); //Draw self
-
-		/*function getMousePos(canvas, evt) {
-		    var rect = canvas.getBoundingClientRect();
-		    return {
-		      x: evt.clientX - rect.left,
-		      y: evt.clientY - rect.top
-		    };
-		}
-
-		var mouse_pos = getMousePos(this.ctx, e);
-		var mx = event.clientX,
-			my = event.clientY,
-			shapes = [game.board];
-		shapes = shapes.concat(game.end_turn_button, game.players.self.hand); // create array of all clickable objects
-
-		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
-		  	if (shapes[i].contains(mx, my)) {
-		  		shapes[i].draw();
-				break;
-			}
-		}*/
 	}
-
 	//Work out the fps average
 	this.client_refresh_fps();
 }; //game_core.update_client
@@ -1031,56 +1006,6 @@ game_core.prototype.client_create_configuration = function() {
 	this.llt = new Date().getTime();
 
 }; //game_core.client_create_configuration
-
-game_core.prototype.client_create_debug_gui = function() {
-	this.gui = new dat.GUI();
-
-	var _playersettings = this.gui.addFolder('Your settings');
-
-	//We want to know when we change our color so we can tell the server to tell the other clients for us
-	this.colorcontrol.onChange(function(value) {
-		this.players.self.color = value;
-		localStorage.setItem('color', value);
-		this.socket.send('c.' + value);
-	}.bind(this));
-
-	_playersettings.open();
-
-	var _othersettings = this.gui.addFolder('Methods');
-		_othersettings.add(this, 'naive_approach').listen();
-		_othersettings.add(this, 'client_smoothing').listen();
-		_othersettings.add(this, 'client_smooth').listen();
-		_othersettings.add(this, 'client_predict').listen();
-
-	var _debugsettings = this.gui.addFolder('Debug view');
-		_debugsettings.add(this, 'show_help').listen();
-		_debugsettings.add(this, 'fps_avg').listen();
-		_debugsettings.add(this, 'show_server_pos').listen();
-		_debugsettings.add(this, 'show_dest_pos').listen();
-		_debugsettings.add(this, 'local_time').listen();
-		_debugsettings.open();
-
-	var _consettings = this.gui.addFolder('Connection');
-		_consettings.add(this, 'net_latency').step(0.001).listen();
-		_consettings.add(this, 'net_ping').step(0.001).listen();
-
-	//When adding fake lag, we need to tell the server about it.
-	var lag_control = _consettings.add(this, 'fake_lag').step(0.001).listen();
-	lag_control.onChange(function(value){
-		this.socket.send('l.' + value);
-	}.bind(this));
-
-	_consettings.open();
-
-	var _netsettings = this.gui.addFolder('Networking');
-		
-		_netsettings.add(this, 'net_offset').min(0.01).step(0.001).listen();
-		_netsettings.add(this, 'server_time').step(0.001).listen();
-		_netsettings.add(this, 'client_time').step(0.001).listen();
-		//_netsettings.add(this, 'oldest_tick').step(0.001).listen();
-
-		_netsettings.open();
-}; //game_core.client_create_debug_gui
 
 game_core.prototype.client_reset_positions = function() {
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
@@ -1222,7 +1147,7 @@ game_core.prototype.client_draw_info = function() {
 	this.ctx.fillStyle = 'rgba(255,255,255,0.3)'; //We don't want this to be too distracting
 
 	//They can hide the help with the debug GUI
-	if(this.show_help) {
+	if (this.show_help) {
 		this.ctx.fillText('net_offset : local offset of others players and their server updates. Players are net_offset "in the past" so we can smoothly draw them interpolated.', 10 , 30);
 		this.ctx.fillText('server_time : last known game time on server', 10 , 70);
 		this.ctx.fillText('client_time : delayed game time on client for other players only (includes the net_offset)', 10 , 90);
@@ -1235,7 +1160,7 @@ game_core.prototype.client_draw_info = function() {
 	} //if this.show_help
 
 	//Draw some information for the host
-	if(this.players.self.host) {
+	if (this.players.self.host) {
 		this.ctx.fillStyle = 'rgba(255,255,255,0.7)';
 		this.ctx.fillText('You are the host', 10 , 465);
 
@@ -1248,6 +1173,12 @@ game_core.prototype.client_draw_info = function() {
 
 // Resolve card effects
 game_core.prototype.resolve_card = function(card, player) {
+	// Check for discard
+	if (player.player_state.discarding > 0) {
+		player.player_state.discarding--;
+		return;
+	}
+
 	cardEffects = [];
 	for (var j = 0; j < cards.length; j++){
 		if (cards[j].name === card){
@@ -1256,19 +1187,21 @@ game_core.prototype.resolve_card = function(card, player) {
 	}
 
 	var conditionIf = new RegExp("^if$", "i"),
+		conditionLeast = new RegExp("^least$", "i"),
 		deal = new RegExp("^deal$|^damage$", "i");     // ^x$ dictates explicit regex matching
 		destroy = new RegExp("^destroy$|^remove$", "i"),
 		draw = new RegExp("^draw$|^draws$", "i"),
 		one = new RegExp("^a$|^1$", "i"),
 		every = new RegExp("^all$|^every$", "i"),
 		endTurn = new RegExp("^end$", "i"),
-		targetSelf = new RegExp("^your$|^yours$", "i"),
+		targetSelf = new RegExp("^you$|^your$|^yours$", "i"),
 		targetEnemy = new RegExp("^enemy$|^opponent$", "i"),
 		freeze = new RegExp("^freeze$", "i"),
 		thaw = new RegExp("^thaw$", "i"),
 		shield = new RegExp("^shield$|^shields$", "i"),
 		block = new RegExp("^block$", "i"),
 		discard = new RegExp("^discard$", "i"),
+		piece = new RegExp("^piece$|pieces$", "i"),
 		hand = new RegExp("^hand$|^hands$", "i");
 		//= new RegExp("", "i"),
 
@@ -1456,12 +1389,12 @@ game_core.prototype.resolve_card = function(card, player) {
 		} else if (effect[0] && effect[0].match(discard)){ //Discarding
 			window.console.log("Discarding");
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.discarding = 1;
+				player.player_state.discarding++;
 			} else if (effect[1] && effect[1].match(every)) {
 				window.console.log("Discarding all");
 				player.hand = [];
 			} else {
-				player.player_state.discarding = effect[1]; // Discarding some
+				player.player_state.discarding = player.player_state.discarding + effect[1]; // Discarding some
 			}
 		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
 			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
@@ -1489,14 +1422,28 @@ game_core.prototype.resolve_card = function(card, player) {
 					}
 				}
 			}
-		} else if (effect[0] && effect[0].match(conditionIf)){ // ????
+		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
 			window.console.log("Doing an if");
-			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'a'
-				if (effect[3] && effect[3].match(conditionLeast)) {
-					if (effect[3] && effect[3].match(piece)) {
-						
+			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
+				if (effect[4] && effect[4].match(conditionLeast)) {
+					if (effect[5] && effect[5].match(piece)) {
+						var piece_counter = 0;
+						for (var i = 0; i < 4; i++) {
+							for (var j = 0; j < 4; j++) {
+								piece_counter = piece_counter + this.board.board_state.results[i][j];
+							}
+						}
+
+						/*
+						#TODO
+						window.console.log(player + ' vs. ' + piece_counter)
+						window.console.log(this.players.self.host + ' vs. ' + piece_counter)
+
+						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
+							player.hand.push(card);
+						}*/
 					} else if (effect[3] && effect[3].match(shield)) {
-					
+						player.hand.push(card);
 					}
 				}
 			}
