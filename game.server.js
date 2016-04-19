@@ -36,7 +36,7 @@ game_server.onMessage = function(client,message) {
 };
 
 game_server._onMessage = function(client, message) {
-	window.console.log(message);
+	console.log(message);
 	var message_parts = message.split('.'); //Cut the message up into sub components
 	var message_type = message_parts[0]; //The first is always the type of message
 	var other_client = (client.game.player_host.userid == client.userid) ? client.game.player_client : client.game.player_host;
@@ -59,7 +59,7 @@ game_server.onInput = function(client, parts) {
 	var input_time = parts[2].replace('-','.');
 	var input_seq = parts[3];
 
-	//window.console.log('handling input > ' + input_commands[0]);
+	//console.log('handling input > ' + input_commands[0]);
 
 	//the client should be in a game, so we can tell that game to handle the input
 	if(client && client.game && client.game.gamecore) {
@@ -143,16 +143,13 @@ game_server.startGame = function(game) {
 
 	//make players draw cards
 	for (var i = 0; i < 3; i++) {
-		window.console.log('\n');
-		var server_packet = 'i.dr.';
-			server_packet += this.local_time.toFixed(3).replace('.','-') + '.';
-			server_packet += game.input_seq;
+		console.log('\n');
+		var server_packet = 'i.dr.' + this.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
 		game_server._onMessage(game.player_client, server_packet);
 		game_server._onMessage(game.player_host, server_packet);
 	}
 
-	//set this flag, so that the update loop can run it.
-	game.active = true;
+	game.active = true; //set this flag, so that the update loop can run it.
 }; //game_server.startGame
 
 game_server.findGame = function(player) {

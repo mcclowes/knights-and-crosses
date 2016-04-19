@@ -4,7 +4,8 @@
 var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
-	canvasHeight = 800;
+	canvasHeight = 800,
+	serverIP = 'http://192.168.1.2:4004';
 
 // Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
@@ -343,11 +344,9 @@ game_board.prototype.reduce_state = function(){
 game_board.prototype.check_win = function(){
 	if (this.checkRows() !== undefined){
 		return this.checkRows();
-	}
-	if (this.checkCols() !== undefined){
+	} else if (this.checkCols() !== undefined){
 		return this.checkCols();
-	}
-	if (this.checkDiagonals() !== undefined){
+	} else if (this.checkDiagonals() !== undefined){
 		return this.checkDiagonals();
 	}
 };
@@ -490,7 +489,7 @@ game_card.prototype.contains = function(mx, my) {
 
 //Check card can be played
 game_card.prototype.checkPlayable = function(){
-	window.console.log("Check card is playable");
+	console.log("Check card is playable");
 	if (game.players.self.host === true && game.turn === -1) { // not players turn
 		return false;
 	} else if (game.players.self.host === false && game.turn === 1) { // not players turn (can condense)
@@ -651,10 +650,10 @@ game_core.prototype.server_update = function(){
 		this.laststate.ch !== this.tempstate.ch ||
 		this.laststate.cd !== this.tempstate.cd ||
 		this.tempstate.t - this.laststate.t >= 0.1) { // Time based refresh.... not ideal, arbitrary
-			/*window.console.log("FFFFFFFSFSFSFSFFSFS");
-			window.console.log(this.laststate.bo !== this.tempstate.bo);
-			window.console.log(this.laststate.bo);
-			window.console.log(this.tempstate.bo);*/
+			/*console.log("FFFFFFFSFSFSFSFFSFS");
+			console.log(this.laststate.bo !== this.tempstate.bo);
+			console.log(this.laststate.bo);
+			console.log(this.tempstate.bo);*/
 
 			this.laststate = this.tempstate;
 
@@ -671,7 +670,7 @@ game_core.prototype.server_update = function(){
 
 //Handle server input (input into the server, from a client)
 game_core.prototype.handle_server_input = function(client, input, input_time, input_seq) {
-	window.console.log(input);
+	console.log(input);
 	//Fetch which client this refers to out of the two
 	var player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
 	var player_other = (client.userid == this.players.self.instance.userid) ?  this.players.other : this.players.self;
@@ -706,19 +705,16 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				blocking 		: 0
 			}
 
-			window.console.log(this.board.check_win());
+			console.log("Win? >>> " + this.board.check_win());
 
 			if (this.board.check_win() !== undefined){ //check for win
 				this.win = this.board.check_win();
 			} else {
 				this.board.reduce_state();
 
-				window.console.log('drawing card');
 				if (player_other.deck.length > 0 && player_other.hand.length < maxHandSize) {
 					player_other.hand.push(player_other.deck[0]);
 					player_other.deck.splice(0, 1);
-				} else {
-					window.console.log("Hand full - " + player_other.deck.length + ", " + player_other.hand.length);
 				}
 			}
 		} else if (input_parts[0] == 'ca') { // Clicked card
@@ -733,16 +729,12 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 			}
 		} else if (input_parts[0] == 'sq') { // Clicked square
 			target = input_parts[1];
-			window.console.log(target);
 			this.resolve_square(target[0] - 1, target[1] - 1, player_client);
 
 		} else if (input_parts[0] === 'dr') {
-			window.console.log('drawing card');
 			if (player_client.deck.length > 0 && player_client.hand.length < maxHandSize) {
 				player_client.hand.push(player_client.deck[0]);
 				player_client.deck.splice(0, 1);
-			} else {
-				window.console.log("Hand full - " + player_client.deck.length + ", " + player_client.hand.length);
 			}
 		}
 	} //if we have inputs
@@ -756,7 +748,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 }; //game_core.handle_server_input
 
 game_core.prototype.resolve_square = function(row, col, player) {
-	//window.console.log('Target square >>> ' + row + ', ' + col);
+	//console.log('Target square >>> ' + row + ', ' + col);
 	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
 		if (this.board.board_state.results[row][col] !== 0) { // Piece
 			if (player.player_state.destroyingA > 0) { //Destroying enemy
@@ -1038,7 +1030,7 @@ game_core.prototype.resolve_card = function(card, player) {
 				}
 			}
 		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
-			window.console.log("Doing an if");
+			console.log("Doing an if");
 			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
 				if (effect[4] && effect[4].match(conditionLeast)) {
 					if (effect[5] && effect[5].match(piece)) {
@@ -1050,8 +1042,8 @@ game_core.prototype.resolve_card = function(card, player) {
 						}
 						/*
 						#TODO
-						window.console.log(player + ' vs. ' + piece_counter)
-						window.console.log(this.players.self.host + ' vs. ' + piece_counter)
+						console.log(player + ' vs. ' + piece_counter)
+						console.log(this.players.self.host + ' vs. ' + piece_counter)
 
 						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
 							player.hand.push(card);
@@ -1101,7 +1093,7 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 
 game_core.prototype.client_update = function(visual_change) {
 	// Only do if something has changed?
-	//window.console.log('hmmm' + !node || this.server);
+	//console.log('hmmm' + !node || this.server);
 
 	if (visual_change){
 		this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
@@ -1223,19 +1215,14 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-	//Store a local reference to our connection to the server
-	/*if (!node || this.server) {
-		this.socket = io.connect();
-	} else {*/
-		this.socket = io.connect('http://192.168.1.2:4004');
-	//}
+	
+	this.socket = io.connect(serverIP); //Store a local reference to our connection to the server
 
 	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
 	this.socket.on('connect', function(){
 		this.players.self.state = 'connecting';
 	}.bind(this));
 
-	
 	this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
 	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
 	this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id

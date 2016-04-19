@@ -13,7 +13,7 @@ console.log('Making a request to ' + address + ':' + gameport);
 
 try {
     http.get('http://' + address + ':' + gameport, function(resp){
-       console.log("Request made!", resp);
+       console.log("Request made!"/*, resp*/);
     });
 } catch (err) {
     console.log("Failed! " + err);
