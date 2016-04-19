@@ -6,7 +6,7 @@
 var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
-	canvasHeight = 720;
+	canvasHeight = 800;
 
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces, return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
@@ -37,11 +37,10 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	if ( !window.cancelAnimationFrame ) {
 		window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
 	}
-
 }() );
 
 // Array shuffle function
-function shuffle(o){
+var shuffle = function(o){
 	for(var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
 	return o;
 }
@@ -67,7 +66,7 @@ var create_card = function(data) {
 }
 
 // Create a rounded clipping area
-function roundedImage(x, y, width, height, radius){
+var roundedImage = function(x, y, width, height, radius){
 	game.ctx.beginPath();
 	game.ctx.moveTo(x + radius, y);
 	game.ctx.lineTo(x + width - radius, y);
@@ -81,7 +80,8 @@ function roundedImage(x, y, width, height, radius){
 	game.ctx.closePath();
 }
 
-function layout_text(canvas, x, y, w, h, text, fh, spl) {
+// Draw text in box
+var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 	// The painting properties Normally I would write this as an input parameter
 	var Paint = {
 		RECTANGLE_STROKE_STYLE : 'black',
@@ -114,28 +114,26 @@ function layout_text(canvas, x, y, w, h, text, fh, spl) {
 	ctx2d = canvas;
 	if (ctx2d) {
 		game.ctx.textAlign = "start"; 
-		game.ctx.fillStyle = 'rgba(255,255,255,1)';
 		// draw rectangular
-		ctx2d.strokeStyle=Paint.RECTANGLE_STROKE_STYLE;
-		ctx2d.lineWidth = Paint.RECTANGLE_LINE_WIDTH;
-		ctx2d.strokeRect(x, y, w, h);
+		ctx2d.fillStyle = 'rgba(200, 180, 140, 0.8)';
+		ctx2d.fillRect(x, y, w, h);
+
 		// Paint text
 		var lines = split_lines(ctx2d, w, Paint.VALUE_FONT, text);
 		// Block of text height
-		var both = lines.length * (fh + spl);
+		var both = lines.length * (font_size + spl);
 		if (both >= h) {
-			// We won't be able to wrap the text inside the area
-			// the area is too small. We should inform the user 
-			// about this in a meaningful way
+			// We won't be able to wrap the text inside the area the area is too small. We should inform the user  about this in a meaningful way
 		} else {
 			// We determine the y of the first line
-			var ly = (h - both)/2 + y + spl*lines.length;
+			var ly = (h - both)/2 + y + spl * lines.length;
 			var lx = 0;
-			for (var j = 0, ly; j < lines.length; ++j, ly+=fh+spl) {
+			for (var j = 0, ly; j < lines.length; ++j, ly+=font_size+spl) {
 				// We continue to centralize the lines
-				lx = x+w/2-ctx2d.measureText(lines[j]).width/2;
+				lx = x + w / 2 - ctx2d.measureText(lines[j]).width / 2;
 				// DEBUG 
 				//window.console.log("ctx2d.fillText('"+ lines[j] +"', "+ lx +", " + ly + ")");
+				game.ctx.fillStyle = 'rgba(0,0,0,1)';
 				ctx2d.fillText(lines[j], lx, ly);
 			}
 		}
@@ -170,13 +168,6 @@ var game_core = function(game_instance){
 			other : new game_player(this)
 		};
 	}
-
-	//The speed at which the clients move.
-	this.playerspeed = 120;
-
-	//Set up some physics integration values
-	this._pdt = 0.0001;                 //The physics update delta time
-	this._pdte = new Date().getTime();  //The physics update last delta time
 	//A local timer for precision on server and client
 	this.local_time = 0.016;            //The local timer
 	this._dt = new Date().getTime();    //The local timer delta
@@ -187,21 +178,10 @@ var game_core = function(game_instance){
 
 	//Client specific initialisation
 	if(!this.server) {
-		//Create a keyboard handler
-		this.keyboard = new THREEx.KeyboardState();
-		//Create the default configuration settings
-		this.client_create_configuration();
-		//A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
-		this.server_updates = [];
-		//Connect to the socket.io server!
-		this.client_connect_to_server();
-		//We start pinging the server to determine latency
-		this.client_create_ping_timer();
-
-		//Set their colors from the storage or locally
-		this.color = localStorage.getItem('color') || '#cc8822' ;
-		localStorage.setItem('color', this.color);
-		this.players.self.color = this.color;
+		this.client_create_configuration(); //Create the default configuration settings
+		this.server_updates = []; //A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
+		this.client_connect_to_server(); //Connect to the socket.io server!
+		this.client_create_ping_timer(); //We start pinging the server to determine latency
 
 		//Make this only if requested
 		if(String(window.location).indexOf('debug') != -1) {
@@ -215,7 +195,7 @@ var game_core = function(game_instance){
 }; //game_core.constructor
 
 //server side we set the 'game_core' class to a global type, so that it can use it anywhere.
-if( 'undefined' != typeof global ) {
+if ( 'undefined' != typeof global ) {
 	module.exports = global.game_core = game_core;
 }
 
@@ -304,12 +284,11 @@ game_board.prototype.draw = function(){
 			if (this.board_state.results[i][j] == 1) {
 				//needs to check for player
 				if (this.board_state.shields[i][j] == 1) {
-					game.ctx.drawImage(this.shieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
+					game.ctx.drawImage(this.p1ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
 					game.ctx.drawImage(this.p1PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
 			} else if (this.board_state.results[i][j] == -1) {
-				//needs to check for player
 				if (this.board_state.shields[i][j] == 1) {
 					game.ctx.drawImage(this.p2ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
@@ -340,8 +319,8 @@ game_board.prototype.contains = function(mx, my) {
 game_board.prototype.reduce_state = function(){
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
-			if(this.board_state.frost[i][j] > 0) { this.board_state.frost[i][j]--};
-			if(this.board_state.rock[i][j] > 0) { this.board_state.rock[i][j]--};
+			if (this.board_state.frost[i][j] > 0) { this.board_state.frost[i][j]--};
+			if (this.board_state.rock[i][j] > 0) { this.board_state.rock[i][j]--};
 		}
 	}
 };
@@ -413,14 +392,13 @@ end_turn_button.prototype.draw = function(){
 	// Set faux rounded corners
 	/*context.lineJoin = "round";
 	context.lineWidth = cornerRadius;
-
 	// Change origin and dimensions to match true size (a stroke makes the shape a bit larger)
 	context.strokeRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
 	context.fillRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);*/
 
 	game.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
 	game.ctx.textAlign="center"; 
-	game.ctx.fillText(this.text, 20 + this.w/2, canvasHeight/2 + 30);
+	game.ctx.fillText(this.text, 20 + this.w / 2, canvasHeight / 2 + 30);
 	//game.ctx.textAlign="start"; 
 };
 
@@ -435,14 +413,11 @@ end_turn_button.prototype.contains = function(mx, my) {
 var game_card = function( card_name ) {
 	this.cardName = card_name;
 	this.cardImage = '';
-	//this.owner = player.play;
 
 	this.pos = { x:0, y:0 };
-	this.size = { x:120, y:180, hx:0, hy:0 };
+	this.size = { x:140, y:210, hx:0, hy:0 };
 	this.size.hx = this.size.x/2;
 	this.size.hy = this.size.y/2;
-	this.color = 'rgba(255,255,255,0.7)';
-	this.info_color = 'rgba(255,255,255,0.7)';
 };
 
 game_card.prototype.draw = function(self){ //draw card
@@ -458,11 +433,7 @@ game_card.prototype.draw = function(self){ //draw card
 	this.cardBody.src = "img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
 
 	this.cardBack = new Image();
-	if (game.players.self.host === true) { // Based on host
-		this.cardBack.src = "img/card_back2.png";
-	} else {
-		this.cardBack.src = "img/card_back1.png";
-	}
+	this.cardBack.src = game.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
 
 	game.ctx.shadowBlur = 20;
 	if ((self === true) && (game.players.self.player_state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
@@ -474,7 +445,7 @@ game_card.prototype.draw = function(self){ //draw card
 	//Just makes the glow
 	game.ctx.fillStyle = 'rgba(140,120,100,1)';
 	//game.ctx.fillRect(this.pos.x, this.pos.y, this.size.x, this.size.y);
-	roundedImage(this.pos.x, this.pos.y, this.size.x, this.size.y, 5);
+	roundedImage(this.pos.x, this.pos.y, this.size.x, this.size.y, 10);
 	game.ctx.fill();
 
 	//Clipping
@@ -491,6 +462,7 @@ game_card.prototype.draw = function(self){ //draw card
 	game.ctx.restore();
 	game.ctx.shadowBlur = 0;
 	if (self === true) {
+		layout_text(game.ctx, this.pos.x + 10, this.pos.y + 10, this.size.x - 20, 40, this.cardName, 14, 2);
 		layout_text(game.ctx, this.pos.x + 10, this.pos.y + this.size.y / 2, this.size.x - 20, this.size.y / 2 - 10, cardEffects.join('. ') + '.', 12, 2);
 	}
 }; 
@@ -522,11 +494,8 @@ var game_player = function( game_instance, player_instance ) {
 	//Store the instance, if any
 	this.instance = player_instance; //dont need these?
 	//this.game = game_instance; //??
-
 	//Set up initial values for our state information
 	this.state = 'not-connected';
-	this.color = 'rgba(255,255,255,0.1)';
-	this.info_color = 'rgba(255,255,255,0.1)';
 	this.id = '';
 
 	this.player_state = {
@@ -567,9 +536,8 @@ var game_player = function( game_instance, player_instance ) {
 
 game_player.prototype.draw = function(){
 	//Set the color for this player
-	game.ctx.fillStyle = this.color; //remove
-	game.ctx.fillStyle = this.info_color;
-	game.ctx.fillText(this.state, 10, 450);
+	game.ctx.fillStyle = "black";
+	game.ctx.fillText(this.state, 10, 10);
 	//draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
 		this.hand[i].pos.x = canvasWidth / 2 - (this.hand[i].size.hx / 2 * (this.hand.length + 1)) + (this.hand[i].size.hx * i) ;
@@ -611,11 +579,7 @@ game_core.prototype.update = function(t) {
 	`item` is type game_player.
 */
 game_core.prototype.endTurn = function( item ) {
-	if (this.turn === 1) {
-		this.turn = -1;
-	} else {
-		this.turn = 1;
-	}
+	this.turn = this.turn === 1 ? -1 : 1;
 }; // end turn
 
 game_core.prototype.process_input = function( player ) {
@@ -686,7 +650,6 @@ game_core.prototype.server_update = function(){
 	//Make a snapshot of the current state, for updating the clients
 
 	this.tempstate = {
-		//turn?
 		tu 	: this.turn,
 		bo 	: this.board.board_state,
 		hp  : this.players.self.player_state,
@@ -746,7 +709,6 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		target = [];
 		if (input_parts[0] == 'en') { //end turn
 			this.turn = this.turn == 1 ? -1 : 1;
-
 			//resets
 			player_client.player_state = {
 				cards_to_play 	: 1,
@@ -919,10 +881,6 @@ game_core.prototype.client_handle_input = function(){ // change to client_handle
 
 	this.client_has_input = false;
 
-	if( this.keyboard.pressed('esc') || this.keyboard.pressed('Q')) {
-		input.push('q');
-	} //left
-
 	if(input.length) {
 		//Update what sequence we are on now
 		this.input_seq += 1;
@@ -994,6 +952,27 @@ game_core.prototype.client_update = function(visual_change) {
 		this.board.draw(); // Draw board
 		this.players.other.draw(); // draw other player (post server update)
 		this.players.self.draw(); //Draw self
+
+		/*function getMousePos(canvas, evt) {
+		    var rect = canvas.getBoundingClientRect();
+		    return {
+		      x: evt.clientX - rect.left,
+		      y: evt.clientY - rect.top
+		    };
+		}
+
+		var mouse_pos = getMousePos(this.ctx, e);
+		var mx = event.clientX,
+			my = event.clientY,
+			shapes = [game.board];
+		shapes = shapes.concat(game.end_turn_button, game.players.self.hand); // create array of all clickable objects
+
+		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
+		  	if (shapes[i].contains(mx, my)) {
+		  		shapes[i].draw();
+				break;
+			}
+		}*/
 	}
 
 	//Work out the fps average
@@ -1058,16 +1037,14 @@ game_core.prototype.client_create_debug_gui = function() {
 
 	var _playersettings = this.gui.addFolder('Your settings');
 
-		this.colorcontrol = _playersettings.addColor(this, 'color');
+	//We want to know when we change our color so we can tell the server to tell the other clients for us
+	this.colorcontrol.onChange(function(value) {
+		this.players.self.color = value;
+		localStorage.setItem('color', value);
+		this.socket.send('c.' + value);
+	}.bind(this));
 
-		//We want to know when we change our color so we can tell the server to tell the other clients for us
-		this.colorcontrol.onChange(function(value) {
-			this.players.self.color = value;
-			localStorage.setItem('color', value);
-			this.socket.send('c.' + value);
-		}.bind(this));
-
-		_playersettings.open();
+	_playersettings.open();
 
 	var _othersettings = this.gui.addFolder('Methods');
 		_othersettings.add(this, 'naive_approach').listen();
@@ -1087,13 +1064,13 @@ game_core.prototype.client_create_debug_gui = function() {
 		_consettings.add(this, 'net_latency').step(0.001).listen();
 		_consettings.add(this, 'net_ping').step(0.001).listen();
 
-		//When adding fake lag, we need to tell the server about it.
-		var lag_control = _consettings.add(this, 'fake_lag').step(0.001).listen();
-		lag_control.onChange(function(value){
-			this.socket.send('l.' + value);
-		}.bind(this));
+	//When adding fake lag, we need to tell the server about it.
+	var lag_control = _consettings.add(this, 'fake_lag').step(0.001).listen();
+	lag_control.onChange(function(value){
+		this.socket.send('l.' + value);
+	}.bind(this));
 
-		_consettings.open();
+	_consettings.open();
 
 	var _netsettings = this.gui.addFolder('Networking');
 		
@@ -1103,7 +1080,6 @@ game_core.prototype.client_create_debug_gui = function() {
 		//_netsettings.add(this, 'oldest_tick').step(0.001).listen();
 
 		_netsettings.open();
-
 }; //game_core.client_create_debug_gui
 
 game_core.prototype.client_reset_positions = function() {
@@ -1120,19 +1096,12 @@ game_core.prototype.client_onreadygame = function(data) {
 
 	this.local_time = server_time + this.net_latency;
 	console.log('server time is about ' + this.local_time);
-
-	//Store their info colors for clarity. server is always blue
-	player_host.info_color = '#2288cc';
-	player_client.info_color = '#cc8822';
 		
 	//Update their information
 	player_host.state = 'local_pos(hosting)';
 	player_client.state = 'local_pos(joined)';
 
 	this.players.self.state = 'YOU ' + this.players.self.state;
-
-	//Make sure colors are synced up
-	this.socket.send('c.' + this.players.self.color);
 }; //client_onreadygame
 
 game_core.prototype.client_onjoingame = function(data) {
@@ -1140,7 +1109,6 @@ game_core.prototype.client_onjoingame = function(data) {
 	this.players.self.host = false;
 	//Update the local state
 	this.players.self.state = 'connected.joined.waiting';
-	this.players.self.info_color = '#00bb00';
 
 	//Make sure the positions match servers and other clients
 	this.client_reset_positions();
@@ -1160,7 +1128,6 @@ game_core.prototype.client_onhostgame = function(data) {
 
 	//Update debugging information to display state
 	this.players.self.state = 'hosting.waiting for a player';
-	this.players.self.info_color = '#cc0000';
 
 	//Make sure we start in the correct place as the host.
 	this.client_reset_positions();
@@ -1171,15 +1138,9 @@ game_core.prototype.client_onconnected = function(data) {
 	//The server responded that we are now in a game, this lets us store the information about ourselves and set the colors
 	//to show we are now ready to be playing.
 	this.players.self.id = data.id;
-	this.players.self.info_color = '#cc0000';
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
 }; //client_onconnected
-
-game_core.prototype.client_on_otherclientcolorchange = function(data) {
-	this.players.other.color = data;
-
-}; //game_core.client_on_otherclientcolorchange
 
 game_core.prototype.client_onping = function(data) {
 	this.net_ping = new Date().getTime() - parseFloat( data );
@@ -1206,8 +1167,6 @@ game_core.prototype.client_onnetmessage = function(data) {
 					this.client_ondisconnect(commanddata); break;
 				case 'p' : //server ping
 					this.client_onping(commanddata); break;
-				case 'c' : //other player changed colors
-					this.client_on_otherclientcolorchange(commanddata); break;
 			} //subcommand
 		break; //'s'
 	} //command
@@ -1216,11 +1175,8 @@ game_core.prototype.client_onnetmessage = function(data) {
 
 game_core.prototype.client_ondisconnect = function(data) {
 	//When we disconnect, we don't know if the other player is connected or not, and since we aren't, everything goes to offline
-	this.players.self.info_color = 'rgba(255,255,255,0.1)';
 	this.players.self.state = 'not-connected';
 	this.players.self.online = false;
-
-	this.players.other.info_color = 'rgba(255,255,255,0.1)';
 	this.players.other.state = 'not-connected';
 }; //client_ondisconnect
 
@@ -1252,9 +1208,8 @@ game_core.prototype.client_refresh_fps = function() {
 	this.fps_avg_acc += this.fps;
 	this.fps_avg_count++;
 
-		//When we reach 10 frames we work out the average fps
+	//When we reach 10 frames we work out the average fps
 	if(this.fps_avg_count >= 10) {
-
 		this.fps_avg = this.fps_avg_acc/10;
 		this.fps_avg_count = 1;
 		this.fps_avg_acc = this.fps;
@@ -1264,12 +1219,10 @@ game_core.prototype.client_refresh_fps = function() {
 }; //game_core.client_refresh_fps
 
 game_core.prototype.client_draw_info = function() {
-	//We don't want this to be too distracting
-	this.ctx.fillStyle = 'rgba(255,255,255,0.3)';
+	this.ctx.fillStyle = 'rgba(255,255,255,0.3)'; //We don't want this to be too distracting
 
 	//They can hide the help with the debug GUI
 	if(this.show_help) {
-
 		this.ctx.fillText('net_offset : local offset of others players and their server updates. Players are net_offset "in the past" so we can smoothly draw them interpolated.', 10 , 30);
 		this.ctx.fillText('server_time : last known game time on server', 10 , 70);
 		this.ctx.fillText('client_time : delayed game time on client for other players only (includes the net_offset)', 10 , 90);
@@ -1277,7 +1230,7 @@ game_core.prototype.client_draw_info = function() {
 		this.ctx.fillText('net_ping : Time from you to the server and back. ', 10 , 150);
 		this.ctx.fillText('fake_lag : Add fake ping/lag for testing, applies only to your inputs (watch server_pos block!). ', 10 , 170);
 		this.ctx.fillText('client_smoothing/client_smooth : When updating players information from the server, it can smooth them out.', 10 , 210);
-		this.ctx.fillText(' This only applies to other clients when prediction is enabled, and applies to local player with no prediction.', 170 , 230);
+		this.ctx.fillText('This only applies to other clients when prediction is enabled, and applies to local player with no prediction.', 170 , 230);
 
 	} //if this.show_help
 
@@ -1293,6 +1246,7 @@ game_core.prototype.client_draw_info = function() {
 
 }; //game_core.client_draw_help
 
+// Resolve card effects
 game_core.prototype.resolve_card = function(card, player) {
 	cardEffects = [];
 	for (var j = 0; j < cards.length; j++){
@@ -1318,8 +1272,8 @@ game_core.prototype.resolve_card = function(card, player) {
 		hand = new RegExp("^hand$|^hands$", "i");
 		//= new RegExp("", "i"),
 
-	window.console.log(card);
-	window.console.log(cardEffects);
+	//window.console.log(card);
+	//window.console.log(cardEffects);
 
 	for (var i = 0; i < cardEffects.length; i++){
 		window.console.log(card + ' -> ' + cardEffects[i]);
@@ -1413,8 +1367,22 @@ game_core.prototype.resolve_card = function(card, player) {
 		} else if (effect[0] && effect[0].match(draw)){ // Drawing cards
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
 				window.console.log("Draw card");
+				if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+					player.hand.push(player.deck[0]);
+					player.deck.splice(0, 1);
+				} else {
+					window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
+				}
 			} else { //else many
 				window.console.log("Draw card");
+				for (var i = 0; i < effect[1]; i++) {
+					if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+						player.hand.push(player.deck[0]);
+						player.deck.splice(0, 1);
+					} else {
+						window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
+					}
+				}
 			}
 		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
 			window.console.log(effect[1]);
@@ -1491,23 +1459,38 @@ game_core.prototype.resolve_card = function(card, player) {
 				player.player_state.discarding = 1;
 			} else if (effect[1] && effect[1].match(every)) {
 				window.console.log("Discarding all");
+				player.hand = [];
 			} else {
-				player.player_state.discarding = effect[1];
+				player.player_state.discarding = effect[1]; // Discarding some
 			}
-		} else if (effect[0] && effect[0].match(targetSelf)){ //Your
+		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
 			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
 				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
 					window.console.log("Your enemy draws cards")
 					var playerEnemy = 1; 
 					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-						window.console.log("Enemy draws");
+						window.console.log("Enemy draws 1");
+						if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+							player.hand.push(player.deck[0]);
+							player.deck.splice(0, 1);
+						} else {
+							window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
+						}
 					} else {
-						window.console.log("Enemy draws");
+						window.console.log("Enemy draws many");
+						for (var i = 0; i < effect[1]; i++) {
+							if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+								player.hand.push(player.deck[0]);
+								player.deck.splice(0, 1);
+							} else {
+								window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
+							}
+						}
 					}
 				}
 			}
-		} else if (effect[0] && effect[0].match(conditionIf)){ //Discarding
-			window.console.log("Doign an if");
+		} else if (effect[0] && effect[0].match(conditionIf)){ // ????
+			window.console.log("Doing an if");
 			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'a'
 				if (effect[3] && effect[3].match(conditionLeast)) {
 					if (effect[3] && effect[3].match(piece)) {
