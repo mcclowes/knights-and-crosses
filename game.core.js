@@ -1,5 +1,3 @@
-//The main update loop runs on requestAnimationFrame,
-//Which falls back to a setTimeout loop on the server
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
@@ -8,8 +6,16 @@ var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
+// Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
+var node = (typeof module !== 'undefined' && module.exports)
+
+if (node) {
+	var io = require('socket.io-client');
+}
+
+console.log(!node);
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -20,22 +26,24 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	var lastTime = 0;
 	var vendors = [ 'ms', 'moz', 'webkit', 'o' ];
 
-	for ( var x = 0; x < vendors.length && !window.requestAnimationFrame; ++ x ) {
-		window.requestAnimationFrame = window[ vendors[ x ] + 'RequestAnimationFrame' ];
-		window.cancelAnimationFrame = window[ vendors[ x ] + 'CancelAnimationFrame' ] || window[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
-	}
+	if (!node){
+		for ( var x = 0; x < vendors.length && !window.requestAnimationFrame; ++ x ) {
+			window.requestAnimationFrame = window[ vendors[ x ] + 'RequestAnimationFrame' ];
+			window.cancelAnimationFrame = window[ vendors[ x ] + 'CancelAnimationFrame' ] || window[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
+		}
 
-	if ( !window.requestAnimationFrame ) {
-		window.requestAnimationFrame = function ( callback, element ) {
-			var currTime = Date.now(), timeToCall = Math.max( 0, frame_time - ( currTime - lastTime ) );
-			var id = window.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
-			lastTime = currTime + timeToCall;
-			return id;
-		};
-	}
+		if ( !window.requestAnimationFrame ) {
+			window.requestAnimationFrame = function ( callback, element ) {
+				var currTime = Date.now(), timeToCall = Math.max( 0, frame_time - ( currTime - lastTime ) );
+				var id = window.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
+				lastTime = currTime + timeToCall;
+				return id;
+			};
+		}
 
-	if ( !window.cancelAnimationFrame ) {
-		window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
+		if ( !window.cancelAnimationFrame ) {
+			window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
+		}
 	}
 }() );
 
@@ -205,8 +213,6 @@ game_core.prototype.v_add = function(a,b) { return { x:(a.x+b.x).fixed(), y:(a.y
 game_core.prototype.v_sub = function(a,b) { return { x:(a.x-b.x).fixed(),y:(a.y-b.y).fixed() }; };
 //Multiply a 2d vector with a scalar value and return the resulting vector
 game_core.prototype.v_mul_scalar = function(a,b) { return {x: (a.x*b).fixed() , y:(a.y*b).fixed() }; };
-//For the server, we need to cancel the setTimeout that the polyfill creates
-game_core.prototype.stop_update = function() {  window.cancelAnimationFrame( this.updateid );  };
 //Simple linear interpolation
 game_core.prototype.lerp = function(p, n, t) { var _t = Number(t); _t = (Math.max(0, Math.min(1, _t))).fixed(); return (p + _t * (n - p)).fixed(); };
 //Simple linear interpolation between 2 vectors
@@ -271,34 +277,86 @@ game_board.prototype.draw = function(){
 	this.p2ShieldImage.src = "img/piece_p2_shielded.png";
 
 	//for each square, draw the relevant piece
+	game.ctx.shadowBlur = 20;
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
+			// Set 
 			if (this.board_state.results[i][j] == 1) {
 				//needs to check for player
 				if (this.board_state.shields[i][j] == 1) {
+					if ((game.players.self.player_state.deshielding > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+						game.ctx.shadowColor = "red";
+					} else {
+						game.ctx.shadowColor = "black";
+					}
 					game.ctx.drawImage(this.p1ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
+					if ((game.players.self.player_state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
+						game.ctx.shadowColor = "green";
+					} else if (( game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+						game.ctx.shadowColor = "red";
+					} else {
+						game.ctx.shadowColor = "black";
+					}
 					game.ctx.drawImage(this.p1PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
 			} else if (this.board_state.results[i][j] == -1) {
 				if (this.board_state.shields[i][j] == 1) {
+					if ((game.players.self.player_state.deshielding > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+						game.ctx.shadowColor = "red";
+					} else {
+						game.ctx.shadowColor = "black";
+					}
 					game.ctx.drawImage(this.p2ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
+					if ((game.players.self.player_state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
+						game.ctx.shadowColor = "green";
+					} else if (( game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+						game.ctx.shadowColor = "red";
+					} else {
+						game.ctx.shadowColor = "black";
+					}
 					game.ctx.drawImage(this.p2PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
 			} else if (this.board_state.frost[i][j] == 4 || this.board_state.frost[i][j] == 3) {
+				if ((game.players.self.player_state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					game.ctx.shadowColor = "red";
+				} else {
+					game.ctx.shadowColor = "black";
+				}
 				game.ctx.drawImage(this.frostImage2, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.board_state.frost[i][j] == 2 || this.board_state.frost[i][j] == 1) {
+				if ((game.players.self.player_state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					game.ctx.shadowColor = "red";
+				} else {
+					game.ctx.shadowColor = "black";
+				}
 				game.ctx.drawImage(this.frostImage1, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.board_state.rock[i][j] == 6 || this.board_state.rock[i][j] == 5) {
+				if ((game.players.self.player_state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					game.ctx.shadowColor = "red";
+				} else {
+					game.ctx.shadowColor = "black";
+				}
 				game.ctx.drawImage(this.blockedImage3, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.board_state.rock[i][j] == 4 || this.board_state.rock[i][j] == 3) {
+				if ((game.players.self.player_state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					game.ctx.shadowColor = "red";
+				} else {
+					game.ctx.shadowColor = "black";
+				}
 				game.ctx.drawImage(this.blockedImage2, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.board_state.rock[i][j] == 2 || this.board_state.rock[i][j] == 1) {
+				if ((game.players.self.player_state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					game.ctx.shadowColor = "red";
+				} else {
+					game.ctx.shadowColor = "black";
+				}
 				game.ctx.drawImage(this.blockedImage1, i*100 + this.x, j*100 + this.y, 100, 100);
 			} 
 		}
 	}
+	game.ctx.shadowBlur = 0;
 };
 
 // Check if co-ordinates are within Board object
@@ -428,7 +486,9 @@ game_card.prototype.draw = function(self){ //draw card
 	this.cardBack.src = game.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
 
 	game.ctx.shadowBlur = 20;
-	if ((self === true) && (game.players.self.player_state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+	if ((self === true) && (game.players.self.player_state.discarding > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+		game.ctx.shadowColor = "red";
+	} else if ((self === true) && (game.players.self.player_state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 		game.ctx.shadowColor = "green";
 	} else {
 		game.ctx.shadowColor = "black";
@@ -562,64 +622,31 @@ game_core.prototype.update = function(t) {
 
 	//Update the game specifics
 	if (!this.server) { // client
-		//this.client_update(false);
+		//this.client_update(true);
 	} else { // server
 		this.server_update();
 	}
 	//schedule the next update
-	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
+	if(!node){
+		this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
+	}
 }; //game_core.update
 
+//For the server, we need to cancel the setTimeout that the polyfill creates
+game_core.prototype.stop_update = function() { 
+	if(!node){ 
+		window.cancelAnimationFrame( this.updateid );
+	}  
+};
 
 /*  -----------------------------  Shared between server and client.  -----------------------------  
 	`item` is type game_player.
 */
-game_core.prototype.endTurn = function( item ) {
-	this.turn = this.turn === 1 ? -1 : 1;
-}; // end turn
-
 game_core.prototype.process_input = function( player ) {
 	//It's possible to have recieved multiple inputs by now, so we process each one
 	var x_dir = 0;
 	var y_dir = 0;
 	var ic = player.inputs.length;
-
-	/*if (ic) {
-		for(var j = 0; j < ic; ++j) {
-			//don't process ones we already have simulated locally
-			if (player.inputs[j].seq <= player.last_input_seq) continue;
-
-			var input = player.inputs[j].inputs;
-			window.console.log(input);
-			var c = input.length;
-
-			try {
-				var input_parts = input.split('.');
-			}
-			catch(err) {
-				var input_parts = input;
-			}
-			
-			window.console.log("Input parts: " + input_parts);
-			target = [];
-			if (input_parts[0] == 'en') { //end turn
-
-			} else if (input_parts[0] == 'ca') { // card
-				target = input_parts[1];
-				window.console.log('HMmmmm2 > ');
-				//window.console.log(player.hand);
-				for (var i = player.hand.length - 1; i >= 0; i--) {
-					window.console.log('HMmmmm');
-					if (player.hand[i].cardName === target) {
-					   player.hand.splice(i, 1);
-					   break;
-					}
-				}
-			} else if (input_parts[0] == 'sq') { // square
-				target = input_parts[1];
-			}
-		} //for each input command
-	} //if we have inputs*/
 
 	//we have a direction vector now, so apply the same physics as the client
 	if(player.inputs.length) {
@@ -786,17 +813,20 @@ game_core.prototype.resolve_square = function(row, col, player) {
 			if (player.player_state.destroyingA > 0) { //Destroying enemy
 				window.console.log('Destroying any piece');
 				this.board.board_state.results[row][col] = 0;
+				this.board.board_state.shields[row][col] = 0;
 				player.player_state.destroyingA--;
 			} else if (player.player_state.destroyingE > 0) { //Destroying enemy
 				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
 					window.console.log('Destroying an enemy');
 					this.board.board_state.results[row][col] = 0;
+					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingE--;
 				}
 			} else if (player.player_state.destroyingS > 0) { //Destroying
 				if (this.board.board_state.results[row][col] === this.currentPlayer) {
 					window.console.log('Destroying own piece');
 					this.board.board_state.results[row][col] = 0;
+					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingS--;
 				}
 			} else if (player.player_state.damagingA > 0) { //Damaging
@@ -940,10 +970,14 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 
 game_core.prototype.client_update = function(visual_change) {
 	// Only do if something has changed?
-	if (visual_change === true){
+	window.console.log('hmmm' + !node);
+
+	this.client_handle_input(); //Capture inputs from the player
+
+	if (visual_change && !node){
+		window.console.log('hmmm');
 		this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
 		this.client_draw_info(); //draw help/information if required
-		this.client_handle_input(); //Capture inputs from the player
 
 		this.end_turn_button.draw();
 		this.board.draw(); // Draw board
@@ -1107,23 +1141,23 @@ game_core.prototype.client_ondisconnect = function(data) {
 
 game_core.prototype.client_connect_to_server = function() {
 		//Store a local reference to our connection to the server
-		this.socket = io.connect();
+		if (!node) {
+			this.socket = io.connect();
+		} else {
+			this.socket = io.connect('http://192.168.1.2:4004');
+		}
 
 		//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
 		this.socket.on('connect', function(){
 			this.players.self.state = 'connecting';
 		}.bind(this));
 
-		//Sent when we are disconnected (network, server down, etc)
-		this.socket.on('disconnect', this.client_ondisconnect.bind(this));
-		//Sent each tick of the server simulation. This is our authoritive update
-		this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this));
-		//Handle when we connect to the server, showing state and storing id's.
-		this.socket.on('onconnected', this.client_onconnected.bind(this));
-		//On error we just show that we are not connected for now. Can print the data.
-		this.socket.on('error', this.client_ondisconnect.bind(this));
-		//On message from the server, we parse the commands and send it to the handlers
-		this.socket.on('message', this.client_onnetmessage.bind(this));
+		
+		this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
+		this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
+		this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
+		this.socket.on('error', this.client_ondisconnect.bind(this)); 						// Error -> not connected for now
+		this.socket.on('message', this.client_onnetmessage.bind(this)); 					// Parse message from server, send to handlers
 
 }; //game_core.client_connect_to_server
 
@@ -1433,7 +1467,6 @@ game_core.prototype.resolve_card = function(card, player) {
 								piece_counter = piece_counter + this.board.board_state.results[i][j];
 							}
 						}
-
 						/*
 						#TODO
 						window.console.log(player + ' vs. ' + piece_counter)
