@@ -15,7 +15,7 @@ if (node) {
 	var io = require('socket.io-client');
 }
 
-console.log(!node);
+//console.log(!node || this.server);
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -26,24 +26,22 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	var lastTime = 0;
 	var vendors = [ 'ms', 'moz', 'webkit', 'o' ];
 
-	if (!node){
-		for ( var x = 0; x < vendors.length && !window.requestAnimationFrame; ++ x ) {
-			window.requestAnimationFrame = window[ vendors[ x ] + 'RequestAnimationFrame' ];
-			window.cancelAnimationFrame = window[ vendors[ x ] + 'CancelAnimationFrame' ] || window[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
-		}
+	for ( var x = 0; x < vendors.length && !window.requestAnimationFrame; ++ x ) {
+		window.requestAnimationFrame = window[ vendors[ x ] + 'RequestAnimationFrame' ];
+		window.cancelAnimationFrame = window[ vendors[ x ] + 'CancelAnimationFrame' ] || window[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
+	}
 
-		if ( !window.requestAnimationFrame ) {
-			window.requestAnimationFrame = function ( callback, element ) {
-				var currTime = Date.now(), timeToCall = Math.max( 0, frame_time - ( currTime - lastTime ) );
-				var id = window.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
-				lastTime = currTime + timeToCall;
-				return id;
-			};
-		}
+	if ( !window.requestAnimationFrame ) {
+		window.requestAnimationFrame = function ( callback, element ) {
+			var currTime = Date.now(), timeToCall = Math.max( 0, frame_time - ( currTime - lastTime ) );
+			var id = window.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
+			lastTime = currTime + timeToCall;
+			return id;
+		};
+	}
 
-		if ( !window.cancelAnimationFrame ) {
-			window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
-		}
+	if ( !window.cancelAnimationFrame ) {
+		window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
 	}
 }() );
 
@@ -627,16 +625,12 @@ game_core.prototype.update = function(t) {
 		this.server_update();
 	}
 	//schedule the next update
-	if(!node){
-		this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
-	}
+	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
 }; //game_core.update
 
 //For the server, we need to cancel the setTimeout that the polyfill creates
 game_core.prototype.stop_update = function() { 
-	if(!node){ 
-		window.cancelAnimationFrame( this.updateid );
-	}  
+	window.cancelAnimationFrame( this.updateid );  
 };
 
 /*  -----------------------------  Shared between server and client.  -----------------------------  
@@ -970,11 +964,11 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 
 game_core.prototype.client_update = function(visual_change) {
 	// Only do if something has changed?
-	window.console.log('hmmm' + !node);
+	//window.console.log('hmmm' + !node || this.server);
 
 	this.client_handle_input(); //Capture inputs from the player
 
-	if (visual_change && !node){
+	if (visual_change){
 		window.console.log('hmmm');
 		this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
 		this.client_draw_info(); //draw help/information if required
@@ -1141,7 +1135,7 @@ game_core.prototype.client_ondisconnect = function(data) {
 
 game_core.prototype.client_connect_to_server = function() {
 		//Store a local reference to our connection to the server
-		if (!node) {
+		if (!node || this.server) {
 			this.socket = io.connect();
 		} else {
 			this.socket = io.connect('http://192.168.1.2:4004');
