@@ -45,11 +45,13 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	}
 }() );
 
+
+/*  -----------------------------  Helper Functions  -----------------------------  */
+
+// Returns fixed point number, default n = 3
+Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
 // Array shuffle function
-var shuffle = function(o){
-	for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x);
-	return o;
-}
+var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
  
 // initialise an array of cards - e.g. for new hand or deck
 var create_card_array = function(data) {
@@ -85,20 +87,9 @@ var roundedImage = function(x, y, width, height, radius){
 // Draw text in box
 // #TODO refactor this
 var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
-	// Drawing variables
-	var Paint = {
-		RECTANGLE_STROKE_STYLE : 'black',
-		RECTANGLE_LINE_WIDTH : 1,
-		VALUE_FONT : '12px Arial',
-		VALUE_FILL_STYLE : 'red'
-	}
-
-	var split_lines = function(ctx, mw, font, text) {
+	var loutout_lines = function(ctx, mw, text) {
 		// We give a little "padding" This should probably be an input param but for the sake of simplicity we will keep it this way
 		mw = mw - 10;
-		// We setup the text font to the context (if not already)
-		ctx2d.font = font;
-		// We split the text by words 
 		var words = text.split(' ');
 		var new_line = words[0];
 		var lines = [];
@@ -113,16 +104,13 @@ var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 		lines.push(new_line);
 		return lines;
 	}
-	// Obtains the context 2d of the canvas It may return null
-	ctx2d = canvas;
-	if (ctx2d) {
-		game.ctx.textAlign = "start"; 
-		// draw rectangular
-		ctx2d.fillStyle = 'rgba(200, 180, 140, 0.8)';
-		ctx2d.fillRect(x, y, w, h);
 
+	if (canvas) {
+		game.ctx.textAlign = "start"; 
+		canvas.fillStyle = 'rgba(200, 180, 140, 0.8)';
+		canvas.fillRect(x, y, w, h);
 		// Paint text
-		var lines = split_lines(ctx2d, w, Paint.VALUE_FONT, text);
+		var lines = loutout_lines(canvas, w, text);
 		// Block of text height
 		var both = lines.length * (font_size + spl);
 		if (both >= h) {
@@ -133,11 +121,9 @@ var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 			var lx = 0;
 			for (var j = 0, ly; j < lines.length; ++j, ly+=font_size+spl) {
 				// We continue to centralize the lines
-				lx = x + w / 2 - ctx2d.measureText(lines[j]).width / 2;
-				// DEBUG 
-				//window.console.log("ctx2d.fillText('"+ lines[j] +"', "+ lx +", " + ly + ")");
+				lx = x + w / 2 - canvas.measureText(lines[j]).width / 2;
 				game.ctx.fillStyle = 'rgba(0,0,0,1)';
-				ctx2d.fillText(lines[j], lx, ly);
+				canvas.fillText(lines[j], lx, ly);
 			}
 		}
 	}
@@ -189,32 +175,12 @@ var game_core = function(game_instance){
 		this.server_time = 0;
 		this.laststate = {};
 	}
-
 }; //game_core.constructor
 
 //server side we set the 'game_core' class to a global type, so that it can use it anywhere.
 if ( 'undefined' != typeof global ) {
 	module.exports = global.game_core = game_core;
 }
-
-/* Helper functions for the game code
-	Here we have some common maths and game related code to make working with 2d vectors easy,
-	as well as some helpers for rounding numbers to fixed point.
-*/
-// (4.22208334636).fixed(n) will return fixed point value to n places, default n = 3
-Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
-//copies a 2d vector like object from one to another
-game_core.prototype.pos = function(a) { return {x:a.x,y:a.y}; };
-//Add a 2d vector with another one and return the resulting vector
-game_core.prototype.v_add = function(a,b) { return { x:(a.x+b.x).fixed(), y:(a.y+b.y).fixed() }; };
-//Subtract a 2d vector with another one and return the resulting vector
-game_core.prototype.v_sub = function(a,b) { return { x:(a.x-b.x).fixed(),y:(a.y-b.y).fixed() }; };
-//Multiply a 2d vector with a scalar value and return the resulting vector
-game_core.prototype.v_mul_scalar = function(a,b) { return {x: (a.x*b).fixed() , y:(a.y*b).fixed() }; };
-//Simple linear interpolation
-game_core.prototype.lerp = function(p, n, t) { var _t = Number(t); _t = (Math.max(0, Math.min(1, _t))).fixed(); return (p + _t * (n - p)).fixed(); };
-//Simple linear interpolation between 2 vectors
-game_core.prototype.v_lerp = function(v,tv,t) { return { x: this.lerp(v.x, tv.x, t), y:this.lerp(v.y, tv.y, t) }; };
 
 
 /*  -----------------------------  The board classs  -----------------------------  */
@@ -614,10 +580,7 @@ game_player.prototype.draw = function(){
 
 //Main update loop
 game_core.prototype.update = function(t) {
-	this.dt = this.lastframetime ? ( (t - this.lastframetime)/1000.0).fixed() : 0.016; // delta time
-
 	this.lastframetime = t; //Store the last frame time
-
 	//Update the game specifics
 	if (!this.server) { // client
 		//this.client_update(true);
@@ -650,7 +613,6 @@ game_core.prototype.process_input = function( player ) {
 	}
 	//give it back
 	return;
-
 }; //game_core.process_input
 
 
@@ -793,38 +755,27 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 	});
 }; //game_core.handle_server_input
 
-		/*results : [],
-		frost 	: [],
-		rock 	: [],
-		shields : []*/
-
 game_core.prototype.resolve_square = function(row, col, player) {
-	window.console.log('Target square >>> ' + row + ', ' + col);
-
+	//window.console.log('Target square >>> ' + row + ', ' + col);
 	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
-		window.console.log("The cell is occupied!");
 		if (this.board.board_state.results[row][col] !== 0) { // Piece
 			if (player.player_state.destroyingA > 0) { //Destroying enemy
-				window.console.log('Destroying any piece');
 				this.board.board_state.results[row][col] = 0;
 				this.board.board_state.shields[row][col] = 0;
 				player.player_state.destroyingA--;
 			} else if (player.player_state.destroyingE > 0) { //Destroying enemy
 				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
-					window.console.log('Destroying an enemy');
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingE--;
 				}
 			} else if (player.player_state.destroyingS > 0) { //Destroying
 				if (this.board.board_state.results[row][col] === this.currentPlayer) {
-					window.console.log('Destroying own piece');
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingS--;
 				}
 			} else if (player.player_state.damagingA > 0) { //Damaging
-				window.console.log('Damaging any');
 				if (this.board.board_state.shields[row][col] === 1) {
 					this.board.board_state.shields[row][col] = 0;
 				} else {
@@ -833,7 +784,6 @@ game_core.prototype.resolve_square = function(row, col, player) {
 				player.player_state.damagingA--;
 			} else if (player.player_state.damagingE > 0) { //Damaging
 				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
-					window.console.log('Damaging enemy');
 					if (this.board.board_state.shields[row][col] === 1) {
 						this.board.board_state.shields[row][col] = 0;
 					} else {
@@ -843,7 +793,6 @@ game_core.prototype.resolve_square = function(row, col, player) {
 				}
 			} else if (player.player_state.damagingS > 0) { //Damaging
 				if (this.board.board_state.results[row][col] === this.currentPlayer) {
-					window.console.log('Damaging own piece');
 					if (this.board.board_state.shields[row][col] === 1) {
 						this.board.board_state.shields[row][col] = 0;
 					} else {
@@ -859,11 +808,9 @@ game_core.prototype.resolve_square = function(row, col, player) {
 				player.player_state.deshielding--;
 			}
 		} else if (this.board.board_state.frost[row][col] >= 1 && player.player_state.thawing > 0) {
-			window.console.log ("Thawing out a square");
 			this.board.board_state.frost[row][col] = 0;
 			player.player_state.thawing -= 1;
 		} else if (this.board.board_state.rock[row][col] >= 1 && player.player_state.deblocking > 0) {
-			window.console.log ("Deblocking a square");
 			this.board.board_state.rock[row][col] = 0;
 			player.player_state.blocking--;
 		}
@@ -884,68 +831,256 @@ game_core.prototype.resolve_square = function(row, col, player) {
 	}
 };
 
-
-
-/* -----------------------------  Client side functions  -----------------------------   
-	These functions below are specific to the client side only,
-	and usually start with client_* to make things clearer.
-*/
-
-game_core.prototype.client_handle_input = function(){ // change to client_handle_keyboard_input??
-	//if(this.lit > this.local_time) return;
-	//this.lit = this.local_time+0.5; //one second delay
-	//This takes input from the client and keeps a record,
-	//It also sends the input information to the server immediately as it is pressed. It also tags each input with a sequence number.
-	var x_dir = 0,
-		y_dir = 0,
-		input = [];
-
-	this.client_has_input = false;
-
-	if(input.length) {
-		//Update what sequence we are on now
-		this.input_seq += 1;
-		//Store the input state as a snapshot of what happened.
-		this.players.self.inputs.push({
-			inputs : input,
-			time : this.local_time.fixed(3),
-			seq : this.input_seq
-		});
-
-		//Send the packet of information to the server. The input packets are labelled with an 'i' in front.
-		var server_packet = 'i.';
-			server_packet += input.join('-') + '.';
-			server_packet += this.local_time.toFixed(3).replace('.','-') + '.';
-			server_packet += this.input_seq;
-		//Go
-		this.socket.send( server_packet );
-
-		//Return the direction if needed
-		return;
-	} else {
+// Resolve card effects
+game_core.prototype.resolve_card = function(card, player) {
+	// Check for discard
+	if (player.player_state.discarding > 0) {
+		player.player_state.discarding--;
 		return;
 	}
-}; //game_core.client_handle_input
+
+	cardEffects = [];
+	for (var j = 0; j < cards.length; j++){
+		if (cards[j].name === card){
+			cardEffects = cards[j].effects;
+		}
+	}
+
+	var conditionIf = new RegExp("^if$", "i"),
+		conditionLeast = new RegExp("^least$", "i"),
+		deal = new RegExp("^deal$|^damage$", "i");     // ^x$ dictates explicit regex matching
+		destroy = new RegExp("^destroy$|^remove$", "i"),
+		draw = new RegExp("^draw$|^draws$", "i"),
+		one = new RegExp("^a$|^1$", "i"),
+		every = new RegExp("^all$|^every$", "i"),
+		endTurn = new RegExp("^end$", "i"),
+		targetSelf = new RegExp("^you$|^your$|^yours$", "i"),
+		targetEnemy = new RegExp("^enemy$|^opponent$", "i"),
+		freeze = new RegExp("^freeze$", "i"),
+		thaw = new RegExp("^thaw$", "i"),
+		shield = new RegExp("^shield$|^shields$", "i"),
+		block = new RegExp("^block$", "i"),
+		discard = new RegExp("^discard$", "i"),
+		piece = new RegExp("^piece$|pieces$", "i"),
+		hand = new RegExp("^hand$|^hands$", "i");
+		//= new RegExp("", "i"),
+
+	for (var i = 0; i < cardEffects.length; i++){
+		var effect = cardEffects[i].split(' ');
+
+		if (effect[0] && effect[0].match(endTurn)) { // End turn
+			player.player_state.cards_to_play = 0;
+			player.player_state.pieces_to_play = 0;
+		} else if (effect[0] && effect[0].match(deal)) { // Dealing damage
+			if (effect[1] && effect[1].match(one)){ // Damage one
+				if (effect[4] && effect[4].match(targetSelf)){
+					player.player_state.damagingS = 1;
+				} else if (effect[4] && effect[4].match(targetEnemy)){
+					player.player_state.damagingE = 1;
+				} else {
+					player.player_state.damagingA = 1;
+				}
+			} else if (effect[1] && effect[1].match(every)) { // Damage all
+				for (var k = 0; k < 4; k++) {
+					for (var l = 0; l < 4; l++) {
+						if (this.board.board_state.shields[k][l] === 1) {
+							this.board.board_state.shields[k][l] = 0;
+						} else if (this.board.board_state.results[k][l] !== 0) {
+							this.board.board_state.results[k][l] = 0;
+						}
+					}
+				}
+			} else { // else damage many
+				if (effect[4] && effect[4].match(targetSelf)) {
+					player.player_state.damagingS = effect[1];
+				} else if (effect[4] && effect[4].match(targetEnemy)){
+					player.player_state.damagingE = effect[1];
+				} else {
+					player.player_state.damagingA = effect[1];
+				}
+			}
+		} else if (effect[0] && effect[0].match(destroy)) { // Destroying piece or shield
+			if (effect[2] && effect[2].match(shield)){ //if shield
+				if (effect[1] && effect[1].match(one)){
+					player.player_state.deshielding = 1;
+				} else if (effect[1] && effect[1].match(every)) { // Deshield all
+					for (var k = 0; k < 4; k++) {
+						for (var l = 0; l < 4; l++) {
+							this.board.board_state.shields[k][l] = 0;
+						}
+					}
+				} else { //else deshield many
+					deshielding = effect[1];
+				}
+			} else { //
+				if (effect[1] && effect[1].match(one)){
+					if (effect[4] && effect[4].match(targetSelf)) {
+						player.player_state.destroyingS = 1;
+					}  else if (effect[4] && effect[4].match(targetEnemy)){
+						player.player_state.destroyingE = 1;
+					} else {
+						player.player_state.destroyingA = 1;
+					}
+				} else if (effect[1] && effect[1].match(every)) { // Destroy all
+					for (var k = 0; k < 4; k++){ 
+						for (var l = 0; l < 4; l++){
+							this.board.board_state.results[k][l] = 0;
+							this.board.board_state.shields[k][l] = 0;
+						}
+					}
+				} else { //else many
+					if (effect[4] && effect[4].match(targetSelf)) {
+						player.player_state.destroyingS = effect[1];
+					} else if (effect[4] && effect[4].match(targetEnemy)){
+						player.player_state.destroyingE = effect[1];
+					} else {
+						player.player_state.destroyingA = effect[1];
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(draw)){ // Drawing cards
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+					player.hand.push(player.deck[0]);
+					player.deck.splice(0, 1);
+				} else {
+				}
+			} else { //else many
+				for (var i = 0; i < effect[1]; i++) {
+					if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+						player.hand.push(player.deck[0]);
+						player.deck.splice(0, 1);
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
+
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.freezing = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+							this.board.board_state.frost[i][j] = 4;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.freezing = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(thaw)){ // Thaw
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.thawing = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.frost[i][j] >= 1) {
+							this.board.board_state.frost[i][j] = 0;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.thawing = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(block)){ // Block/Rock
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.blocking = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0) {
+							this.board.board_state.rock[i][j] = 6;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.blocking = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(shield)){ // Shielding
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.shielding = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.shields[i][j] === 0) {
+							this.board.board_state.shields[i][j] = 1;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.shielding = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(discard)){ //Discarding
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.discarding++;
+			} else if (effect[1] && effect[1].match(every)) {
+				player.hand = [];
+			} else {
+				player.player_state.discarding = player.player_state.discarding + effect[1]; // Discarding some
+			}
+		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
+			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
+				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
+					var playerEnemy = 1; 
+					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+						if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+							player.hand.push(player.deck[0]);
+							player.deck.splice(0, 1);
+						}
+					} else {
+						for (var i = 0; i < effect[1]; i++) {
+							if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+								player.hand.push(player.deck[0]);
+								player.deck.splice(0, 1);
+							}
+						}
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
+			window.console.log("Doing an if");
+			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
+				if (effect[4] && effect[4].match(conditionLeast)) {
+					if (effect[5] && effect[5].match(piece)) {
+						var piece_counter = 0;
+						for (var i = 0; i < 4; i++) {
+							for (var j = 0; j < 4; j++) {
+								piece_counter = piece_counter + this.board.board_state.results[i][j];
+							}
+						}
+						/*
+						#TODO
+						window.console.log(player + ' vs. ' + piece_counter)
+						window.console.log(this.players.self.host + ' vs. ' + piece_counter)
+
+						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
+							player.hand.push(card);
+						}*/
+					} else if (effect[3] && effect[3].match(shield)) {
+						player.hand.push(card);
+					}
+				}
+			}
+		} else {
+			//do nothing
+		} 
+	}
+}
+
+
+/* -----------------------------  Client side functions  ----------------------------- */
 
 game_core.prototype.client_onserverupdate_recieved = function(data){
-	//Lets clarify the information we have locally. One of the players is 'hosting' and
-	//the other is a joined in client, so we name these host and client for making sure
+	//Lets clarify the information we have locally. One of the players is 'hosting' and the other is a joined in client, so we name these host and client for making sure
 	//the positions we get from the server are mapped onto the correct local sprites
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
 	var this_player = this.players.self;
 	
-	//Store the server time (this is offset by the latency in the network, by the time we get it)
-	this.server_time = data.t;
-	//Update our local offset time from the last server update
-	this.client_time = this.server_time - (this.net_offset/1000);
-
-	//window.console.log('Pre Parsed' + data.hh);
+	this.server_time = data.t; //Store the server time (this is offset by the latency in the network, by the time we get it)
+	this.client_time = this.server_time - (this.net_offset/1000); //Update our local offset time from the last server update
 
 	data = JSON.parse(data);
-
-	//window.console.log('JSON Parsed' + data.hh);
-
 	// Store server's last state
 	this.turn = data.tu;
 	this.board.board_state = data.bo;
@@ -962,14 +1097,13 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	this.client_update(true);
 }; //game_core.client_onserverupdate_recieved
 
+//require('test_file.js');
+
 game_core.prototype.client_update = function(visual_change) {
 	// Only do if something has changed?
 	//window.console.log('hmmm' + !node || this.server);
 
-	this.client_handle_input(); //Capture inputs from the player
-
 	if (visual_change){
-		window.console.log('hmmm');
 		this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
 		this.client_draw_info(); //draw help/information if required
 
@@ -978,8 +1112,6 @@ game_core.prototype.client_update = function(visual_change) {
 		this.players.other.draw(); // draw other player (post server update)
 		this.players.self.draw(); //Draw self
 	}
-	//Work out the fps average
-	this.client_refresh_fps();
 }; //game_core.update_client
 
 game_core.prototype.create_timer = function(){
@@ -994,53 +1126,28 @@ game_core.prototype.client_create_ping_timer = function() {
 	//Set a ping timer to 1 second, to maintain the ping/latency between
 	//client and server and calculated roughly how our connection is doing
 	setInterval(function(){
-		this.last_ping_time = new Date().getTime() - this.fake_lag;
+		this.last_ping_time = new Date().getTime();
 		this.socket.send('p.' + (this.last_ping_time) );
 
 	}.bind(this), 1000);
 }; //game_core.client_create_ping_timer
 
 game_core.prototype.client_create_configuration = function() {
-	this.show_help = false;             //Whether or not to draw the help text
-	this.naive_approach = false;        //Whether or not to use the naive approach
-	this.show_server_pos = false;       //Whether or not to show the server position
-	this.show_dest_pos = false;         //Whether or not to show the interpolation goal
-	this.client_predict = true;         //Whether or not the client is predicting input
 	this.input_seq = 0;                 //When predicting client inputs, we store the last input as a sequence number
-	this.client_smoothing = true;       //Whether or not the client side prediction tries to smooth things out
-	this.client_smooth = 25;            //amount of smoothing to apply to client update dest
 
 	this.net_latency = 0.001;           //the latency between the client and the server (ping/2)
 	this.net_ping = 0.001;              //The round trip time from here to the server,and back
 	this.last_ping_time = 0.001;        //The time we last sent a ping
-	this.fake_lag = 0;                //If we are simulating lag, this applies only to the input client (not others)
-	this.fake_lag_time = 0;
 
 	this.net_offset = 100;              //100 ms latency between server and client interpolation for other clients
-	this.buffer_size = 2;               //The size of the server history to keep for rewinding/interpolating.
-	this.target_time = 0.01;            //the time where we want to be in the server timeline
-	this.oldest_tick = 0.01;            //the last time tick we have available in the buffer
 
 	this.client_time = 0.01;            //Our local 'clock' based on server time - client interpolation(net_offset).
 	this.server_time = 0.01;            //The time the server reported it was at, last we heard from it
-	
-	this.dt = 0.016;                    //The time that the last frame took to run
-	this.fps = 0;                       //The current instantaneous fps (1/this.dt)
-	this.fps_avg_count = 0;             //The number of samples we have taken for fps_avg
-	this.fps_avg = 0;                   //The current average fps displayed in the debug UI
-	this.fps_avg_acc = 0;               //The accumulation of the last avgcount fps samples
 
 	this.lit = 0;
 	this.llt = new Date().getTime();
 
 }; //game_core.client_create_configuration
-
-game_core.prototype.client_reset_positions = function() {
-	var player_host = this.players.self.host ?  this.players.self : this.players.other;
-	var player_client = this.players.self.host ?  this.players.other : this.players.self;
-
-	//removed pos resets
-}; //game_core.client_reset_positions
 
 game_core.prototype.client_onreadygame = function(data) {
 	var server_time = parseFloat(data.replace('-','.'));
@@ -1058,33 +1165,15 @@ game_core.prototype.client_onreadygame = function(data) {
 }; //client_onreadygame
 
 game_core.prototype.client_onjoingame = function(data) {
-	//We are not the host
-	this.players.self.host = false;
-	//Update the local state
-	this.players.self.state = 'connected.joined.waiting';
-
-	//Make sure the positions match servers and other clients
-	this.client_reset_positions();
-
+	this.players.self.host = false; //We are not the host
+	this.players.self.state = 'connected.joined.waiting'; // Update state
 }; //client_onjoingame
 
 game_core.prototype.client_onhostgame = function(data) {
-	//The server sends the time when asking us to host, but it should be a new game.
-	//so the value will be really small anyway (15 or 16ms)
-	var server_time = parseFloat(data.replace('-','.'));
-
-	//Get an estimate of the current time on the server
-	this.local_time = server_time + this.net_latency;
-
-	//Set the flag that we are hosting, this helps us position respawns correctly
-	this.players.self.host = true;
-
-	//Update debugging information to display state
-	this.players.self.state = 'hosting.waiting for a player';
-
-	//Make sure we start in the correct place as the host.
-	this.client_reset_positions();
-
+	var server_time = parseFloat(data.replace('-','.')); //The server sends the time when asking us to host, but it should be a new game. so the value will be really small anyway (15 or 16ms)
+	this.local_time = server_time + this.net_latency; //Get an estimate of the current time on the server
+	this.players.self.host = true; //Flag self as host
+	this.players.self.state = 'hosting.waiting for a player'; //Update debugging information to display state
 }; //client_onhostgame
 
 game_core.prototype.client_onconnected = function(data) {
@@ -1134,349 +1223,30 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-		//Store a local reference to our connection to the server
-		if (!node || this.server) {
-			this.socket = io.connect();
-		} else {
-			this.socket = io.connect('http://192.168.1.2:4004');
-		}
+	//Store a local reference to our connection to the server
+	/*if (!node || this.server) {
+		this.socket = io.connect();
+	} else {*/
+		this.socket = io.connect('http://192.168.1.2:4004');
+	//}
 
-		//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
-		this.socket.on('connect', function(){
-			this.players.self.state = 'connecting';
-		}.bind(this));
+	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
+	this.socket.on('connect', function(){
+		this.players.self.state = 'connecting';
+	}.bind(this));
 
-		
-		this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
-		this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
-		this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
-		this.socket.on('error', this.client_ondisconnect.bind(this)); 						// Error -> not connected for now
-		this.socket.on('message', this.client_onnetmessage.bind(this)); 					// Parse message from server, send to handlers
-
+	
+	this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
+	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
+	this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
+	this.socket.on('error', this.client_ondisconnect.bind(this)); 						// Error -> not connected for now
+	this.socket.on('message', this.client_onnetmessage.bind(this)); 					// Parse message from server, send to handlers
 }; //game_core.client_connect_to_server
 
-game_core.prototype.client_refresh_fps = function() {
-	//We store the fps for 10 frames, by adding it to this accumulator
-	this.fps = 1/this.dt;
-	this.fps_avg_acc += this.fps;
-	this.fps_avg_count++;
-
-	//When we reach 10 frames we work out the average fps
-	if(this.fps_avg_count >= 10) {
-		this.fps_avg = this.fps_avg_acc/10;
-		this.fps_avg_count = 1;
-		this.fps_avg_acc = this.fps;
-
-	} //reached 10 frames
-
-}; //game_core.client_refresh_fps
-
 game_core.prototype.client_draw_info = function() {
-	this.ctx.fillStyle = 'rgba(255,255,255,0.3)'; //We don't want this to be too distracting
-
-	//They can hide the help with the debug GUI
-	if (this.show_help) {
-		this.ctx.fillText('net_offset : local offset of others players and their server updates. Players are net_offset "in the past" so we can smoothly draw them interpolated.', 10 , 30);
-		this.ctx.fillText('server_time : last known game time on server', 10 , 70);
-		this.ctx.fillText('client_time : delayed game time on client for other players only (includes the net_offset)', 10 , 90);
-		this.ctx.fillText('net_latency : Time from you to the server. ', 10 , 130);
-		this.ctx.fillText('net_ping : Time from you to the server and back. ', 10 , 150);
-		this.ctx.fillText('fake_lag : Add fake ping/lag for testing, applies only to your inputs (watch server_pos block!). ', 10 , 170);
-		this.ctx.fillText('client_smoothing/client_smooth : When updating players information from the server, it can smooth them out.', 10 , 210);
-		this.ctx.fillText('This only applies to other clients when prediction is enabled, and applies to local player with no prediction.', 170 , 230);
-
-	} //if this.show_help
-
-	//Draw some information for the host
-	if (this.players.self.host) {
+	if (this.players.self.host) {  // If host
 		this.ctx.fillStyle = 'rgba(255,255,255,0.7)';
 		this.ctx.fillText('You are the host', 10 , 465);
-
-	} //if we are the host
-
-	//Reset the style back to full white.
-	this.ctx.fillStyle = 'rgba(255,255,255,1)';
-
+	}
+	this.ctx.fillStyle = 'rgba(255,255,255,1)'; //reset
 }; //game_core.client_draw_help
-
-// Resolve card effects
-game_core.prototype.resolve_card = function(card, player) {
-	// Check for discard
-	if (player.player_state.discarding > 0) {
-		player.player_state.discarding--;
-		return;
-	}
-
-	cardEffects = [];
-	for (var j = 0; j < cards.length; j++){
-		if (cards[j].name === card){
-			cardEffects = cards[j].effects;
-		}
-	}
-
-	var conditionIf = new RegExp("^if$", "i"),
-		conditionLeast = new RegExp("^least$", "i"),
-		deal = new RegExp("^deal$|^damage$", "i");     // ^x$ dictates explicit regex matching
-		destroy = new RegExp("^destroy$|^remove$", "i"),
-		draw = new RegExp("^draw$|^draws$", "i"),
-		one = new RegExp("^a$|^1$", "i"),
-		every = new RegExp("^all$|^every$", "i"),
-		endTurn = new RegExp("^end$", "i"),
-		targetSelf = new RegExp("^you$|^your$|^yours$", "i"),
-		targetEnemy = new RegExp("^enemy$|^opponent$", "i"),
-		freeze = new RegExp("^freeze$", "i"),
-		thaw = new RegExp("^thaw$", "i"),
-		shield = new RegExp("^shield$|^shields$", "i"),
-		block = new RegExp("^block$", "i"),
-		discard = new RegExp("^discard$", "i"),
-		piece = new RegExp("^piece$|pieces$", "i"),
-		hand = new RegExp("^hand$|^hands$", "i");
-		//= new RegExp("", "i"),
-
-	//window.console.log(card);
-	//window.console.log(cardEffects);
-
-	for (var i = 0; i < cardEffects.length; i++){
-		window.console.log(card + ' -> ' + cardEffects[i]);
-		var effect = cardEffects[i].split(' ');
-
-		if (effect[0] && effect[0].match(endTurn)) { // End turn
-			window.console.log("End turn");
-			player.player_state.cards_to_play = 0;
-			player.player_state.pieces_to_play = 0;
-		} else if (effect[0] && effect[0].match(deal)) { // Dealing damage
-			if (effect[1] && effect[1].match(one)){ // Damage one
-				if (effect[4] && effect[4].match(targetSelf)){
-					window.console.log("Target self");
-					player.player_state.damagingS = 1;
-				} else if (effect[4] && effect[4].match(targetEnemy)){
-					window.console.log("Target enemy");
-					player.player_state.damagingE = 1;
-				} else {
-					player.player_state.damagingA = 1;
-				}
-			} else if (effect[1] && effect[1].match(every)) { // Damage all
-				window.console.log("Damaging all!");
-				for (var k = 0; k < 4; k++) {
-					for (var l = 0; l < 4; l++) {
-						if (this.board.board_state.shields[k][l] === 1) {
-							this.board.board_state.shields[k][l] = 0;
-						} else if (this.board.board_state.results[k][l] !== 0) {
-							this.board.board_state.results[k][l] = 0;
-						}
-					}
-				}
-			} else { // else damage many
-				if (effect[4] && effect[4].match(targetSelf)) {
-					window.console.log("Target self");
-					player.player_state.damagingS = effect[1];
-				} else if (effect[4] && effect[4].match(targetEnemy)){
-					window.console.log("Target enemy");
-					player.player_state.damagingE = effect[1];
-				} else {
-					player.player_state.damagingA = effect[1];
-				}
-			}
-		} else if (effect[0] && effect[0].match(destroy)) { // Destroying piece or shield
-			if (effect[2] && effect[2].match(shield)){ //if shield
-				if (effect[1] && effect[1].match(one)){
-					window.console.log("deshield 1");
-					player.player_state.deshielding = 1;
-				} else if (effect[1] && effect[1].match(every)) { // Deshield all
-					window.console.log("Unshielding all!");
-					for (var k = 0; k < 4; k++) {
-						for (var l = 0; l < 4; l++) {
-							this.board.board_state.shields[k][l] = 0;
-						}
-					}
-				} else { //else deshield many
-					window.console.log("deshield lots");
-					deshielding = effect[1];
-				}
-			} else { //
-				if (effect[1] && effect[1].match(one)){
-					if (effect[4] && effect[4].match(targetSelf)) {
-						window.console.log("Target self");
-						player.player_state.destroyingS = 1;
-					}  else if (effect[4] && effect[4].match(targetEnemy)){
-						window.console.log("Target enemy");
-						player.player_state.destroyingE = 1;
-					} else {
-						window.console.log("Destroying one piece");
-						player.player_state.destroyingA = 1;
-					}
-				} else if (effect[1] && effect[1].match(every)) { // Destroy all
-					window.console.log('Destroy all pieces');
-					for (var k = 0; k < 4; k++){ 
-						for (var l = 0; l < 4; l++){
-							this.board.board_state.results[k][l] = 0;
-							this.board.board_state.shields[k][l] = 0;
-						}
-					}
-				} else { //else many
-					if (effect[4] && effect[4].match(targetSelf)) {
-						window.console.log("Target self");
-						player.player_state.destroyingS = effect[1];
-					} else if (effect[4] && effect[4].match(targetEnemy)){
-						window.console.log("Target enemy");
-						player.player_state.destroyingE = effect[1];
-					} else {
-						player.player_state.destroyingA = effect[1];
-					}
-				}
-			}
-		} else if (effect[0] && effect[0].match(draw)){ // Drawing cards
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				window.console.log("Draw card");
-				if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-					player.hand.push(player.deck[0]);
-					player.deck.splice(0, 1);
-				} else {
-					window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
-				}
-			} else { //else many
-				window.console.log("Draw card");
-				for (var i = 0; i < effect[1]; i++) {
-					if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-						player.hand.push(player.deck[0]);
-						player.deck.splice(0, 1);
-					} else {
-						window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
-					}
-				}
-			}
-		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
-			window.console.log(effect[1]);
-			window.console.log(effect[1].match(one));
-
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				window.console.log("Doing a single frost... spoopy!");
-				player.player_state.freezing = 1;
-			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
-				window.console.log("Freezing all!");
-				for (var i = 0; i < 4; i++) {
-					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
-							this.board.board_state.frost[i][j] = 4;
-						}
-					}
-				}
-			} else { //else many
-				player.player_state.freezing = effect[1];
-			}
-		} else if (effect[0] && effect[0].match(thaw)){ // Thaw
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				window.console.log("Thawing a square");
-				player.player_state.thawing = 1;
-			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
-				window.console.log("Thawing all squares");
-				for (var i = 0; i < 4; i++) {
-					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.frost[i][j] >= 1) {
-							this.board.board_state.frost[i][j] = 0;
-						}
-					}
-				}
-			} else { //else many
-				window.console.log("Thawing some squares");
-				player.player_state.thawing = effect[1];
-			}
-		} else if (effect[0] && effect[0].match(block)){ // Block/Rock
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				window.console.log("Doing a single block");
-				player.player_state.blocking = 1;
-			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
-				window.console.log("Blocking all!");
-				for (var i = 0; i < 4; i++) {
-					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0) {
-							this.board.board_state.rock[i][j] = 6;
-						}
-					}
-				}
-			} else { //else many
-				player.player_state.blocking = effect[1];
-			}
-		} else if (effect[0] && effect[0].match(shield)){ // Shielding
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				window.console.log("Doing a shield");
-				player.player_state.shielding = 1;
-			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
-				window.console.log("Shielding all!");
-				for (var i = 0; i < 4; i++) {
-					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.shields[i][j] === 0) {
-							this.board.board_state.shields[i][j] = 1;
-						}
-					}
-				}
-			} else { //else many
-				window.console.log("Shielding many!");
-				player.player_state.shielding = effect[1];
-			}
-		} else if (effect[0] && effect[0].match(discard)){ //Discarding
-			window.console.log("Discarding");
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.discarding++;
-			} else if (effect[1] && effect[1].match(every)) {
-				window.console.log("Discarding all");
-				player.hand = [];
-			} else {
-				player.player_state.discarding = player.player_state.discarding + effect[1]; // Discarding some
-			}
-		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
-			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
-				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
-					window.console.log("Your enemy draws cards")
-					var playerEnemy = 1; 
-					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-						window.console.log("Enemy draws 1");
-						if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-							player.hand.push(player.deck[0]);
-							player.deck.splice(0, 1);
-						} else {
-							window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
-						}
-					} else {
-						window.console.log("Enemy draws many");
-						for (var i = 0; i < effect[1]; i++) {
-							if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-								player.hand.push(player.deck[0]);
-								player.deck.splice(0, 1);
-							} else {
-								window.console.log("Hand full - " + player.deck.length + ", " + player.hand.length);
-							}
-						}
-					}
-				}
-			}
-		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
-			window.console.log("Doing an if");
-			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
-				if (effect[4] && effect[4].match(conditionLeast)) {
-					if (effect[5] && effect[5].match(piece)) {
-						var piece_counter = 0;
-						for (var i = 0; i < 4; i++) {
-							for (var j = 0; j < 4; j++) {
-								piece_counter = piece_counter + this.board.board_state.results[i][j];
-							}
-						}
-						/*
-						#TODO
-						window.console.log(player + ' vs. ' + piece_counter)
-						window.console.log(this.players.self.host + ' vs. ' + piece_counter)
-
-						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
-							player.hand.push(card);
-						}*/
-					} else if (effect[3] && effect[3].match(shield)) {
-						player.hand.push(card);
-					}
-				}
-			}
-		} else {
-			//do nothing
-		} 
-	}
-
-}

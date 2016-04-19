@@ -59,11 +59,7 @@ game_server.onInput = function(client, parts) {
 	var input_time = parts[2].replace('-','.');
 	var input_seq = parts[3];
 
-	window.console.log('handling input > ' + input_commands[0]);
-	//window.console.log(client);
-	//window.console.log("arghhhhh");
-
-	//this.gamecore.server_update();
+	//window.console.log('handling input > ' + input_commands[0]);
 
 	//the client should be in a game, so we can tell that game to handle the input
 	if(client && client.game && client.game.gamecore) {

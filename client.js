@@ -39,12 +39,12 @@ window.onload = function(){
 		var mx = event.clientX,
 			my = event.clientY,
 			shapes = [game.board];
-		shapes = shapes.concat(game.end_turn_button, game.players.self.hand/*, game.players.other.hand*/); // create array of all clickable objects
+			shapes = shapes.concat(game.end_turn_button, game.players.self.hand);
 
 		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
-			//window.console.log(shapes[i].contains(mx, my));
 		  	if (shapes[i].contains(mx, my)) {
-		  		input = '';
+		  		var input = '';
+
 		  		if (shapes[i] === game.board) {
 		  			if (game.players.self.player_state.pieces_to_play > 0) {
 		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
@@ -56,23 +56,10 @@ window.onload = function(){
 		  				input = 'ca-' + shapes[i].cardName;
 		  			}
 		  		}
-				var mySel = shapes[i];
-
-				window.console.log('pushing clicked input > ' + input);
-
 				// Process input
 				game.input_seq += 1;
-				game.players.self.inputs.push({
-					inputs : input,
-					time : game.local_time.fixed(3),
-					seq : game.input_seq
-				});
 				//Send inputs
-				var server_packet = 'i.';
-					server_packet += input + '.';
-					server_packet += game.local_time.toFixed(3).replace('.','-') + '.';
-					server_packet += game.input_seq;
-
+				var server_packet = 'i.' + input + '.' + game.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
 				game.socket.send( server_packet );
 
 				return;
