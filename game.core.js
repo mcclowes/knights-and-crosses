@@ -5,27 +5,25 @@ var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800,
-	serverIP = '10.245.145.51:4004';
+	serverIP = 'http://10.245.145.51:4004';
 
 // Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
 var node = (typeof module !== 'undefined' && module.exports)
 
-/*if (node) {
+if (node) {
 	console.log("shouldn't be here" + this.server);
 	var io = require('socket.io-client');
 	//DEBUG=socket.io:* node index.js
 	global.window = global.document = global;
-}*/
+}
 
 //console.log(!node || this.server);
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
 if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
-
-//console.log(window);
 
 // Manages frames/animation
 ( function () {
@@ -1219,13 +1217,15 @@ game_core.prototype.client_ondisconnect = function(data) {
 
 game_core.prototype.client_connect_to_server = function() {
 	console.log('Trying to connect to ' + serverIP + '...');
-	try {
-		this.socket = io.connect(serverIP); //Store a local reference to our connection to the server
-	} catch(err) {
-		console.log(err);
-		console.log('nooo');
-		this.socket = undefined;
+
+	if (node) {
+		console.log("shouldn't be here" + this.server);
+		//io = require('socket.io-client')(serverIP);
+		io = require('socket.io-client');
 	}
+
+	this.socket = io.connect(serverIP); //Store a local reference to our connection to the server
+	console.log(this.socket);
 
 	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
 	this.socket.on('connect', function(){
