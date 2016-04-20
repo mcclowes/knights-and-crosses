@@ -43,7 +43,7 @@ window.onload = function(){
 		  		var input = '';
 
 		  		if (shapes[i] === game.board) {
-		  			if (game.players.self.player_state.pieces_to_play > 0) {
+		  			if (game.players.self.player_state.pieces_to_play > 0 || game.players.self.player_state.destroyingA > 0 || game.players.self.player_state.destroyingE > 0 || game.players.self.player_state.destroyingS > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.damagingE > 0 || game.players.self.player_state.damagingS > 0 || game.players.self.player_state.thawing > 0 || game.players.self.player_state.blocking > 0 || game.players.self.player_state.shielding > 0 || game.players.self.player_state.deshielding > 0) {
 		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
 		  			}
 		  		} else if (shapes[i] === game.end_turn_button) {

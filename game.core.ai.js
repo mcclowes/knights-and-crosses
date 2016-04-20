@@ -191,6 +191,19 @@ game_board.prototype.checkDiagonals = function(){
 	}
 };
 
+game_board.prototype.checkFreeSquare = function(){
+	var space = 0;
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board_state.results[i][j] === 0 && this.board_state.frost[i][j] === 0 && this.board_state.rock[i][j] === 0) {
+				space++;
+			}
+		}
+	}
+	console.log(space);
+	return space;
+}
+
 
 /*  -----------------------------  End turn button classs  -----------------------------  */
 
@@ -346,17 +359,18 @@ game_core.prototype.client_update = function() {
 
 	var input = '';
 
-	if (this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
+	//console.log(this.players.self.player_state);
+
+	if ( this.players.self.hand.length > 0 && (this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) ) {
 		var cardNumber = (Math.floor(Math.random() * this.players.self.hand.length) + 1);
 		if (this.players.self.hand[cardNumber]){
 			input = 'ca-' + this.players.self.hand[cardNumber].cardName;
 		}
-	} else if (this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
+	} else if ((this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0) || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
 		input = 'sq-' + (Math.floor(Math.random() * 4) + 1) + (Math.floor(Math.random() * 4) + 1);
-	} else {
-		input = 'en';
 	}
-	if (input === '') {
+
+	if (input === '') { // If no action possible...
 		input = 'en';
 	}
 

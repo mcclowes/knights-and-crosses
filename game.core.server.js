@@ -352,10 +352,14 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				blocking 		: 0
 			}
 
-			console.log("Win? >>> " + this.board.check_win());
-
-			if (this.board.check_win() !== undefined){ //check for win
+			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length) || (this.players.self.deck.length === 0 && this.players.self.hand.length) ){ //check for win
 				this.win = this.board.check_win();
+				console.log("Win? >>> " + this.win);
+				//send server message s.e.
+				this.server.endGame(this.instance, this.players.self);
+				this.server.endGame(this.instance, this.players.other);
+				this.server.findGame(this.players.self);
+				this.server.findGame(this.players.other);
 			} else {
 				this.board.reduce_state();
 
