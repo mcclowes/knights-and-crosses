@@ -5,17 +5,19 @@ var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800,
-	serverIP = 'http://192.168.1.2:4004';
+	serverIP = '10.245.145.51:4004';
 
 // Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
 var node = (typeof module !== 'undefined' && module.exports)
 
-if (node) {
+/*if (node) {
+	console.log("shouldn't be here" + this.server);
 	var io = require('socket.io-client');
+	//DEBUG=socket.io:* node index.js
 	global.window = global.document = global;
-}
+}*/
 
 //console.log(!node || this.server);
 
@@ -752,38 +754,22 @@ game_core.prototype.resolve_square = function(row, col, player) {
 	//console.log('Target square >>> ' + row + ', ' + col);
 	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
 		if (this.board.board_state.results[row][col] !== 0) { // Piece
-			if (player.player_state.destroyingA > 0) { //Destroying enemy
-				this.board.board_state.results[row][col] = 0;
-				this.board.board_state.shields[row][col] = 0;
-				player.player_state.destroyingA--;
+			if (player.player_state.destroyingS > 0) { //Destroying
+				if (this.board.board_state.results[row][col] === this.currentPlayer) {
+					this.board.board_state.results[row][col] = 0;
+					this.board.board_state.shields[row][col] = 0;
+					player.player_state.destroyingS--;
+				}
 			} else if (player.player_state.destroyingE > 0) { //Destroying enemy
 				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingE--;
 				}
-			} else if (player.player_state.destroyingS > 0) { //Destroying
-				if (this.board.board_state.results[row][col] === this.currentPlayer) {
-					this.board.board_state.results[row][col] = 0;
-					this.board.board_state.shields[row][col] = 0;
-					player.player_state.destroyingS--;
-				}
-			} else if (player.player_state.damagingA > 0) { //Damaging
-				if (this.board.board_state.shields[row][col] === 1) {
-					this.board.board_state.shields[row][col] = 0;
-				} else {
-					this.board.board_state.results[row][col] = 0;
-				}
-				player.player_state.damagingA--;
-			} else if (player.player_state.damagingE > 0) { //Damaging
-				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
-					if (this.board.board_state.shields[row][col] === 1) {
-						this.board.board_state.shields[row][col] = 0;
-					} else {
-						this.board.board_state.results[row][col] = 0;
-					}
-					player.player_state.damagingE--;
-				}
+			} else if (player.player_state.destroyingA > 0) { //Destroying enemy
+				this.board.board_state.results[row][col] = 0;
+				this.board.board_state.shields[row][col] = 0;
+				player.player_state.destroyingA--;
 			} else if (player.player_state.damagingS > 0) { //Damaging
 				if (this.board.board_state.results[row][col] === this.currentPlayer) {
 					if (this.board.board_state.shields[row][col] === 1) {
@@ -793,6 +779,22 @@ game_core.prototype.resolve_square = function(row, col, player) {
 					}
 					player.player_state.damagingS--;
 				}
+			} else if (player.player_state.damagingE > 0) { //Damaging
+				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
+					if (this.board.board_state.shields[row][col] === 1) {
+						this.board.board_state.shields[row][col] = 0;
+					} else {
+						this.board.board_state.results[row][col] = 0;
+					}
+					player.player_state.damagingE--;
+				}
+			} else if (player.player_state.damagingA > 0) { //Damaging
+				if (this.board.board_state.shields[row][col] === 1) {
+					this.board.board_state.shields[row][col] = 0;
+				} else {
+					this.board.board_state.results[row][col] = 0;
+				}
+				player.player_state.damagingA--;
 			} else if (player.player_state.shielding > 0) {
 				this.board.board_state.shields[row][col] = 1;
 				player.player_state.shielding--;

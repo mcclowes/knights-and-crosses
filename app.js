@@ -28,7 +28,7 @@ require('dns').lookup(require('os').hostname(), function (err, add, fam) {
 //By default, we forward the / path to index.html automatically.
 app.get( '/', function( req, res ){
     console.log('trying to load %s', __dirname + '/index.html');
-    res.sendfile( '/index.html' , { root:__dirname });
+    res.sendFile( '/index.html' , { root:__dirname });
 });
 
 //This handler will listen for requests on /*, any file from the root of our server.
@@ -39,14 +39,13 @@ app.get( '/*' , function( req, res, next ) {
     //For debugging, we can track what files are requested.
     if(verbose) console.log('\t :: Express :: file requested : ' + file);
     //Send the requesting client the file.
-    res.sendfile( __dirname + '/' + file );
+    res.sendFile( __dirname + '/' + file );
 }); //app.get *
 
 
 /* Socket.IO server set up. */
 //Express and socket.io can work together to serve the socket.io client files for you.
 //This way, when the client requests '/socket.io/' files, socket.io determines what the client needs.
-
 var sio = io.listen(server, {
     'log level'     : 0,
     'authorization' : function (handshakeData, callback) {
