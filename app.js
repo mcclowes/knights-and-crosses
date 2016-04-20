@@ -1,7 +1,36 @@
-var io = require('socket.io').listen(3013),
-    UUID            = require('node-uuid');
+var io              = require('socket.io').listen(3013),
+    UUID            = require('node-uuid'),
+    gameport        = process.env.PORT || 3014,
+    address         = 'http://localhost',
+    express         = require('express'),
+    verbose         = true,
+    http            = require('http'),
+    app             = express(),
+    server          = http.createServer(app),
+    game_server     = require('./game.server.js');
 
-game_server = require('./game.server.js');
+server.listen(gameport)
+
+//Tell the server to listen for incoming connections
+console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
+
+//By default, we forward the / path to index.html automatically.
+app.get( '/', function( req, res ){
+    console.log('trying to load %s', __dirname + '/index.html');
+    res.sendFile( '/index.html' , { root:__dirname });
+});
+
+//This handler will listen for requests on /*, any file from the root of our server.
+app.get( '/*' , function( req, res, next ) {
+    var file = req.params[0]; // Current file they have requested
+    if(verbose) console.log('\t :: Express :: file requested : ' + file); //For debugging, we can track what files are requested.
+    res.sendFile( __dirname + '/' + file ); //Send the requesting client the file.
+}); //app.get *
+
+var sio = io.listen(server);
+
+//Express and socket.io can work together to serve the socket.io client files for you.
+//This way, when the client requests '/socket.io/' files, socket.io determines what the client needs.
 
 io.sockets.on('connection', function (client) {
     //Generate a new UUID, looks something like 5b2ca132-64bd-4513-99da-90e838ca47d1 and store this on their socket/connection
@@ -31,37 +60,3 @@ io.sockets.on('connection', function (client) {
         } //client.game_id
     }); //client.on disconnect
 }); //sio.sockets.on connection
-
-
-var gameport        = process.env.PORT || 3014,
-    address         = 'http://localhost',
-
-    io              = require('socket.io'),
-    express         = require('express'),
-
-    verbose         = true,
-    http            = require('http'),
-    app             = express(),
-    server          = http.createServer(app);
-
-server.listen(gameport)
-
-//Tell the server to listen for incoming connections
-console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
-
-//By default, we forward the / path to index.html automatically.
-app.get( '/', function( req, res ){
-    console.log('trying to load %s', __dirname + '/index.html');
-    res.sendFile( '/index.html' , { root:__dirname });
-});
-
-//This handler will listen for requests on /*, any file from the root of our server.
-app.get( '/*' , function( req, res, next ) {
-    var file = req.params[0]; // Current file they have requested
-    if(verbose) console.log('\t :: Express :: file requested : ' + file); //For debugging, we can track what files are requested.
-    res.sendFile( __dirname + '/' + file ); //Send the requesting client the file.
-    console.log('Heeeeere');
-}); //app.get *
-
-//Express and socket.io can work together to serve the socket.io client files for you.
-//This way, when the client requests '/socket.io/' files, socket.io determines what the client needs.
