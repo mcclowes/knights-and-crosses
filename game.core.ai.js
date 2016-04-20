@@ -10,8 +10,6 @@ var maxHandSize = 10,
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
 //var node = (typeof module !== 'undefined' && module.exports)
-var io = require('socket.io-client');
-global.window = global.document = global;
 
 //console.log(!node || this.server);
 
@@ -24,22 +22,22 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 	var lastTime = 0;
 	var vendors = [ 'ms', 'moz', 'webkit', 'o' ];
 
-	for ( var x = 0; x < vendors.length && !window.requestAnimationFrame; ++ x ) {
-		window.requestAnimationFrame = window[ vendors[ x ] + 'RequestAnimationFrame' ];
-		window.cancelAnimationFrame = window[ vendors[ x ] + 'CancelAnimationFrame' ] || window[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
+	for ( var x = 0; x < vendors.length && !global.requestAnimationFrame; ++ x ) {
+		global.requestAnimationFrame = global[ vendors[ x ] + 'RequestAnimationFrame' ];
+		global.cancelAnimationFrame = global[ vendors[ x ] + 'CancelAnimationFrame' ] || global[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
 	}
 
-	if ( !window.requestAnimationFrame ) {
-		window.requestAnimationFrame = function ( callback, element ) {
+	if ( !global.requestAnimationFrame ) {
+		global.requestAnimationFrame = function ( callback, element ) {
 			var currTime = Date.now(), timeToCall = Math.max( 0, frame_time - ( currTime - lastTime ) );
-			var id = window.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
+			var id = global.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
 			lastTime = currTime + timeToCall;
 			return id;
 		};
 	}
 
-	if ( !window.cancelAnimationFrame ) {
-		window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
+	if ( !global.cancelAnimationFrame ) {
+		global.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
 	}
 }() );
 
@@ -283,12 +281,12 @@ game_core.prototype.update = function(t) {
 	this.client_update();
 
 	//schedule the next update
-	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
+	this.updateid = global.requestAnimationFrame( this.update.bind(this), this.viewport );
 }; //game_core.update
 
 //For the server, we need to cancel the setTimeout that the polyfill creates
 game_core.prototype.stop_update = function() { 
-	window.cancelAnimationFrame( this.updateid );  
+	global.cancelAnimationFrame( this.updateid );  
 };
 
 /*  -----------------------------  Shared between server and client.  -----------------------------  
@@ -340,8 +338,6 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 //require('test_file.js');
 
 game_core.prototype.client_update = function() {
-	console.log('boop');
-
 	// AI Psuedo code
 	/*while no player has won: 
 		//Calculate current game state 
@@ -481,16 +477,16 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-	this.socket = io.connect('http://10.245.145.51:4004'); //Store a local reference to our connection to the server
+	//this.socket = io.connect('http://10.245.145.51:4004'); //Store a local reference to our connection to the server
 
 	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
-	this.socket.on('connect', function(){
+	/*this.socket.on('connect', function(){
 		this.players.self.state = 'connecting';
-	}.bind(this));
-
+	}.bind(this));*/
+/*
 	this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
 	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
 	this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
 	this.socket.on('error', this.client_ondisconnect.bind(this)); 						// Error -> not connected for now
-	this.socket.on('message', this.client_onnetmessage.bind(this)); 					// Parse message from server, send to handlers
+	this.socket.on('message', this.client_onnetmessage.bind(this)); 	*/				// Parse message from server, send to handlers
 }; //game_core.client_connect_to_server
