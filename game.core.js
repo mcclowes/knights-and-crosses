@@ -14,6 +14,7 @@ var node = (typeof module !== 'undefined' && module.exports)
 
 if (node) {
 	var io = require('socket.io-client');
+	global.window = global.document = global;
 }
 
 //console.log(!node || this.server);
@@ -21,6 +22,8 @@ if (node) {
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
 if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
+
+//console.log(window);
 
 // Manages frames/animation
 ( function () {
@@ -45,7 +48,6 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 		window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
 	}
 }() );
-
 
 /*  -----------------------------  Helper Functions  -----------------------------  */
 
@@ -670,7 +672,6 @@ game_core.prototype.server_update = function(){
 
 //Handle server input (input into the server, from a client)
 game_core.prototype.handle_server_input = function(client, input, input_time, input_seq) {
-	console.log(input);
 	//Fetch which client this refers to out of the two
 	var player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
 	var player_other = (client.userid == this.players.self.instance.userid) ?  this.players.other : this.players.self;
@@ -1215,8 +1216,14 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-	
-	this.socket = io.connect(serverIP); //Store a local reference to our connection to the server
+	console.log('Trying to connect to ' + serverIP + '...');
+	try {
+		this.socket = io.connect(serverIP); //Store a local reference to our connection to the server
+	} catch(err) {
+		console.log(err);
+		console.log('nooo');
+		this.socket = undefined;
+	}
 
 	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
 	this.socket.on('connect', function(){

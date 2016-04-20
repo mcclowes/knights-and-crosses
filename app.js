@@ -21,7 +21,6 @@ var gameport        = process.env.PORT || 4004,
 require('dns').lookup(require('os').hostname(), function (err, add, fam) {
     address = add;
     server.listen(gameport, address);
-    //Log something so we know that it succeeded.
     console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
 
 })
@@ -47,17 +46,13 @@ app.get( '/*' , function( req, res, next ) {
 /* Socket.IO server set up. */
 //Express and socket.io can work together to serve the socket.io client files for you.
 //This way, when the client requests '/socket.io/' files, socket.io determines what the client needs.
-//Create a socket.io instance using our express server
-var sio = io.listen(server);
 
-//Configure the socket.io connection settings. See http://socket.io/
-sio.configure(function (){
-    sio.set('log level', 0);
-    sio.set('authorization', function (handshakeData, callback) {
+var sio = io.listen(server, {
+    'log level'     : 0,
+    'authorization' : function (handshakeData, callback) {
         callback(null, true); // error first callback style
-    });
-
-});
+    }
+} );
 
 //Enter the game server code. The game server handles client connections looking for a game, creating games,
 //leaving games, joining games and ending games when they leave.

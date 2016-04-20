@@ -3,14 +3,11 @@ var game = {};
 
 //When loading, we store references to our drawing canvases, and initiate a game instance.
 window.onload = function(){
-	//Create our game client instance.
-	game = new game_core();
-	//Fetch the viewport (canvas)
+	game = new game_core(); // Create game
+	
 	game.viewport = document.getElementById('viewport');
-	//Adjust canvas size
-	game.viewport.width = game.world.width;
+	game.viewport.width = game.world.width; //Adjust canvas size
 	game.viewport.height = game.world.height;
-
 	game.ctx = game.viewport.getContext('2d');//Fetch the rendering contexts
 	game.ctx.font = '11px "Helvetica"'; //Set the draw style for the font
 
@@ -28,7 +25,7 @@ window.onload = function(){
 			}
 		}
 	}, true);
-	// Click detection (Only type of interaction)
+	// Handle click
 	game.ctx.canvas.addEventListener('click', function(e) { 
 		if (game.players.self.host === true && game.turn === -1) { // not players turn
 			return;
