@@ -1,4 +1,4 @@
-var	game_core		= require('./game.core.js');
+var	game_core		= require('./game.core.ai.js');
 
 global.window = global.document = global;
 

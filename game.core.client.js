@@ -4,20 +4,10 @@
 var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
-	canvasHeight = 800,
-	serverIP = 'http://10.245.145.51:4004';
+	canvasHeight = 800;
 
 // Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
-
-var node = (typeof module !== 'undefined' && module.exports)
-
-if (node) { // Handle node servers (primarily for AI instances)
-	var io = require('socket.io-client');
-	global.window = global.document = global;
-}
-
-//console.log(!node || this.server);
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -621,8 +611,6 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
 	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
 	this.server_time = data.t;   // our current local time on the server
-
-	this.client_update();
 }; //game_core.client_onserverupdate_recieved
 
 //require('test_file.js');
@@ -631,7 +619,6 @@ game_core.prototype.client_update = function() {
 	// Only do if something has changed?
 	//console.log('hmmm' + !node || this.server);
 	this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
-	this.client_draw_info(); //draw help/information if required
 
 	this.end_turn_button.draw();
 	this.board.draw(); // Draw board
@@ -659,19 +646,14 @@ game_core.prototype.client_create_ping_timer = function() {
 
 game_core.prototype.client_create_configuration = function() {
 	this.input_seq = 0;                 //When predicting client inputs, we store the last input as a sequence number
-
 	this.net_latency = 0.001;           //the latency between the client and the server (ping/2)
 	this.net_ping = 0.001;              //The round trip time from here to the server,and back
 	this.last_ping_time = 0.001;        //The time we last sent a ping
-
 	this.net_offset = 100;              //100 ms latency between server and client interpolation for other clients
-
 	this.client_time = 0.01;            //Our local 'clock' based on server time - client interpolation(net_offset).
 	this.server_time = 0.01;            //The time the server reported it was at, last we heard from it
-
 	this.lit = 0;
 	this.llt = new Date().getTime();
-
 }; //game_core.client_create_configuration
 
 game_core.prototype.client_onreadygame = function(data) {
@@ -682,7 +664,6 @@ game_core.prototype.client_onreadygame = function(data) {
 	this.local_time = server_time + this.net_latency;
 	console.log('server time is about ' + this.local_time);
 		
-	//Update their information
 	player_host.state = 'local_pos(hosting)';
 	player_client.state = 'local_pos(joined)';
 
@@ -748,12 +729,7 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-	if (node) {
-		console.log("shouldn't be here" + this.server);
-		io = require('socket.io-client')(serverIP);
-		//io = require('socket.io-client');
-	}
-
+	console.log(io);
 	this.socket = io.connect(); //Store a local reference to our connection to the server
 	console.log(this.socket);
 

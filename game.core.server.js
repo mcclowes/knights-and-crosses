@@ -4,20 +4,17 @@
 var frame_time = 60/1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
-	canvasHeight = 800,
-	serverIP = 'http://10.245.145.51:4004';
+	canvasHeight = 800;
 
 // Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
-var node = (typeof module !== 'undefined' && module.exports)
-
+//var node = (typeof module !== 'undefined' && module.exports)
+/*
 if (node) { // Handle node servers (primarily for AI instances)
 	var io = require('socket.io-client');
 	global.window = global.document = global;
-}
-
-//console.log(!node || this.server);
+}*/
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -68,66 +65,6 @@ var create_card_array = function(data) {
 var create_card = function(data) {
 	//Depends on format of input data
 	return data.cardName !== undefined ? new game_card(data.cardName) : new game_card(data);
-}
-
-// Create a rounded clipping area
-var roundedImage = function(x, y, width, height, radius){
-	game.ctx.beginPath();
-	game.ctx.moveTo(x + radius, y);
-	game.ctx.lineTo(x + width - radius, y);
-	game.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-	game.ctx.lineTo(x + width, y + height - radius);
-	game.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-	game.ctx.lineTo(x + radius, y + height);
-	game.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-	game.ctx.lineTo(x, y + radius);
-	game.ctx.quadraticCurveTo(x, y, x + radius, y);
-	game.ctx.closePath();
-}
-
-// Draw text in box
-// #TODO refactor this
-var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
-	var loutout_lines = function(ctx, mw, text) {
-		// We give a little "padding" This should probably be an input param but for the sake of simplicity we will keep it this way
-		mw = mw - 10;
-		var words = text.split(' ');
-		var new_line = words[0];
-		var lines = [];
-		for(var i = 1; i < words.length; ++i) {
-		   if (ctx.measureText(new_line + " " + words[i]).width < mw) {
-			   new_line += " " + words[i];
-		   } else {
-			   lines.push(new_line);
-			   new_line = words[i];
-		   }
-		}
-		lines.push(new_line);
-		return lines;
-	}
-
-	if (canvas) {
-		canvas.textAlign = "start"; 
-		canvas.fillStyle = 'rgba(200, 180, 140, 0.8)';
-		canvas.fillRect(x, y, w, h);
-		// Paint text
-		var lines = loutout_lines(canvas, w, text);
-		// Block of text height
-		var both = lines.length * (font_size + spl);
-		if (both >= h) {
-			// We won't be able to wrap the text inside the area the area is too small. We should inform the user  about this in a meaningful way
-		} else {
-			// We determine the y of the first line
-			var ly = (h - both)/2 + y + spl * lines.length;
-			var lx = 0;
-			for (var j = 0, ly; j < lines.length; ++j, ly+=font_size+spl) {
-				// We continue to centralize the lines
-				lx = x + w / 2 - canvas.measureText(lines[j]).width / 2;
-				game.ctx.fillStyle = 'rgba(0,0,0,1)';
-				canvas.fillText(lines[j], lx, ly);
-			}
-		}
-	}
 }
 
 
