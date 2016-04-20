@@ -3,13 +3,22 @@ var io              = require('socket.io').listen(3013),
     gameport        = process.env.PORT || 3014,
     address         = 'http://localhost',
     express         = require('express'),
-    verbose         = true,
+    verbose         = false,
     http            = require('http'),
     app             = express(),
     server          = http.createServer(app),
     game_server     = require('./game.server.js');
 
-server.listen(gameport)
+try {
+    require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+        server.listen(gameport, add);
+        address = add;
+        //Log something so we know that it succeeded.
+        //console.log('\t :: Express :: Listening on ' + add + ', on port ' + gameport );
+    })
+} catch (err) {
+    server.listen(gameport)
+}
 
 //Tell the server to listen for incoming connections
 console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
