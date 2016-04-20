@@ -1,8 +1,18 @@
 // Seek server
+var address 	= 'http://localhost',
+	gameport 	= '3013';
+
+try {
+    require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+    	address = add;
+    })
+} catch(err) {
+
+}
 
 //for (var i = 0; i < 2; i++) {
 	var clientio  = require('socket.io-client');
-	var client    = clientio.connect('http://localhost:3013');
+	var client    = clientio.connect(address + ':' + gameport);
 
 	var	game_core		= require('./game.core.ai.js');
 	// Make AI game
@@ -19,7 +29,6 @@
 	game.socket.on('error', game.client_ondisconnect.bind(game)); 						// Error -> not connected for now
 	game.socket.on('message', game.client_onnetmessage.bind(game)); 					// Parse message from server, send to handlers
 	game.update( new Date().getTime() );
-	//io = require('socket.io-client')('http://10.245.145.51:4004');
 //}
 
 /*

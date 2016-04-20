@@ -1,7 +1,7 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60/1000; // run the local game at 16ms/ 60hz
+var frame_time = 60 / 1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
@@ -336,6 +336,23 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 			this.turn = this.turn == 1 ? -1 : 1;
 			//resets
 			player_client.player_state = {
+				cards_to_play 	: 0,
+				pieces_to_play 	: 0,
+				damagingA 		: 0,
+				damagingE 		: 0,
+				damagingS 		: 0,
+				destroyingA 	: 0,
+				destroyingE 	: 0,
+				destroyingS 	: 0,
+				discarding 		: 0,
+				shielding 		: 0,
+				deshielding 	: 0,
+				freezing 		: 0,
+				thawing 		: 0,
+				blocking 		: 0
+			}
+
+			player_other.player_state = {
 				cards_to_play 	: 1,
 				pieces_to_play 	: 1,
 				damagingA 		: 0,

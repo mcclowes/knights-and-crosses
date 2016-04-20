@@ -1,10 +1,9 @@
-//A window global for our game root variable.
+/* -----------------------  ------------------------- */
+
 var game = {};
 
-//When loading, we store references to our drawing canvases, and initiate a game instance.
 window.onload = function(){
 	game = new game_core(); // Create game
-	
 	game.viewport = document.getElementById('viewport');
 	game.viewport.width = game.world.width; //Adjust canvas size
 	game.viewport.height = game.world.height;
@@ -13,7 +12,7 @@ window.onload = function(){
 
 	// Handle mouse events
 	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
-	// Handle mouse over cards
+	// Handle mouse over events
 	game.ctx.canvas.addEventListener('mousemove', function(e) {
 		var mx = event.clientX,
 			my = event.clientY;
@@ -25,7 +24,7 @@ window.onload = function(){
 			}
 		}
 	}, true);
-	// Handle click
+	// Handle click events
 	game.ctx.canvas.addEventListener('click', function(e) { 
 		if (game.players.self.host === true && game.turn === -1) { // not players turn
 			return;
@@ -64,6 +63,5 @@ window.onload = function(){
 		}
 	}, true);
 
-	//Start game update loop
-	game.update( new Date().getTime() );
+	game.update( new Date().getTime() );//Start game update loop
 }; //window.onload

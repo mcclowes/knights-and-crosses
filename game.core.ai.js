@@ -1,17 +1,13 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60/1000; // run the local game at 16ms/ 60hz
+var frame_time = 60 / 1000; // run the local game at 16ms/ 60hz
 var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
 // Card effect list
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
-
-//var node = (typeof module !== 'undefined' && module.exports)
-
-//console.log(!node || this.server);
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -355,6 +351,8 @@ game_core.prototype.client_update = function() {
 		return;
 	} else if (this.players.self.host === false && this.turn === 1) { // not players turn (can condense)
 		return;
+	} if (this.players.self.state === 'hosting.waiting for a player') {
+		return;
 	}
 
 	var input = '';
@@ -406,7 +404,7 @@ game_core.prototype.create_timer = function(){
 	setInterval(function(){
 		this._dt = new Date().getTime() - this._dte;
 		this._dte = new Date().getTime();
-		this.local_time += this._dt/1000.0;
+		this.local_time += this._dt / 1000.0;
 	}.bind(this), 4);
 }
 
