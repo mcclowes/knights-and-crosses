@@ -12,10 +12,8 @@ var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},
 
 var node = (typeof module !== 'undefined' && module.exports)
 
-if (node) {
-	console.log("shouldn't be here" + this.server);
+if (node) { // Handle node servers (primarily for AI instances)
 	var io = require('socket.io-client');
-	//DEBUG=socket.io:* node index.js
 	global.window = global.document = global;
 }
 
@@ -109,7 +107,7 @@ var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 	}
 
 	if (canvas) {
-		game.ctx.textAlign = "start"; 
+		canvas.textAlign = "start"; 
 		canvas.fillStyle = 'rgba(200, 180, 140, 0.8)';
 		canvas.fillRect(x, y, w, h);
 		// Paint text
@@ -818,7 +816,22 @@ game_core.prototype.resolve_square = function(row, col, player) {
 			if (this.board.board_state.results[target[0] - 1][target[1] - 1] === 0){ // check unoccupied
 				player.player_state.pieces_to_play = player.player_state.pieces_to_play - 1;
 				this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
-				player.player_state.cards_to_play = 0;
+				player.player_state = {
+					cards_to_play 	: 0,
+					pieces_to_play 	: player.player_state.pieces_to_play - 1,
+					damagingA 		: 0,
+					damagingE 		: 0,
+					damagingS 		: 0,
+					destroyingA 	: 0,
+					destroyingE 	: 0,
+					destroyingS 	: 0,
+					discarding 		: 0,
+					shielding 		: 0,
+					deshielding 	: 0,
+					freezing 		: 0,
+					thawing 		: 0,
+					blocking 		: 0
+				}
 			}
 		}
 	}
@@ -1216,15 +1229,13 @@ game_core.prototype.client_ondisconnect = function(data) {
 }; //client_ondisconnect
 
 game_core.prototype.client_connect_to_server = function() {
-	console.log('Trying to connect to ' + serverIP + '...');
-
 	if (node) {
 		console.log("shouldn't be here" + this.server);
-		//io = require('socket.io-client')(serverIP);
-		io = require('socket.io-client');
+		io = require('socket.io-client')(serverIP);
+		//io = require('socket.io-client');
 	}
 
-	this.socket = io.connect(serverIP); //Store a local reference to our connection to the server
+	this.socket = io.connect(); //Store a local reference to our connection to the server
 	console.log(this.socket);
 
 	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
