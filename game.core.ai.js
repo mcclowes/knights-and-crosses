@@ -338,6 +338,38 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 //require('test_file.js');
 
 game_core.prototype.client_update = function() {
+	if (this.players.self.host === true && this.turn === -1) { // not players turn
+		return;
+	} else if (this.players.self.host === false && this.turn === 1) { // not players turn (can condense)
+		return;
+	}
+
+	var input = '';
+
+	if (this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
+		var cardNumber = (Math.floor(Math.random() * this.players.self.hand.length) + 1);
+		if (this.players.self.hand[cardNumber]){
+			input = 'ca-' + this.players.self.hand[cardNumber].cardName;
+		}
+	} else if (this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
+		input = 'sq-' + (Math.floor(Math.random() * 4) + 1) + (Math.floor(Math.random() * 4) + 1);
+	} else {
+		input = 'en';
+	}
+	if (input === '') {
+		input = 'en';
+	}
+
+	console.log(input);
+
+	// Process input
+	this.input_seq += 1;
+	//Send inputs
+	var server_packet = 'i.' + input + '.' + this.local_time.toFixed(3).replace('.','-') + '.' + this.input_seq;
+	this.socket.send( server_packet );
+
+	return;
+
 	// AI Psuedo code
 	/*while no player has won: 
 		//Calculate current game state 
@@ -353,22 +385,7 @@ game_core.prototype.client_update = function() {
 		//resolve card effect for maximum resultant game state Place piece to maximise win condition
 		//Store card’s effective value
 		//End turn()
-
-	// AI Manager
-	//Initialise 100 AI instances with randomised game state variables 
-	while (AI improvement improves from each round) {
-		for (each AI) { 
-			for (n times) {
-				//Matchmake via the Elo Rating System, n times per AI instance 
-				//Play game, using algorithm 2
-				//Rank each AI using the Elo Rating System
-			}
-		}
-		//Eliminate the lowest 25 instances
-		//Create 25 new AI from the remaining AI, via genetic crossover method
-	}
-
-	return gathered data*/
+	*/
 }; //game_core.update_client
 
 game_core.prototype.create_timer = function(){
