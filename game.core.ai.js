@@ -6,7 +6,7 @@ var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
-// Card effect list
+// Card effect list - move to json, load decks?
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
@@ -76,6 +76,16 @@ var game_core = function(game_instance){
 	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
 
+	/*this.ai_values = {
+		card_self : ,// The value of having a card in hand
+		card_other : ,// The value of the opponent having a card in hand
+		piece_self : ,// The value of possessing a piece, dependent on the strategic value of each specific grid square
+		piece_other : ,// The value of the opponent possessing a piece, dependent on the strategic value of each specific grid square
+		shield_self : ,// The value of a shield
+		square_frozen : ,// The value of a square being blocked through freezing
+		square_blocked : // The value of a square being blocked through boulders
+	}*/
+
 	//We create a player set, passing them to the game that is running them, as well
 	this.players = {
 		self : new game_player(this),
@@ -113,6 +123,9 @@ var game_board = function() {
 		rock 	: [],
 		shields : []
 	}
+
+	this.board_distance = 0;
+
 	// initialise game board arrays
 	for (var i = 0; i < 4; i++){
 		this.board_state.results[i] = [];
@@ -200,6 +213,228 @@ game_board.prototype.checkFreeSquare = function(){
 	return space;
 }
 
+game_board.prototype.checkEnemySquare = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if ((this.players.self.host === true && this.board_state.results[i][j] === 1) || (this.players.self.host === false && this.board_state.results[i][j] === -1)) {
+				return true;
+			} 
+		}
+	}
+	return false;
+}
+
+game_board.prototype.checkSelfSquare = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if ((this.players.self.host === true && this.board_state.results[i][j] === -1) || (this.players.self.host === false && this.board_state.results[i][j] === 1)) {
+				return true;
+			} 
+		}
+	}
+	return false;
+}
+
+var scale_number = function(base, exp) {
+	if (base < 0) {
+		return parseFloat( - Math.pow(base, exp));
+	} else {
+		return parseFloat(Math.pow(base, exp));
+	}
+}
+
+game_core.prototype.piece_modify = function(x, y) {
+	var square = this.board.board_state.results[x][y],
+		center_mod = 1.5,
+		enemy_mod = 1.5,
+		shield_mod = 1.1,
+		freeze_mod = 0.1,
+		rock_mod = 0.2;
+
+	if (x === 1 || x === 2) { // If in the middle 4
+		if (y === 1 || y === 2) {
+			square = square * center_mod;
+		}
+	}
+
+	if (this.players.self.host === true && square < 0){
+		square = - enemy_mod * square;
+	} else if (this.players.self.host === false && square > 0){
+		square = enemy_mod * square;
+	} else if (square === 0){
+		if (this.board.board_state.frost[x][y] > 0) { //frozen
+			if (this.board.board_state.frost[x][y] % 2 === 0) { //self
+				square = this.players.self.host === true ? freeze_mod : (- freeze_mod);
+			} else {
+				square = this.players.self.host === true ? (- freeze_mod) : freeze_mod;
+			}
+		} else if (this.board.board_state.rock[x][y] > 0) { // blocked
+			if (this.board.board_state.rock[x][y] % 2 === 0) { //self
+				square = this.players.self.host === true ? rock_mod : (- rock_mod);
+			} else {
+				square = this.players.self.host === true ? (- rock_mod) : rock_mod;
+			}
+		} 
+	}
+
+	return square;
+}
+
+// Move else where
+game_core.prototype.checkDistance = function(){ //If host, + is good, if other, - is good
+	
+	var row1 = this.piece_modify(0,0) + this.piece_modify(0,1) 	+ this.piece_modify(0,2) 	+ this.piece_modify(0,3),
+		row2 = this.piece_modify(1,0) + this.piece_modify(1,1)	+ this.piece_modify(1,2)	+ this.piece_modify(1,3),
+		row3 = this.piece_modify(2,0) + this.piece_modify(2,1)	+ this.piece_modify(2,2)	+ this.piece_modify(2,3),
+		row4 = this.piece_modify(3,0) + this.piece_modify(3,1) 	+ this.piece_modify(3,2) 	+ this.piece_modify(3,3),
+		col1 = this.piece_modify(0,0) + this.piece_modify(1,0) 	+ this.piece_modify(2,0) 	+ this.piece_modify(3,0),
+		col2 = this.piece_modify(0,1) + this.piece_modify(1,1)	+ this.piece_modify(2,1)	+ this.piece_modify(3,1),
+		col3 = this.piece_modify(0,2) + this.piece_modify(1,2)	+ this.piece_modify(2,2)	+ this.piece_modify(3,2),
+		col4 = this.piece_modify(0,3) + this.piece_modify(1,3) 	+ this.piece_modify(2,3) 	+ this.piece_modify(3,3),
+		dia1 = this.piece_modify(0,0) + this.piece_modify(1,1)	+ this.piece_modify(2,2)	+ this.piece_modify(3,3),
+		dia2 = this.piece_modify(0,3) + this.piece_modify(1,2)	+ this.piece_modify(2,1)	+ this.piece_modify(3,0);
+	
+	//console.log( 'Whyyyyy ....? ' + row1 + ', ' + row2 + ', ' + row3 + ', ' + row4 + ', ' + col1 + ', ' + col2 + ', ' + col3 + ', ' + col4 + ', ' + dia1 + ', ' + dia2);
+
+	return scale_number(row1,2) + scale_number(row2,2) + scale_number(row3,2) + scale_number(row4,2) + scale_number(col1,2) + scale_number(col2,2) + scale_number(col3,2) + scale_number(col4,2) + scale_number(dia1,2) + scale_number(dia2,2);
+}
+
+game_core.prototype.choose_square = function(moves){
+	this.board.board_distance = this.checkDistance(); // Current state
+	var temp_count = 0;
+	var temp_flag = 0;
+
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (((this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.damagingA > 0) && (this.checkEnemySquare() || this.checkSelfSquare()) && this.board.board_state.results[i][j] !== 0 ) ||
+				((this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingS > 0) && this.checkSelfSquare() && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) ) ||
+				((this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.damagingE > 0) && this.checkEnemySquare() && ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) ) ||
+				(this.players.self.player_state.freezing > 0 && this.board.board_state.frost[i][j] === 0 ) ||
+				(this.players.self.player_state.thawing > 0 && this.board.board_state.frost[i][j] > 0) ||
+				(this.players.self.player_state.blocking > 0 && this.board.board_state.rock[i][j] === 0) ||
+				(this.players.self.player_state.shielding > 0 && this.board.board_state.shields[i][j] === 0 && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) )) ||
+				(this.players.self.player_state.deshielding > 0 && this.board.board_state.shields[i][j] > 0) ||
+				(this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0) )  {
+
+				// ^^^ I have a feeling this wont work... infact the whole function might behave really weirdly...
+				// Currently just tries to just do something to each square it encounters.
+
+				var temp_state = this.board.board_state;
+
+				if (this.players.self.player_state.freezing > 0){ // placing frost
+					temp_state.frost[i][j] = 4; //1/-1
+				} else if (this.players.self.player_state.thawing > 0){ // placing frost
+					temp_count = temp_state.frost[i][j];
+					temp_state.frost[i][j] = 0; //1/-1
+				} else if (this.players.self.player_state.blocking > 0){ // Placing rock
+					temp_state.rock[i][j] = 6;
+				} else if (this.players.self.player_state.shielding > 0){ // Placing rock
+					temp_state.shields[i][j] = 1;
+				} else if (this.players.self.player_state.deshielding > 0){ // Placing rock
+					temp_state.shields[i][j] = 0;
+				} else if (this.players.self.player_state.destroyingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
+					temp_count = temp_state.shields[i][j];
+					temp_flag = temp_state.results[i][j];
+					temp_state.results[i][j] = 0;
+					temp_state.shields[i][j] = 0;
+				} else if (this.players.self.player_state.destroyingS > 0 && this.checkSelfSquare()) {
+					temp_count = temp_state.shields[i][j];
+					temp_state.results[i][j] = 0;
+					temp_state.shields[i][j] = 0;
+				} else if (this.players.self.player_state.destroyingE > 0 && this.checkEnemySquare()) {
+					temp_count = temp_state.shields[i][j];
+					temp_state.results[i][j] = 0;
+					temp_state.shields[i][j] = 0;
+				} else if (this.players.self.player_state.damagingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
+					temp_count = temp_state.shields[i][j];
+					temp_flag = temp_state.results[i][j];
+					if (temp_state.shields[i][j] === 1){
+						temp_state.shields[i][j] = 0;
+					}
+					else {
+						temp_state.results[i][j] = 0;
+					}
+				} else if (this.players.self.player_state.damagingS > 0 && this.checkSelfSquare()) {
+					temp_count = temp_state.shields[i][j];
+					if (temp_state.shields[i][j] === 1){
+						temp_state.shields[i][j] = 0;
+					}
+					else {
+						temp_state.results[i][j] = 0;
+					}
+				} else if (this.players.self.player_state.damagingE > 0 && this.checkEnemySquare()) {
+					temp_count = temp_state.shields[i][j];
+					if (temp_state.shields[i][j] === 1){
+						temp_state.shields[i][j] = 0;
+					}
+					else {
+						temp_state.results[i][j] = 0;
+					}
+				} else if (this.players.self.player_state.pieces_to_play > 0) { // Placing a piece
+					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1; //1/-1
+				} 
+				
+				var dist = this.checkDistance();
+				//console.log('>>>>>> ' + dist + ' >>>>>> ' + i + ', ' + j);
+				if ( 	(	this.players.self.host === true && ( (moves !== undefined && dist >= moves.distance) || moves === undefined) && dist >= this.board.board_distance) || 
+						(	this.players.self.host === false && ( (moves !== undefined && dist <= moves.distance) || moves === undefined) && dist <= this.board.board_distance) 
+					) {
+
+					moves = {
+						x : i,
+						y : j,
+						distance : dist
+					};
+					
+				}
+
+				// Reverse things
+
+				if (this.players.self.player_state.freezing > 0){ // placing frost
+					temp_state.frost[i][j] = 0; 
+				} else if (this.players.self.player_state.thawing > 0){ // placing frost
+					temp_state.frost[i][j] = temp_count; //1/-1
+				} else if (this.players.self.player_state.blocking > 0){ // Placing rock
+					temp_state.rock[i][j] = 0;
+				} else if (this.players.self.player_state.shielding > 0){ // Placing rock
+					temp_state.shields[i][j] = 0;
+				} else if (this.players.self.player_state.deshielding > 0){ // Placing rock
+					temp_state.shields[i][j] = 1;
+				} else if (this.players.self.player_state.destroyingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
+					temp_state.results[i][j] = temp_flag;
+					temp_state.shields[i][j] = temp_count;
+				} else if (this.players.self.player_state.destroyingS > 0 && this.checkSelfSquare()) {
+					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1;
+					temp_state.shields[i][j] = temp_count;
+				} else if (this.players.self.player_state.destroyingE > 0 && this.checkEnemySquare()) {
+					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
+					temp_state.shields[i][j] = temp_count;
+				} else if (this.players.self.player_state.damagingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
+					temp_state.results[i][j] = temp_flag;
+					temp_state.shields[i][j] = temp_count;
+				} else if (this.players.self.player_state.damagingS > 0 && this.checkSelfSquare()) {
+					temp_state.shields[i][j] = temp_count;
+					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1;
+				} else if (this.players.self.player_state.damagingE > 0 && this.checkEnemySquare()) {
+					temp_state.shields[i][j] = temp_count;
+					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
+				} else if (this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0){ // Placing a piece
+					temp_state.results[i][j] = 0;
+				}
+			}
+		}
+	}
+
+	return moves;
+}
+
+game_core.prototype.choose_card = function() {
+
+}
+
+game_core.prototype.choose_effect_resolve = function() {
+	
+}
 
 /*  -----------------------------  End turn button classs  -----------------------------  */
 
@@ -248,8 +483,8 @@ var game_player = function( game_instance, player_instance ) {
 	this.id = '';
 
 	this.player_state = {
-		cards_to_play 	: 1,
-		pieces_to_play 	: 1,
+		cards_to_play 	: 0,
+		pieces_to_play 	: 0,
 		damagingA 		: 0,
 		damagingE 		: 0,
 		damagingS 		: 0,
@@ -285,9 +520,11 @@ var game_player = function( game_instance, player_instance ) {
 
 //Main update loop
 game_core.prototype.update = function(t) {
-	this.lastframetime = t; //Store the last frame time
-	//Update the game specifics
-	this.client_update();
+	if (t - this.lastframetime > 5000 || this.lastframetime === undefined) {
+		this.lastframetime = t; //Store the last frame time
+		//Update the game specifics
+		this.client_update();
+	}
 
 	//schedule the next update
 	this.updateid = global.requestAnimationFrame( this.update.bind(this), this.viewport );
@@ -298,28 +535,12 @@ game_core.prototype.stop_update = function() {
 	global.cancelAnimationFrame( this.updateid );  
 };
 
-/*  -----------------------------  Shared between server and client.  -----------------------------  
-	`item` is type game_player.
-*/
-game_core.prototype.process_input = function( player ) {
-	//It's possible to have recieved multiple inputs by now, so we process each one
-	var x_dir = 0;
-	var y_dir = 0;
-	var ic = player.inputs.length;
-
-	//we have a direction vector now, so apply the same physics as the client
-	if(player.inputs.length) {
-		//we can now clear the array since these have been processed
-		player.last_input_time = player.inputs[ic-1].time;
-		player.last_input_seq = player.inputs[ic-1].seq;
-	}
-	//give it back
-	return;
-}; //game_core.process_input
 
 /* -----------------------------  Client side functions  ----------------------------- */
 
 game_core.prototype.client_onserverupdate_recieved = function(data){
+	//console.log(data);
+
 	//Lets clarify the information we have locally. One of the players is 'hosting' and the other is a joined in client, so we name these host and client for making sure
 	//the positions we get from the server are mapped onto the correct local sprites
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
@@ -327,7 +548,7 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	var this_player = this.players.self;
 	
 	this.server_time = data.t; //Store the server time (this is offset by the latency in the network, by the time we get it)
-	this.client_time = this.server_time - (this.net_offset/1000); //Update our local offset time from the last server update
+	this.client_time = this.server_time - (this.net_offset / 1000); //Update our local offset time from the last server update
 
 	data = JSON.parse(data);
 	// Store server's last state
@@ -342,33 +563,38 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
 	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
 	this.server_time = data.t;   // our current local time on the server
+
+	//this.client_update();
 }; //game_core.client_onserverupdate_recieved
 
 //require('test_file.js');
 
 game_core.prototype.client_update = function() {
-	if (this.players.self.host === true && this.turn === -1) { // not players turn
+	if ((this.players.self.host === true && this.turn === -1) || (this.players.self.host === false && this.turn === 1)) { // not players turn
 		return;
-	} else if (this.players.self.host === false && this.turn === 1) { // not players turn (can condense)
-		return;
-	} if (this.players.self.state === 'hosting.waiting for a player') {
+	}
+	if (this.players.self.state === 'hosting.waiting for a player') {
 		return;
 	}
 
 	var input = '';
-
-	//console.log(this.players.self.player_state);
+	console.log(this.players.self.player_state);
 
 	if ( this.players.self.hand.length > 0 && (this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) ) {
-		var cardNumber = (Math.floor(Math.random() * this.players.self.hand.length) + 1);
+		console.log('Playing card');
+		var cardNumber = Math.floor(Math.random() * this.players.self.hand.length);
 		if (this.players.self.hand[cardNumber]){
 			input = 'ca-' + this.players.self.hand[cardNumber].cardName;
 		}
-	} else if ((this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0) || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
-		input = 'sq-' + (Math.floor(Math.random() * 4) + 1) + (Math.floor(Math.random() * 4) + 1);
-	}
+	} else if ((this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0) || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
+		console.log('resolving effect');
+		//input = 'sq-' + (Math.floor(Math.random() * 4) + 1) + (Math.floor(Math.random() * 4) + 1);
+		var moves = undefined;
+		moves = this.choose_square(moves);
+		if (moves === undefined) { return; } //make sure it is better than the current board state too?
+		input = 'sq-' + (moves.x + 1) + (moves.y + 1);
 
-	if (input === '') { // If no action possible...
+	} else if (input === '') { // If no action possible...
 		input = 'en';
 	}
 

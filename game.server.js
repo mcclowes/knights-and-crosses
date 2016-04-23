@@ -140,16 +140,17 @@ game_server.startGame = function(game) {
 	//now we tell both that the game is ready to start clients will reset their positions in this case.
 	game.player_client.send('s.r.'+ String(game.gamecore.local_time).replace('.','-'));
 	game.player_host.send('s.r.'+ String(game.gamecore.local_time).replace('.','-'));
+	game.gamecore.players.self.player_state.cards_to_play = 1;
+	game.gamecore.players.self.player_state.pieces_to_play = 1;
 
 	//make players draw cards
 	for (var i = 0; i < 3; i++) {
-		console.log('\n');
 		var server_packet = 'i.dr.' + this.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
 		game_server._onMessage(game.player_client, server_packet);
 		game_server._onMessage(game.player_host, server_packet);
 	}
 
-	game.active = true; //set this flag, so that the update loop can run it.
+	game.active = true; // Flag for update loop
 }; //game_server.startGame
 
 game_server.findGame = function(player) {

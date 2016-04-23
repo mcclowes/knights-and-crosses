@@ -212,8 +212,8 @@ var game_player = function( game_instance, player_instance ) {
 	this.id = '';
 
 	this.player_state = {
-		cards_to_play 	: 1,
-		pieces_to_play 	: 1,
+		cards_to_play 	: 0,
+		pieces_to_play 	: 0,
 		damagingA 		: 0,
 		damagingE 		: 0,
 		damagingS 		: 0,
@@ -260,25 +260,6 @@ game_core.prototype.stop_update = function() {
 	window.cancelAnimationFrame( this.updateid );  
 };
 
-/*  -----------------------------  Shared between server and client.  -----------------------------  
-	`item` is type game_player.
-*/
-game_core.prototype.process_input = function( player ) {
-	//It's possible to have recieved multiple inputs by now, so we process each one
-	var x_dir = 0;
-	var y_dir = 0;
-	var ic = player.inputs.length;
-
-	//we have a direction vector now, so apply the same physics as the client
-	if(player.inputs.length) {
-		//we can now clear the array since these have been processed
-		player.last_input_time = player.inputs[ic-1].time;
-		player.last_input_seq = player.inputs[ic-1].seq;
-	}
-	//give it back
-	return;
-}; //game_core.process_input
-
 
 /*  -----------------------------  Server side functions  -----------------------------  
 	These functions below are specific to the server side only,
@@ -323,16 +304,11 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 	var player_other = (client.userid == this.players.self.instance.userid) ?  this.players.other : this.players.self;
 
 	if (input) {
-		var c = input.length;
-
-		try {
-			var input_parts = input.split('.');
-		} catch(err) {
-			var input_parts = input;
-		}
-		
+		//var c = input.length;
+		try { var input_parts = input.split('.'); } catch(err) { var input_parts = input;} // handle input accordingly
 		target = [];
-		if (input_parts[0] == 'en') { //end turn
+
+		if (input_parts[0] == 'en' && player_client !== undefined && player_other !== undefined && ((player_client === this.players.self && this.turn === 1) || (player_client === this.players.other && this.turn === -1))) { //end turn
 			this.turn = this.turn == 1 ? -1 : 1;
 			//resets
 			player_client.player_state = {
@@ -369,7 +345,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				blocking 		: 0
 			}
 
-			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length) || (this.players.self.deck.length === 0 && this.players.self.hand.length) ){ //check for win
+			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
 				this.win = this.board.check_win();
 				console.log("Win? >>> " + this.win);
 				//send server message s.e.
@@ -377,6 +353,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				this.server.endGame(this.instance, this.players.other);
 				this.server.findGame(this.players.self);
 				this.server.findGame(this.players.other);
+				console.log('Game ended fully');
 			} else {
 				this.board.reduce_state();
 
@@ -411,24 +388,24 @@ game_core.prototype.resolve_square = function(row, col, player) {
 	//console.log('Target square >>> ' + row + ', ' + col);
 	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
 		if (this.board.board_state.results[row][col] !== 0) { // Piece
-			if (player.player_state.destroyingS > 0) { //Destroying
-				if (this.board.board_state.results[row][col] === this.currentPlayer) {
+			if (player.player_state.destroyingS > 0) { //Destroying self
+				if (((this.players.self.host === true && this.board.board_state.results[row][col] === 1) || (this.players.self.host === false && this.board.board_state.results[row][col] === -1))) {
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingS--;
 				}
 			} else if (player.player_state.destroyingE > 0) { //Destroying enemy
-				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
+				if (((this.players.self.host === true && this.board.board_state.results[row][col] === -1) || (this.players.self.host === false && this.board.board_state.results[row][col] === 1))) {
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingE--;
 				}
-			} else if (player.player_state.destroyingA > 0) { //Destroying enemy
+			} else if (player.player_state.destroyingA > 0) { //Destroying any piece
 				this.board.board_state.results[row][col] = 0;
 				this.board.board_state.shields[row][col] = 0;
 				player.player_state.destroyingA--;
-			} else if (player.player_state.damagingS > 0) { //Damaging
-				if (this.board.board_state.results[row][col] === this.currentPlayer) {
+			} else if (player.player_state.damagingS > 0) { //Damaging Self
+				if (((this.players.self.host === true && this.board.board_state.results[row][col] === 1) || (this.players.self.host === false && this.board.board_state.results[row][col] === -1))) {
 					if (this.board.board_state.shields[row][col] === 1) {
 						this.board.board_state.shields[row][col] = 0;
 					} else {
@@ -436,8 +413,8 @@ game_core.prototype.resolve_square = function(row, col, player) {
 					}
 					player.player_state.damagingS--;
 				}
-			} else if (player.player_state.damagingE > 0) { //Damaging
-				if (this.board.board_state.results[row][col] !== this.currentPlayer) {
+			} else if (player.player_state.damagingE > 0) { //Damaging Enemy
+				if (((this.players.self.host === true && this.board.board_state.results[row][col] === -1) || (this.players.self.host === false && this.board.board_state.results[row][col] === 1))) {
 					if (this.board.board_state.shields[row][col] === 1) {
 						this.board.board_state.shields[row][col] = 0;
 					} else {
@@ -445,7 +422,7 @@ game_core.prototype.resolve_square = function(row, col, player) {
 					}
 					player.player_state.damagingE--;
 				}
-			} else if (player.player_state.damagingA > 0) { //Damaging
+			} else if (player.player_state.damagingA > 0) { //Damaging any piece
 				if (this.board.board_state.shields[row][col] === 1) {
 					this.board.board_state.shields[row][col] = 0;
 				} else {
@@ -477,7 +454,7 @@ game_core.prototype.resolve_square = function(row, col, player) {
 			if (this.board.board_state.results[target[0] - 1][target[1] - 1] === 0){ // check unoccupied
 				player.player_state.pieces_to_play = player.player_state.pieces_to_play - 1;
 				this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
-				player.player_state = {
+				player.player_state = { // only pieces can be played
 					cards_to_play 	: 0,
 					pieces_to_play 	: player.player_state.pieces_to_play - 1,
 					damagingA 		: 0,
@@ -496,7 +473,7 @@ game_core.prototype.resolve_square = function(row, col, player) {
 			}
 		}
 	}
-};
+}; // resolve piece/ square
 
 // Resolve card effects
 game_core.prototype.resolve_card = function(card, player) {
@@ -728,8 +705,6 @@ game_core.prototype.resolve_card = function(card, player) {
 					}
 				}
 			}
-		} else {
-			//do nothing
-		} 
+		}
 	}
-}
+}; // resolve card

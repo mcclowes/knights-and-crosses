@@ -9,7 +9,8 @@ var io              = require('socket.io').listen(3013),
     http            = require('http'),
     app             = express(),
     server          = http.createServer(app),
-    game_server     = require('./game.server.js');
+    game_server     = require('./game.server.js'),
+    sio             = '';
 
 /* ----------------------- Find IP, start listening ------------------------- */
 
@@ -18,7 +19,22 @@ try {
         server.listen(gameport, add);
         address = add;
         //Log something so we know that it succeeded.
-        //console.log('\t :: Express :: Listening on ' + add + ', on port ' + gameport );
+        console.log('\t :: Express :: Listening on ' + add + ', on port ' + gameport );
+
+        /* ----------------------- File request handling ------------------------- */
+
+        app.get( '/', function( req, res ){
+            console.log('trying to load %s', __dirname + '/index.html');
+            res.sendFile( '/index.html' , { root:__dirname });
+        });
+
+        app.get( '/*' , function( req, res, next ) {
+            var file = req.params[0]; // Current file they have requested
+            if(verbose) console.log('\t :: Express :: file requested : ' + file); //For debugging, we can track what files are requested.
+            res.sendFile( __dirname + '/' + file ); //Send the requesting client the file.
+        });
+
+        sio = io.listen(server); // Handle socket.io file request
     })
 } catch (err) {
     server.listen(gameport)
@@ -26,22 +42,6 @@ try {
 
 //Tell the server to listen for incoming connections
 console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
-
-
-/* ----------------------- File request handling ------------------------- */
-
-app.get( '/', function( req, res ){
-    console.log('trying to load %s', __dirname + '/index.html');
-    res.sendFile( '/index.html' , { root:__dirname });
-});
-
-app.get( '/*' , function( req, res, next ) {
-    var file = req.params[0]; // Current file they have requested
-    if(verbose) console.log('\t :: Express :: file requested : ' + file); //For debugging, we can track what files are requested.
-    res.sendFile( __dirname + '/' + file ); //Send the requesting client the file.
-});
-
-var sio = io.listen(server); // Handle socket.io file request
 
 
 /* ----------------------- Handle connection -----------------------  */

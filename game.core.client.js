@@ -489,8 +489,8 @@ var game_player = function( game_instance, player_instance ) {
 	this.id = '';
 
 	this.player_state = {
-		cards_to_play 	: 1,
-		pieces_to_play 	: 1,
+		cards_to_play 	: 0,
+		pieces_to_play 	: 0,
 		damagingA 		: 0,
 		damagingE 		: 0,
 		damagingS 		: 0,
@@ -567,24 +567,6 @@ game_core.prototype.stop_update = function() {
 	window.cancelAnimationFrame( this.updateid );  
 };
 
-/*  -----------------------------  Shared between server and client.  -----------------------------  
-	`item` is type game_player.
-*/
-game_core.prototype.process_input = function( player ) {
-	//It's possible to have recieved multiple inputs by now, so we process each one
-	var x_dir = 0;
-	var y_dir = 0;
-	var ic = player.inputs.length;
-
-	//we have a direction vector now, so apply the same physics as the client
-	if(player.inputs.length) {
-		//we can now clear the array since these have been processed
-		player.last_input_time = player.inputs[ic-1].time;
-		player.last_input_seq = player.inputs[ic-1].seq;
-	}
-	//give it back
-	return;
-}; //game_core.process_input
 
 /* -----------------------------  Client side functions  ----------------------------- */
 
