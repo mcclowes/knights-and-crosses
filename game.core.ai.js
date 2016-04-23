@@ -202,7 +202,7 @@ game_board.prototype.checkDiagonals = function(){
 	}
 };
 
-/*  -----------------------------  AI Board State Checkers  -----------------------------  */
+/*  -----------------------------  Board State Checkers  -----------------------------  */
 
 game_core.prototype.checkFreeSquare = function(){
 	var space = 0;
@@ -213,7 +213,6 @@ game_core.prototype.checkFreeSquare = function(){
 			}
 		}
 	}
-	console.log(space);
 	return space;
 }
 
@@ -276,13 +275,14 @@ game_core.prototype.checkFrozen = function(){
 
 /*  -----------------------------  AI Decision Making functions  -----------------------------  */
 
-game_core.prototype.piece_modify = function(x, y) {
+game_core.prototype.evaluate_square = function(x, y) {
 	var square = this.board.board_state.results[x][y],
 		center_mod = 1.5,
 		enemy_mod = 1.5,
 		shield_mod = 1.1,
-		freeze_mod = 0.1,
-		rock_mod = 0.2;
+		freeze_mod = 0.2,
+		rock_mod = 0.4;
+
 	if (this.board.board_state.shields[x][y] > 0) {
 		square = square * shield_mod;
 	}
@@ -318,117 +318,18 @@ game_core.prototype.piece_modify = function(x, y) {
 
 // Move else where
 game_core.prototype.checkDistance = function(){ //If host, + is good, if other, - is good
-	
-	var row1 = this.piece_modify(0,0) + this.piece_modify(0,1) 	+ this.piece_modify(0,2) 	+ this.piece_modify(0,3),
-		row2 = this.piece_modify(1,0) + this.piece_modify(1,1)	+ this.piece_modify(1,2)	+ this.piece_modify(1,3),
-		row3 = this.piece_modify(2,0) + this.piece_modify(2,1)	+ this.piece_modify(2,2)	+ this.piece_modify(2,3),
-		row4 = this.piece_modify(3,0) + this.piece_modify(3,1) 	+ this.piece_modify(3,2) 	+ this.piece_modify(3,3),
-		col1 = this.piece_modify(0,0) + this.piece_modify(1,0) 	+ this.piece_modify(2,0) 	+ this.piece_modify(3,0),
-		col2 = this.piece_modify(0,1) + this.piece_modify(1,1)	+ this.piece_modify(2,1)	+ this.piece_modify(3,1),
-		col3 = this.piece_modify(0,2) + this.piece_modify(1,2)	+ this.piece_modify(2,2)	+ this.piece_modify(3,2),
-		col4 = this.piece_modify(0,3) + this.piece_modify(1,3) 	+ this.piece_modify(2,3) 	+ this.piece_modify(3,3),
-		dia1 = this.piece_modify(0,0) + this.piece_modify(1,1)	+ this.piece_modify(2,2)	+ this.piece_modify(3,3),
-		dia2 = this.piece_modify(0,3) + this.piece_modify(1,2)	+ this.piece_modify(2,1)	+ this.piece_modify(3,0);
-	
-	//console.log( 'Whyyyyy ....? ' + row1 + ', ' + row2 + ', ' + row3 + ', ' + row4 + ', ' + col1 + ', ' + col2 + ', ' + col3 + ', ' + col4 + ', ' + dia1 + ', ' + dia2);
+	var row1 = this.evaluate_square(0,0) + this.evaluate_square(0,1) + this.evaluate_square(0,2) + this.evaluate_square(0,3),
+		row2 = this.evaluate_square(1,0) + this.evaluate_square(1,1) + this.evaluate_square(1,2) + this.evaluate_square(1,3),
+		row3 = this.evaluate_square(2,0) + this.evaluate_square(2,1) + this.evaluate_square(2,2) + this.evaluate_square(2,3),
+		row4 = this.evaluate_square(3,0) + this.evaluate_square(3,1) + this.evaluate_square(3,2) + this.evaluate_square(3,3),
+		col1 = this.evaluate_square(0,0) + this.evaluate_square(1,0) + this.evaluate_square(2,0) + this.evaluate_square(3,0),
+		col2 = this.evaluate_square(0,1) + this.evaluate_square(1,1) + this.evaluate_square(2,1) + this.evaluate_square(3,1),
+		col3 = this.evaluate_square(0,2) + this.evaluate_square(1,2) + this.evaluate_square(2,2) + this.evaluate_square(3,2),
+		col4 = this.evaluate_square(0,3) + this.evaluate_square(1,3) + this.evaluate_square(2,3) + this.evaluate_square(3,3),
+		dia1 = this.evaluate_square(0,0) + this.evaluate_square(1,1) + this.evaluate_square(2,2) + this.evaluate_square(3,3),
+		dia2 = this.evaluate_square(0,3) + this.evaluate_square(1,2) + this.evaluate_square(2,1) + this.evaluate_square(3,0);
 
 	return scale_number(row1,2) + scale_number(row2,2) + scale_number(row3,2) + scale_number(row4,2) + scale_number(col1,2) + scale_number(col2,2) + scale_number(col3,2) + scale_number(col4,2) + scale_number(dia1,2) + scale_number(dia2,2);
-};
-
-//satisfy unsatisfyable effects
-game_core.prototype.satisfy_player_state = function(){
-	//console.log(Object.getOwnPropertyNames(this));
-	if (this.players.self.player_state.cards_to_play > 0){
-		if (this.players.self.hand.length <= 0) {
-			this.players.self.player_state.cards_to_play--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.discarding > 0){
-		if (this.players.self.hand.length <= 0) {
-			this.players.self.player_state.discarding--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.freezing > 0){ // No place to freeze
-		if (this.checkFreeSquare() <= 0) {
-			this.players.self.player_state.freezing--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.thawing > 0){
-		if(this.checkFrozen() === false){ // No frozen squares to target
-			this.players.self.player_state.thawing--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.blocking > 0){
-		if (this.checkFreeSquare() <= 0){ // No place to block
-			this.players.self.player_state.blocking--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.shielding > 0){
-		if (this.checkNoShield() === false){ // Shielding
-			this.players.self.player_state.shielding--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.deshielding > 0) {
-		if (this.checkShield() === false){ // Deshielding
-			this.players.self.player_state.deshielding--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.destroyingA > 0){
-		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
-			this.players.self.player_state.destroyingA--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.destroyingS > 0) {
-		if (this.checkSelfSquare() === false) {
-			console.log('!!!!!!');
-			this.players.self.player_state.destroyingS--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.destroyingE > 0){
-		if (this.checkEnemySquare() === false) {
-			this.players.self.player_state.destroyingE--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.damagingA > 0) {
-		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
-			this.players.self.player_state.damagingA--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.damagingS > 0){
-		if (this.checkSelfSquare() === false) {
-			console.log('!!!!!!');
-			this.players.self.player_state.damagingS--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.damagingE > 0) {
-		if (this.checkEnemySquare() === false) {
-			this.players.self.player_state.damagingE--;
-		} else {
-			return true;
-		}
-	} else if (this.players.self.player_state.pieces_to_play > 0){
-		if (this.checkFreeSquare() === 0) { // Placing a piece
-			this.players.self.player_state.pieces_to_play--;
-		} else {
-			return true;
-		}
-	} else {
-		return true;
-	}
-
-	return false;
 };
 
 game_core.prototype.choose_square = function(moves){
@@ -567,15 +468,15 @@ game_core.prototype.choose_square = function(moves){
 
 				// Reverse things
 
-				if (this.players.self.player_state.freezing > 0){ // placing frost
+				if (this.players.self.player_state.freezing > 0) { // placing frost
 					temp_state.frost[i][j] = 0; 
-				} else if (this.players.self.player_state.thawing > 0){ // placing frost
+				} else if (this.players.self.player_state.thawing > 0) { // placing frost
 					temp_state.frost[i][j] = temp_count; //1/-1
-				} else if (this.players.self.player_state.blocking > 0){ // Placing rock
+				} else if (this.players.self.player_state.blocking > 0) { // Placing rock
 					temp_state.rock[i][j] = 0;
-				} else if (this.players.self.player_state.shielding > 0){ // Placing rock
+				} else if (this.players.self.player_state.shielding > 0) { // Placing rock
 					temp_state.shields[i][j] = 0;
-				} else if (this.players.self.player_state.deshielding > 0){ // Placing rock
+				} else if (this.players.self.player_state.deshielding > 0) { // Placing rock
 					temp_state.shields[i][j] = 1;
 				} else if (this.players.self.player_state.destroyingA > 0) {
 					temp_state.results[i][j] = temp_flag;
@@ -595,7 +496,7 @@ game_core.prototype.choose_square = function(moves){
 				} else if (this.players.self.player_state.damagingE > 0) {
 					temp_state.shields[i][j] = temp_count;
 					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
-				} else if (this.players.self.player_state.pieces_to_play > 0){ // Placing a piece
+				} else if (this.players.self.player_state.pieces_to_play > 0) { // Placing a piece
 					temp_state.results[i][j] = 0;
 				}
 			}
@@ -754,12 +655,6 @@ game_core.prototype.client_update = function() {
 		return;
 	}
 	console.log(this.players.self.player_state);
-	if (this.satisfy_player_state() === false) {
-		console.log('something wasnt satisfying');
-		var server_packet = 'i.up-' + JSON.stringify(this.players.self.player_state) + '.' + this.local_time.toFixed(3).replace('.','-') + '.' + this.input_seq;
-		this.socket.send( server_packet );
-		return;
-	}
 
 	var input = '';
 

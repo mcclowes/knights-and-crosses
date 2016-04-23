@@ -102,9 +102,79 @@ if ( 'undefined' != typeof global ) {
 	module.exports = global.game_core = game_core;
 }
 
+/*  -----------------------------  Play State Checkers  -----------------------------  */
+
+game_core.prototype.checkFreeSquare = function(){
+	var space = 0;
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+				space++;
+			}
+		}
+	}
+	return space;
+}
+
+game_core.prototype.checkEnemySquare = function(player){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if ((this.players.self === player && this.board.board_state.results[i][j] === 1) || (this.players.self === player && this.board.board_state.results[i][j] === -1)) {
+				return true;
+			} 
+		}
+	}
+	return false;
+}
+
+game_core.prototype.checkSelfSquare = function(player){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if ((this.players.self === player && this.board.board_state.results[i][j] === -1) || (this.players.self === player && this.board.board_state.results[i][j] === 1)) {
+				return true;
+			} 
+		}
+	}
+	return false;
+}
+
+// Check that at least one shield exists
+game_core.prototype.checkShield = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.shields[i][j] !== 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
+// Checks that there is a target to shield
+game_core.prototype.checkNoShield = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
+game_core.prototype.checkFrozen = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.frost[i][j] !== 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
 //satisfy unsatisfyable effects
-game_core.prototype.satisfy_player_state = function(player){
-	//console.log(Object.getOwnPropertyNames(this));
+game_core.prototype.satisfy_player_states = function(player){
 	if (player.player_state.cards_to_play > 0){
 		if (player.hand.length <= 0) {
 			player.player_state.cards_to_play--;
@@ -148,39 +218,40 @@ game_core.prototype.satisfy_player_state = function(player){
 			return true;
 		}
 	} else if (player.player_state.destroyingA > 0){
-		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
+		if (this.checkEnemySquare(player) === false && this.checkSelfSquare(player) === false) {
 			player.player_state.destroyingA--;
 		} else {
 			return true;
 		}
 	} else if (player.player_state.destroyingS > 0) {
-		if (this.checkSelfSquare() === false) {
+		if (this.checkSelfSquare(player) === false) {
 			console.log('!!!!!!');
 			player.player_state.destroyingS--;
 		} else {
 			return true;
 		}
 	} else if (player.player_state.destroyingE > 0){
-		if (this.checkEnemySquare() === false) {
+		if (this.checkEnemySquare(player) === false) {
 			player.player_state.destroyingE--;
 		} else {
 			return true;
 		}
 	} else if (player.player_state.damagingA > 0) {
-		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
+		if (this.checkEnemySquare(player) === false && this.checkSelfSquare(player) === false) {
+			console.log('!!!!!!!!!!!!!!!!!!!!');
 			player.player_state.damagingA--;
 		} else {
 			return true;
 		}
 	} else if (player.player_state.damagingS > 0){
-		if (this.checkSelfSquare() === false) {
+		if (this.checkSelfSquare(player) === false) {
 			console.log('!!!!!!');
 			player.player_state.damagingS--;
 		} else {
 			return true;
 		}
 	} else if (player.player_state.damagingE > 0) {
-		if (this.checkEnemySquare() === false) {
+		if (this.checkEnemySquare(player) === false) {
 			player.player_state.damagingE--;
 		} else {
 			return true;
@@ -328,7 +399,8 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	var deck_temp = ["Armour Up", "Armour Up", "Armour Up", "Armour Up", "Armour Up", "Fireball", "Fireball", "Fireball", "Fireball", "Fireball"];
+	//var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	//var deck_temp = ["Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up"];
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
@@ -369,6 +441,14 @@ game_core.prototype.server_update = function(){
 	//Update the state of our local clock to match the timer
 	this.server_time = this.local_time;
 	//Make a snapshot of the current state, for updating the clients
+
+	if (this.players.self && this.satisfy_player_states(this.players.self) === false) {
+		console.log('something wasnt satisfying');
+	}
+	if (this.players.other && this.satisfy_player_states(this.players.other) === false) {
+		console.log('something wasnt satisfying');
+	}
+
 
 	this.tempstate = {
 		tu 	: this.turn,
@@ -477,10 +557,10 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				player_client.hand.push(player_client.deck[0]);
 				player_client.deck.splice(0, 1);
 			}
-		} else if (input_parts[0] === 'up') {
+		} /*else if (input_parts[0] === 'up') {
 			console.log('updating stats');
 			player_client.player_state = JSON.parse(input_parts[1])
-		}
+		}*/
 	} //if we have inputs
 }; //game_core.handle_server_input
 
@@ -493,7 +573,6 @@ game_core.prototype.resolve_square = function(row, col, player) {
 				//console.log('destroyingS');
 				//console.log(player);
 				if (((player === this.players.self && this.board.board_state.results[row][col] === 1) || (player !== this.players.self && this.board.board_state.results[row][col] === -1))) {
-					console.log('NOOOO?!?!?!');
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingS--;
@@ -800,7 +879,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 						/*
 						#TODO
 						console.log(player + ' vs. ' + piece_counter)
-						console.log(this.players.self.host + ' vs. ' + piece_counter)
+						console.log(this.players.self + ' vs. ' ce_counter)
 
 						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
 							player.hand.push(card);
