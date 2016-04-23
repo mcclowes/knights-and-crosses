@@ -102,6 +102,102 @@ if ( 'undefined' != typeof global ) {
 	module.exports = global.game_core = game_core;
 }
 
+//satisfy unsatisfyable effects
+game_core.prototype.satisfy_player_state = function(player){
+	//console.log(Object.getOwnPropertyNames(this));
+	if (player.player_state.cards_to_play > 0){
+		if (player.hand.length <= 0) {
+			player.player_state.cards_to_play--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.discarding > 0){
+		if (player.hand.length <= 0) {
+			player.player_state.discarding--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.freezing > 0){ // No place to freeze
+		if (this.checkFreeSquare() <= 0) {
+			player.player_state.freezing--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.thawing > 0){
+		if(this.checkFrozen() === false){ // No frozen squares to target
+			player.player_state.thawing--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.blocking > 0){
+		if (this.checkFreeSquare() <= 0){ // No place to block
+			player.player_state.blocking--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.shielding > 0){
+		if (this.checkNoShield() === false){ // Shielding
+			player.player_state.shielding--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.deshielding > 0) {
+		if (this.checkShield() === false){ // Deshielding
+			player.player_state.deshielding--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.destroyingA > 0){
+		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
+			player.player_state.destroyingA--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.destroyingS > 0) {
+		if (this.checkSelfSquare() === false) {
+			console.log('!!!!!!');
+			player.player_state.destroyingS--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.destroyingE > 0){
+		if (this.checkEnemySquare() === false) {
+			player.player_state.destroyingE--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.damagingA > 0) {
+		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
+			player.player_state.damagingA--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.damagingS > 0){
+		if (this.checkSelfSquare() === false) {
+			console.log('!!!!!!');
+			player.player_state.damagingS--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.damagingE > 0) {
+		if (this.checkEnemySquare() === false) {
+			player.player_state.damagingE--;
+		} else {
+			return true;
+		}
+	} else if (player.player_state.pieces_to_play > 0){
+		if (this.checkFreeSquare() === 0) { // Placing a piece
+			player.player_state.pieces_to_play--;
+		} else {
+			return true;
+		}
+	} else {
+		return true;
+	}
+
+	return false;
+};
+
 
 /*  -----------------------------  The board classs  -----------------------------  */
 
@@ -233,6 +329,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.hand = [];
 
 	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	//var deck_temp = ["Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up"];
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -368,7 +465,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				if (player_client.hand[i].cardName === target) {
 					player_client.hand.splice(i, 1);
 					player_client.player_state.cards_to_play = player_client.player_state.cards_to_play - 1;
-					this.resolve_card(target, player_client);
+					this.resolve_card(target, player_client, player_other);
 					break;
 				}
 			}
@@ -380,6 +477,9 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				player_client.hand.push(player_client.deck[0]);
 				player_client.deck.splice(0, 1);
 			}
+		} else if (input_parts[0] === 'up') {
+			console.log('updating stats');
+			player_client.player_state = JSON.parse(input_parts[1])
 		}
 	} //if we have inputs
 }; //game_core.handle_server_input
@@ -388,14 +488,18 @@ game_core.prototype.resolve_square = function(row, col, player) {
 	//console.log('Target square >>> ' + row + ', ' + col);
 	if (this.board.board_state.results[row][col] !== 0 || this.board.board_state.frost[row][col] >= 1 || this.board.board_state.rock[row][col] >= 1){
 		if (this.board.board_state.results[row][col] !== 0) { // Piece
+			//console.log('Affecting a piece >>> ' + player.instance === this.players.self.instance );
 			if (player.player_state.destroyingS > 0) { //Destroying self
-				if (((this.players.self.host === true && this.board.board_state.results[row][col] === 1) || (this.players.self.host === false && this.board.board_state.results[row][col] === -1))) {
+				//console.log('destroyingS');
+				//console.log(player);
+				if (((player === this.players.self && this.board.board_state.results[row][col] === 1) || (player !== this.players.self && this.board.board_state.results[row][col] === -1))) {
+					console.log('NOOOO?!?!?!');
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingS--;
 				}
 			} else if (player.player_state.destroyingE > 0) { //Destroying enemy
-				if (((this.players.self.host === true && this.board.board_state.results[row][col] === -1) || (this.players.self.host === false && this.board.board_state.results[row][col] === 1))) {
+				if (((player === this.players.self && this.board.board_state.results[row][col] === -1) || (player !== this.players.self && this.board.board_state.results[row][col] === 1))) {
 					this.board.board_state.results[row][col] = 0;
 					this.board.board_state.shields[row][col] = 0;
 					player.player_state.destroyingE--;
@@ -405,7 +509,9 @@ game_core.prototype.resolve_square = function(row, col, player) {
 				this.board.board_state.shields[row][col] = 0;
 				player.player_state.destroyingA--;
 			} else if (player.player_state.damagingS > 0) { //Damaging Self
-				if (((this.players.self.host === true && this.board.board_state.results[row][col] === 1) || (this.players.self.host === false && this.board.board_state.results[row][col] === -1))) {
+				//console.log('damagingS');
+				if (((player === this.players.self && this.board.board_state.results[row][col] === 1) || (player !== this.players.self && this.board.board_state.results[row][col] === -1))) {
+					//console.log('NOOOO?!?!?!');
 					if (this.board.board_state.shields[row][col] === 1) {
 						this.board.board_state.shields[row][col] = 0;
 					} else {
@@ -414,7 +520,7 @@ game_core.prototype.resolve_square = function(row, col, player) {
 					player.player_state.damagingS--;
 				}
 			} else if (player.player_state.damagingE > 0) { //Damaging Enemy
-				if (((this.players.self.host === true && this.board.board_state.results[row][col] === -1) || (this.players.self.host === false && this.board.board_state.results[row][col] === 1))) {
+				if (((player === this.players.self && this.board.board_state.results[row][col] === -1) || (player !== this.players.self && this.board.board_state.results[row][col] === 1))) {
 					if (this.board.board_state.shields[row][col] === 1) {
 						this.board.board_state.shields[row][col] = 0;
 					} else {
@@ -438,7 +544,7 @@ game_core.prototype.resolve_square = function(row, col, player) {
 			}
 		} else if (this.board.board_state.frost[row][col] >= 1 && player.player_state.thawing > 0) {
 			this.board.board_state.frost[row][col] = 0;
-			player.player_state.thawing -= 1;
+			player.player_state.thawing--;
 		} else if (this.board.board_state.rock[row][col] >= 1 && player.player_state.deblocking > 0) {
 			this.board.board_state.rock[row][col] = 0;
 			player.player_state.blocking--;
@@ -476,7 +582,7 @@ game_core.prototype.resolve_square = function(row, col, player) {
 }; // resolve piece/ square
 
 // Resolve card effects
-game_core.prototype.resolve_card = function(card, player) {
+game_core.prototype.resolve_card = function(card, player, enemy) {
 	// Check for discard
 	if (player.player_state.discarding > 0) {
 		player.player_state.discarding--;
@@ -665,17 +771,16 @@ game_core.prototype.resolve_card = function(card, player) {
 		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
 			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
 				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
-					var playerEnemy = 1; 
 					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-						if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-							player.hand.push(player.deck[0]);
-							player.deck.splice(0, 1);
+						if (enemy.deck.length > 0 && enemy.hand.length < maxHandSize) {
+							enemy.hand.push(enemy.deck[0]);
+							enemy.deck.splice(0, 1);
 						}
 					} else {
 						for (var i = 0; i < effect[1]; i++) {
-							if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-								player.hand.push(player.deck[0]);
-								player.deck.splice(0, 1);
+							if (enemy.deck.length > 0 && enemy.hand.length < maxHandSize) {
+								enemy.hand.push(enemy.deck[0]);
+								enemy.deck.splice(0, 1);
 							}
 						}
 					}
@@ -700,7 +805,7 @@ game_core.prototype.resolve_card = function(card, player) {
 						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
 							player.hand.push(card);
 						}*/
-					} else if (effect[3] && effect[3].match(shield)) {
+					} else if (effect[3] && effect[3].match(shield)) { // You have the least shields
 						player.hand.push(card);
 					}
 				}

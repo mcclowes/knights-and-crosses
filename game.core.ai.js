@@ -43,7 +43,9 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
 // Array shuffle function
 var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
- 
+// Scale number
+var scale_number = function(base, exp) { if (base < 0) { return parseFloat( - Math.pow(base, exp)); } else { return parseFloat(Math.pow(base, exp)); } };
+
 // initialise an array of cards - e.g. for new hand or deck
 var create_card_array = function(data) {
 	var cards = []
@@ -200,11 +202,13 @@ game_board.prototype.checkDiagonals = function(){
 	}
 };
 
-game_board.prototype.checkFreeSquare = function(){
+/*  -----------------------------  AI Board State Checkers  -----------------------------  */
+
+game_core.prototype.checkFreeSquare = function(){
 	var space = 0;
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if (this.board_state.results[i][j] === 0 && this.board_state.frost[i][j] === 0 && this.board_state.rock[i][j] === 0) {
+			if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
 				space++;
 			}
 		}
@@ -213,10 +217,10 @@ game_board.prototype.checkFreeSquare = function(){
 	return space;
 }
 
-game_board.prototype.checkEnemySquare = function(){
+game_core.prototype.checkEnemySquare = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if ((this.players.self.host === true && this.board_state.results[i][j] === 1) || (this.players.self.host === false && this.board_state.results[i][j] === -1)) {
+			if ((this.players.self.host === true && this.board.board_state.results[i][j] === 1) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1)) {
 				return true;
 			} 
 		}
@@ -224,10 +228,10 @@ game_board.prototype.checkEnemySquare = function(){
 	return false;
 }
 
-game_board.prototype.checkSelfSquare = function(){
+game_core.prototype.checkSelfSquare = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if ((this.players.self.host === true && this.board_state.results[i][j] === -1) || (this.players.self.host === false && this.board_state.results[i][j] === 1)) {
+			if ((this.players.self.host === true && this.board.board_state.results[i][j] === -1) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1)) {
 				return true;
 			} 
 		}
@@ -235,13 +239,42 @@ game_board.prototype.checkSelfSquare = function(){
 	return false;
 }
 
-var scale_number = function(base, exp) {
-	if (base < 0) {
-		return parseFloat( - Math.pow(base, exp));
-	} else {
-		return parseFloat(Math.pow(base, exp));
+// Check that at least one shield exists
+game_core.prototype.checkShield = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.shields[i][j] !== 0) {
+				return true;
+			}
+		}
 	}
-}
+	return false;
+};
+
+// Checks that there is a target to shield
+game_core.prototype.checkNoShield = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
+game_core.prototype.checkFrozen = function(){
+	for (var i = 0; i < 4; i++) {
+		for (var j = 0; j < 4; j++) {
+			if (this.board.board_state.frost[i][j] !== 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+};
+
+/*  -----------------------------  AI Decision Making functions  -----------------------------  */
 
 game_core.prototype.piece_modify = function(x, y) {
 	var square = this.board.board_state.results[x][y],
@@ -250,6 +283,9 @@ game_core.prototype.piece_modify = function(x, y) {
 		shield_mod = 1.1,
 		freeze_mod = 0.1,
 		rock_mod = 0.2;
+	if (this.board.board_state.shields[x][y] > 0) {
+		square = square * shield_mod;
+	}
 
 	if (x === 1 || x === 2) { // If in the middle 4
 		if (y === 1 || y === 2) {
@@ -278,7 +314,7 @@ game_core.prototype.piece_modify = function(x, y) {
 	}
 
 	return square;
-}
+};
 
 // Move else where
 game_core.prototype.checkDistance = function(){ //If host, + is good, if other, - is good
@@ -297,87 +333,228 @@ game_core.prototype.checkDistance = function(){ //If host, + is good, if other, 
 	//console.log( 'Whyyyyy ....? ' + row1 + ', ' + row2 + ', ' + row3 + ', ' + row4 + ', ' + col1 + ', ' + col2 + ', ' + col3 + ', ' + col4 + ', ' + dia1 + ', ' + dia2);
 
 	return scale_number(row1,2) + scale_number(row2,2) + scale_number(row3,2) + scale_number(row4,2) + scale_number(col1,2) + scale_number(col2,2) + scale_number(col3,2) + scale_number(col4,2) + scale_number(dia1,2) + scale_number(dia2,2);
-}
+};
+
+//satisfy unsatisfyable effects
+game_core.prototype.satisfy_player_state = function(){
+	//console.log(Object.getOwnPropertyNames(this));
+	if (this.players.self.player_state.cards_to_play > 0){
+		if (this.players.self.hand.length <= 0) {
+			this.players.self.player_state.cards_to_play--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.discarding > 0){
+		if (this.players.self.hand.length <= 0) {
+			this.players.self.player_state.discarding--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.freezing > 0){ // No place to freeze
+		if (this.checkFreeSquare() <= 0) {
+			this.players.self.player_state.freezing--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.thawing > 0){
+		if(this.checkFrozen() === false){ // No frozen squares to target
+			this.players.self.player_state.thawing--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.blocking > 0){
+		if (this.checkFreeSquare() <= 0){ // No place to block
+			this.players.self.player_state.blocking--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.shielding > 0){
+		if (this.checkNoShield() === false){ // Shielding
+			this.players.self.player_state.shielding--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.deshielding > 0) {
+		if (this.checkShield() === false){ // Deshielding
+			this.players.self.player_state.deshielding--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.destroyingA > 0){
+		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
+			this.players.self.player_state.destroyingA--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.destroyingS > 0) {
+		if (this.checkSelfSquare() === false) {
+			console.log('!!!!!!');
+			this.players.self.player_state.destroyingS--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.destroyingE > 0){
+		if (this.checkEnemySquare() === false) {
+			this.players.self.player_state.destroyingE--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.damagingA > 0) {
+		if (this.checkEnemySquare() === false && this.checkSelfSquare() === false) {
+			this.players.self.player_state.damagingA--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.damagingS > 0){
+		if (this.checkSelfSquare() === false) {
+			console.log('!!!!!!');
+			this.players.self.player_state.damagingS--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.damagingE > 0) {
+		if (this.checkEnemySquare() === false) {
+			this.players.self.player_state.damagingE--;
+		} else {
+			return true;
+		}
+	} else if (this.players.self.player_state.pieces_to_play > 0){
+		if (this.checkFreeSquare() === 0) { // Placing a piece
+			this.players.self.player_state.pieces_to_play--;
+		} else {
+			return true;
+		}
+	} else {
+		return true;
+	}
+
+	return false;
+};
 
 game_core.prototype.choose_square = function(moves){
-	this.board.board_distance = this.checkDistance(); // Current state
+	//this.board.board_distance = this.checkDistance(); // Current state
 	var temp_count = 0;
 	var temp_flag = 0;
 
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if (((this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.damagingA > 0) && (this.checkEnemySquare() || this.checkSelfSquare()) && this.board.board_state.results[i][j] !== 0 ) ||
-				((this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingS > 0) && this.checkSelfSquare() && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) ) ||
-				((this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.damagingE > 0) && this.checkEnemySquare() && ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) ) ||
-				(this.players.self.player_state.freezing > 0 && this.board.board_state.frost[i][j] === 0 ) ||
+			if (((this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.damagingA > 0) && this.board.board_state.results[i][j] !== 0 ) ||
+				((this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingS > 0) && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) ) ||
+				((this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.damagingE > 0) && ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) ) ||
+				(this.players.self.player_state.freezing > 0 && this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) ||
 				(this.players.self.player_state.thawing > 0 && this.board.board_state.frost[i][j] > 0) ||
-				(this.players.self.player_state.blocking > 0 && this.board.board_state.rock[i][j] === 0) ||
-				(this.players.self.player_state.shielding > 0 && this.board.board_state.shields[i][j] === 0 && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) )) ||
+				(this.players.self.player_state.blocking > 0 && this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) ||
+				(this.players.self.player_state.shielding > 0 && this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) ||
 				(this.players.self.player_state.deshielding > 0 && this.board.board_state.shields[i][j] > 0) ||
-				(this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0) )  {
-
-				// ^^^ I have a feeling this wont work... infact the whole function might behave really weirdly...
-				// Currently just tries to just do something to each square it encounters.
+				(this.players.self.player_state.pieces_to_play > 0 && this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) )  {
 
 				var temp_state = this.board.board_state;
 
-				if (this.players.self.player_state.freezing > 0){ // placing frost
-					temp_state.frost[i][j] = 4; //1/-1
-				} else if (this.players.self.player_state.thawing > 0){ // placing frost
-					temp_count = temp_state.frost[i][j];
-					temp_state.frost[i][j] = 0; //1/-1
-				} else if (this.players.self.player_state.blocking > 0){ // Placing rock
-					temp_state.rock[i][j] = 6;
-				} else if (this.players.self.player_state.shielding > 0){ // Placing rock
-					temp_state.shields[i][j] = 1;
-				} else if (this.players.self.player_state.deshielding > 0){ // Placing rock
-					temp_state.shields[i][j] = 0;
-				} else if (this.players.self.player_state.destroyingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
-					temp_count = temp_state.shields[i][j];
-					temp_flag = temp_state.results[i][j];
-					temp_state.results[i][j] = 0;
-					temp_state.shields[i][j] = 0;
-				} else if (this.players.self.player_state.destroyingS > 0 && this.checkSelfSquare()) {
-					temp_count = temp_state.shields[i][j];
-					temp_state.results[i][j] = 0;
-					temp_state.shields[i][j] = 0;
-				} else if (this.players.self.player_state.destroyingE > 0 && this.checkEnemySquare()) {
-					temp_count = temp_state.shields[i][j];
-					temp_state.results[i][j] = 0;
-					temp_state.shields[i][j] = 0;
-				} else if (this.players.self.player_state.damagingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
-					temp_count = temp_state.shields[i][j];
-					temp_flag = temp_state.results[i][j];
-					if (temp_state.shields[i][j] === 1){
+				if (this.players.self.player_state.freezing > 0 ) { // placing frost
+					if ( this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ){
+						temp_state.frost[i][j] = 4; //1/-1
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.thawing > 0 && this.board.board_state.frost[i][j] > 0) { // placing frost
+					if (this.board.board_state.frost[i][j] > 0) {
+						temp_count = temp_state.frost[i][j];
+						temp_state.frost[i][j] = 0; //1/-1
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.blocking > 0 ) { // Placing rock
+					if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) {
+						temp_state.rock[i][j] = 6;
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.shielding > 0 ) { // Placing shield
+					if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
+						temp_state.shields[i][j] = 1;
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.deshielding > 0 ) { // Deshielding
+					if (this.board.board_state.shields[i][j] > 0) {
 						temp_state.shields[i][j] = 0;
+					} else {
+						continue;
 					}
-					else {
+				} else if (this.players.self.player_state.destroyingA > 0){
+					if (this.board.board_state.results[i][j] !== 0 ) {
+						temp_count = temp_state.shields[i][j];
+						temp_flag = temp_state.results[i][j];
 						temp_state.results[i][j] = 0;
-					}
-				} else if (this.players.self.player_state.damagingS > 0 && this.checkSelfSquare()) {
-					temp_count = temp_state.shields[i][j];
-					if (temp_state.shields[i][j] === 1){
 						temp_state.shields[i][j] = 0;
+					} else {
+						continue;
 					}
-					else {
+				} else if (this.players.self.player_state.destroyingS > 0){
+					if ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) {
+						temp_count = temp_state.shields[i][j];
 						temp_state.results[i][j] = 0;
-					}
-				} else if (this.players.self.player_state.damagingE > 0 && this.checkEnemySquare()) {
-					temp_count = temp_state.shields[i][j];
-					if (temp_state.shields[i][j] === 1){
 						temp_state.shields[i][j] = 0;
+					} else {
+						continue;
 					}
-					else {
+				} else if (this.players.self.player_state.destroyingE > 0){
+					if ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) {
+						temp_count = temp_state.shields[i][j];
 						temp_state.results[i][j] = 0;
+						temp_state.shields[i][j] = 0;
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.damagingA > 0){
+					if (this.board.board_state.results[i][j] !== 0 ) {
+						temp_count = temp_state.shields[i][j];
+						temp_flag = temp_state.results[i][j];
+						if (temp_state.shields[i][j] === 1){
+							temp_state.shields[i][j] = 0;
+						}
+						else {
+							temp_state.results[i][j] = 0;
+						}
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.damagingS > 0){
+					if ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) {
+						temp_count = temp_state.shields[i][j];
+						if (temp_state.shields[i][j] === 1){
+							temp_state.shields[i][j] = 0;
+						}
+						else {
+							temp_state.results[i][j] = 0;
+						}
+					} else {
+						continue;
+					}
+				} else if (this.players.self.player_state.damagingE > 0) {
+					if ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) {
+						temp_count = temp_state.shields[i][j];
+						if (temp_state.shields[i][j] === 1){
+							temp_state.shields[i][j] = 0;
+						}
+						else {
+							temp_state.results[i][j] = 0;
+						}
+					} else {
+						continue;
 					}
 				} else if (this.players.self.player_state.pieces_to_play > 0) { // Placing a piece
-					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1; //1/-1
+					if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+						temp_state.results[i][j] = this.players.self.host === true ? 1 : -1; //1/-1
+					} else {
+						continue;
+					}
 				} 
 				
 				var dist = this.checkDistance();
-				//console.log('>>>>>> ' + dist + ' >>>>>> ' + i + ', ' + j);
-				if ( 	(	this.players.self.host === true && ( (moves !== undefined && dist >= moves.distance) || moves === undefined) && dist >= this.board.board_distance) || 
-						(	this.players.self.host === false && ( (moves !== undefined && dist <= moves.distance) || moves === undefined) && dist <= this.board.board_distance) 
+				console.log('>>>>>> ' + dist + ' >>>>>> ' + i + ', ' + j);
+				if ( 	(	this.players.self.host === true && ( (moves !== undefined && (dist >= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist >= this.board.board_distance*/) || 
+						(	this.players.self.host === false && ( (moves !== undefined && (dist <= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist <= this.board.board_distance*/) 
 					) {
 
 					moves = {
@@ -400,31 +577,30 @@ game_core.prototype.choose_square = function(moves){
 					temp_state.shields[i][j] = 0;
 				} else if (this.players.self.player_state.deshielding > 0){ // Placing rock
 					temp_state.shields[i][j] = 1;
-				} else if (this.players.self.player_state.destroyingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
+				} else if (this.players.self.player_state.destroyingA > 0) {
 					temp_state.results[i][j] = temp_flag;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.destroyingS > 0 && this.checkSelfSquare()) {
+				} else if (this.players.self.player_state.destroyingS > 0) {
 					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.destroyingE > 0 && this.checkEnemySquare()) {
+				} else if (this.players.self.player_state.destroyingE > 0) {
 					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.damagingA > 0 && (this.checkEnemySquare() || this.checkSelfSquare())) {
+				} else if (this.players.self.player_state.damagingA > 0) {
 					temp_state.results[i][j] = temp_flag;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.damagingS > 0 && this.checkSelfSquare()) {
+				} else if (this.players.self.player_state.damagingS > 0) {
 					temp_state.shields[i][j] = temp_count;
 					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1;
-				} else if (this.players.self.player_state.damagingE > 0 && this.checkEnemySquare()) {
+				} else if (this.players.self.player_state.damagingE > 0) {
 					temp_state.shields[i][j] = temp_count;
 					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
-				} else if (this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0){ // Placing a piece
+				} else if (this.players.self.player_state.pieces_to_play > 0){ // Placing a piece
 					temp_state.results[i][j] = 0;
 				}
 			}
 		}
 	}
-
 	return moves;
 }
 
@@ -504,6 +680,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.hand = [];
 
 	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	//var deck_temp = ["Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up"];
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -576,21 +753,28 @@ game_core.prototype.client_update = function() {
 	if (this.players.self.state === 'hosting.waiting for a player') {
 		return;
 	}
+	console.log(this.players.self.player_state);
+	if (this.satisfy_player_state() === false) {
+		console.log('something wasnt satisfying');
+		var server_packet = 'i.up-' + JSON.stringify(this.players.self.player_state) + '.' + this.local_time.toFixed(3).replace('.','-') + '.' + this.input_seq;
+		this.socket.send( server_packet );
+		return;
+	}
 
 	var input = '';
-	console.log(this.players.self.player_state);
 
-	if ( this.players.self.hand.length > 0 && (this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) ) {
+	if ( this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
 		console.log('Playing card');
 		var cardNumber = Math.floor(Math.random() * this.players.self.hand.length);
 		if (this.players.self.hand[cardNumber]){
 			input = 'ca-' + this.players.self.hand[cardNumber].cardName;
 		}
-	} else if ((this.board.checkFreeSquare() !== 0 && this.players.self.player_state.pieces_to_play > 0) || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
+	} else if ( this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
 		console.log('resolving effect');
 		//input = 'sq-' + (Math.floor(Math.random() * 4) + 1) + (Math.floor(Math.random() * 4) + 1);
 		var moves = undefined;
 		moves = this.choose_square(moves);
+		console.log(moves);
 		if (moves === undefined) { return; } //make sure it is better than the current board state too?
 		input = 'sq-' + (moves.x + 1) + (moves.y + 1);
 

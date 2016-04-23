@@ -59,8 +59,6 @@ game_server.onInput = function(client, parts) {
 	var input_time = parts[2].replace('-','.');
 	var input_seq = parts[3];
 
-	//console.log('handling input > ' + input_commands[0]);
-
 	//the client should be in a game, so we can tell that game to handle the input
 	if(client && client.game && client.game.gamecore) {
 		client.game.gamecore.handle_server_input(client, input_commands, input_time, input_seq);
@@ -165,7 +163,7 @@ game_server.findGame = function(player) {
 			var game_instance = this.games[gameid];
 
 			//If the game is a player short
-			if(game_instance.player_count < 2) {
+			if (game_instance.player_count < 2) {
 				//someone wants us to join!
 				joined_a_game = true;
 				//increase the player count and store the player as the client of this game
