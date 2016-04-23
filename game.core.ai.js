@@ -510,7 +510,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 
 	cardEffects = [];
 	for (var j = 0; j < cards.length; j++){
-		if (cards[j].name === card){
+		if (cards[j].name === card.cardName){
 			cardEffects = cards[j].effects;
 		}
 	}
@@ -731,6 +731,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 			}
 		}
 	}
+	console.log(this.players.self.player_state);
 }; // resolve card
 
 game_core.prototype.evaluate_game_state = function() {
@@ -738,7 +739,8 @@ game_core.prototype.evaluate_game_state = function() {
 		card_value_enemy = 1;
 
 	temp_move = this.choose_square();
-	board_score = temp_move.distance;
+	board_score = temp_move === undefined ? 0 : temp_move.distance;
+
 	if (this.players.self.host === false) {
 		board_score = - board_score;
 	}
@@ -749,7 +751,22 @@ game_core.prototype.evaluate_game_state = function() {
 
 game_core.prototype.choose_card = function() {
 
-	temp_player_state = this.players.self.player_state;
+	temp_player_state = {
+		cards_to_play 	: this.players.self.player_state.cards_to_play,
+		pieces_to_play 	: this.players.self.player_state.pieces_to_play,
+		damagingA 		: this.players.self.player_state.damagingA,
+		damagingE 		: this.players.self.player_state.damagingE,
+		damagingS 		: this.players.self.player_state.damagingS,
+		destroyingA 	: this.players.self.player_state.destroyingA,
+		destroyingE 	: this.players.self.player_state.destroyingE,
+		destroyingS 	: this.players.self.player_state.destroyingS,
+		discarding 		: this.players.self.player_state.discarding,
+		shielding 		: this.players.self.player_state.shielding,
+		deshielding 	: this.players.self.player_state.deshielding,
+		freezing 		: this.players.self.player_state.freezing,
+		thawing 		: this.players.self.player_state.thawing,
+		blocking 		: this.players.self.player_state.blocking
+	}
 
 	var card_selection = {
 		card 	: undefined,
@@ -762,7 +779,7 @@ game_core.prototype.choose_card = function() {
 	for (var i = 0; i < this.players.self.hand.length; i++){
 		console.log('Trying out ' + cards[i].name);
 		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
-
+		console.log(this.players.self.player_state);
 		temp_score = this.evaluate_game_state();
 
 		console.log('ARGHHHHHH >>>>>>> ' + temp_score);
@@ -774,7 +791,22 @@ game_core.prototype.choose_card = function() {
 			}
 		}
 
-		this.players.self.player_state = temp_player_state;
+		this.players.self.player_state = {
+			cards_to_play 	: temp_player_state.cards_to_play,
+			pieces_to_play 	: temp_player_state.pieces_to_play,
+			damagingA 		: temp_player_state.damagingA,
+			damagingE 		: temp_player_state.damagingE,
+			damagingS 		: temp_player_state.damagingS,
+			destroyingA 	: temp_player_state.destroyingA,
+			destroyingE 	: temp_player_state.destroyingE,
+			destroyingS 	: temp_player_state.destroyingS,
+			discarding 		: temp_player_state.discarding,
+			shielding 		: temp_player_state.shielding,
+			deshielding 	: temp_player_state.deshielding,
+			freezing 		: temp_player_state.freezing,
+			thawing 		: temp_player_state.thawing,
+			blocking 		: temp_player_state.blocking
+		}
 	}
 
 	return card_selection.card;
