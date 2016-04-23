@@ -399,7 +399,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = ["Armour Up", "Armour Up", "Armour Up", "Armour Up", "Armour Up", "Fireball", "Fireball", "Fireball", "Fireball", "Fireball"];
+	var deck_temp = ["Armour Up", "Armour Up", "Armour Up", "Armour Up", "Armour Up", "Fire Blast", "Fire Blast", "Fire Blast", "Fire Blast", "Fire Blast"];
 	//var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	//var deck_temp = ["Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up"];
 	deck_temp = shuffle(deck_temp);

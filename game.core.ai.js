@@ -279,7 +279,7 @@ game_core.prototype.evaluate_square = function(x, y) {
 	var square = this.board.board_state.results[x][y],
 		center_mod = 1.5,
 		enemy_mod = 1.5,
-		shield_mod = 1.1,
+		shield_mod = 1.3,
 		freeze_mod = 0.2,
 		rock_mod = 0.4;
 
@@ -293,9 +293,7 @@ game_core.prototype.evaluate_square = function(x, y) {
 		}
 	}
 
-	if (this.players.self.host === true && square < 0){
-		square = - enemy_mod * square;
-	} else if (this.players.self.host === false && square > 0){
+	if ( (this.players.self.host === true && square < 0) || (this.players.self.host === false && square > 0) ) {
 		square = enemy_mod * square;
 	} else if (square === 0){
 		if (this.board.board_state.frost[x][y] > 0) { //frozen
