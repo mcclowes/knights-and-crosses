@@ -455,13 +455,11 @@ game_core.prototype.choose_square = function(moves){
 				if ( 	(	this.players.self.host === true && ( (moves !== undefined && (dist >= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist >= this.board.board_distance*/) || 
 						(	this.players.self.host === false && ( (moves !== undefined && (dist <= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist <= this.board.board_distance*/) 
 					) {
-
 					moves = {
 						x : i,
 						y : j,
 						distance : dist
 					};
-					
 				}
 
 				// Reverse things
@@ -503,12 +501,283 @@ game_core.prototype.choose_square = function(moves){
 	return moves;
 }
 
+game_core.prototype.resolve_card = function(card, player, enemy) {
+	// Check for discard
+	if (player.player_state.discarding > 0) {
+		player.player_state.discarding--;
+		return;
+	}
+
+	cardEffects = [];
+	for (var j = 0; j < cards.length; j++){
+		if (cards[j].name === card){
+			cardEffects = cards[j].effects;
+		}
+	}
+
+	var conditionIf = new RegExp("^if$", "i"),
+		conditionLeast = new RegExp("^least$", "i"),
+		deal = new RegExp("^deal$|^damage$", "i");     // ^x$ dictates explicit regex matching
+		destroy = new RegExp("^destroy$|^remove$", "i"),
+		draw = new RegExp("^draw$|^draws$", "i"),
+		one = new RegExp("^a$|^1$", "i"),
+		every = new RegExp("^all$|^every$", "i"),
+		endTurn = new RegExp("^end$", "i"),
+		targetSelf = new RegExp("^you$|^your$|^yours$", "i"),
+		targetEnemy = new RegExp("^enemy$|^opponent$", "i"),
+		freeze = new RegExp("^freeze$", "i"),
+		thaw = new RegExp("^thaw$", "i"),
+		shield = new RegExp("^shield$|^shields$", "i"),
+		block = new RegExp("^block$", "i"),
+		discard = new RegExp("^discard$", "i"),
+		piece = new RegExp("^piece$|pieces$", "i"),
+		hand = new RegExp("^hand$|^hands$", "i");
+		//= new RegExp("", "i"),
+
+	for (var i = 0; i < cardEffects.length; i++){
+		var effect = cardEffects[i].split(' ');
+
+		if (effect[0] && effect[0].match(endTurn)) { // End turn
+			player.player_state.cards_to_play = 0;
+			player.player_state.pieces_to_play = 0;
+		} else if (effect[0] && effect[0].match(deal)) { // Dealing damage
+			if (effect[1] && effect[1].match(one)){ // Damage one
+				if (effect[4] && effect[4].match(targetSelf)){
+					player.player_state.damagingS = 1;
+				} else if (effect[4] && effect[4].match(targetEnemy)){
+					player.player_state.damagingE = 1;
+				} else {
+					player.player_state.damagingA = 1;
+				}
+			} else if (effect[1] && effect[1].match(every)) { // Damage all
+				for (var k = 0; k < 4; k++) {
+					for (var l = 0; l < 4; l++) {
+						if (this.board.board_state.shields[k][l] === 1) {
+							this.board.board_state.shields[k][l] = 0;
+						} else if (this.board.board_state.results[k][l] !== 0) {
+							this.board.board_state.results[k][l] = 0;
+						}
+					}
+				}
+			} else { // else damage many
+				if (effect[4] && effect[4].match(targetSelf)) {
+					player.player_state.damagingS = effect[1];
+				} else if (effect[4] && effect[4].match(targetEnemy)){
+					player.player_state.damagingE = effect[1];
+				} else {
+					player.player_state.damagingA = effect[1];
+				}
+			}
+		} else if (effect[0] && effect[0].match(destroy)) { // Destroying piece or shield
+			if (effect[2] && effect[2].match(shield)){ //if shield
+				if (effect[1] && effect[1].match(one)){
+					player.player_state.deshielding = 1;
+				} else if (effect[1] && effect[1].match(every)) { // Deshield all
+					for (var k = 0; k < 4; k++) {
+						for (var l = 0; l < 4; l++) {
+							this.board.board_state.shields[k][l] = 0;
+						}
+					}
+				} else { //else deshield many
+					deshielding = effect[1];
+				}
+			} else { //
+				if (effect[1] && effect[1].match(one)){
+					if (effect[4] && effect[4].match(targetSelf)) {
+						player.player_state.destroyingS = 1;
+					}  else if (effect[4] && effect[4].match(targetEnemy)){
+						player.player_state.destroyingE = 1;
+					} else {
+						player.player_state.destroyingA = 1;
+					}
+				} else if (effect[1] && effect[1].match(every)) { // Destroy all
+					for (var k = 0; k < 4; k++){ 
+						for (var l = 0; l < 4; l++){
+							this.board.board_state.results[k][l] = 0;
+							this.board.board_state.shields[k][l] = 0;
+						}
+					}
+				} else { //else many
+					if (effect[4] && effect[4].match(targetSelf)) {
+						player.player_state.destroyingS = effect[1];
+					} else if (effect[4] && effect[4].match(targetEnemy)){
+						player.player_state.destroyingE = effect[1];
+					} else {
+						player.player_state.destroyingA = effect[1];
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(draw)){ // Drawing cards
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+					player.hand.push(player.deck[0]);
+					player.deck.splice(0, 1);
+				} else {
+				}
+			} else { //else many
+				for (var i = 0; i < effect[1]; i++) {
+					if (player.deck.length > 0 && player.hand.length < maxHandSize) {
+						player.hand.push(player.deck[0]);
+						player.deck.splice(0, 1);
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
+
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.freezing = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+							this.board.board_state.frost[i][j] = 4;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.freezing = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(thaw)){ // Thaw
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.thawing = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.frost[i][j] >= 1) {
+							this.board.board_state.frost[i][j] = 0;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.thawing = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(block)){ // Block/Rock
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.blocking = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0) {
+							this.board.board_state.rock[i][j] = 6;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.blocking = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(shield)){ // Shielding
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.shielding = 1;
+			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						if (this.board.board_state.shields[i][j] === 0) {
+							this.board.board_state.shields[i][j] = 1;
+						}
+					}
+				}
+			} else { //else many
+				player.player_state.shielding = effect[1];
+			}
+		} else if (effect[0] && effect[0].match(discard)){ //Discarding
+			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+				player.player_state.discarding++;
+			} else if (effect[1] && effect[1].match(every)) {
+				player.hand = [];
+			} else {
+				player.player_state.discarding = player.player_state.discarding + effect[1]; // Discarding some
+			}
+		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
+			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
+				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
+					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
+						if (enemy.deck.length > 0 && enemy.hand.length < maxHandSize) {
+							enemy.hand.push(enemy.deck[0]);
+							enemy.deck.splice(0, 1);
+						}
+					} else {
+						for (var i = 0; i < effect[1]; i++) {
+							if (enemy.deck.length > 0 && enemy.hand.length < maxHandSize) {
+								enemy.hand.push(enemy.deck[0]);
+								enemy.deck.splice(0, 1);
+							}
+						}
+					}
+				}
+			}
+		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
+			console.log("Doing an if");
+			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
+				if (effect[4] && effect[4].match(conditionLeast)) {
+					if (effect[5] && effect[5].match(piece)) {
+						var piece_counter = 0;
+						for (var i = 0; i < 4; i++) {
+							for (var j = 0; j < 4; j++) {
+								piece_counter = piece_counter + this.board.board_state.results[i][j];
+							}
+						}
+						/*
+						#TODO
+						console.log(player + ' vs. ' + piece_counter)
+						console.log(this.players.self + ' vs. ' ce_counter)
+
+						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
+							player.hand.push(card);
+						}*/
+					} else if (effect[3] && effect[3].match(shield)) { // You have the least shields
+						player.hand.push(card);
+					}
+				}
+			}
+		}
+	}
+}; // resolve card
+
+game_core.prototype.evaluate_game_state = function() {
+	var card_value_self = 1,
+		card_value_enemy = 1;
+
+	temp_move = this.choose_square();
+	board_score = temp_move.distance;
+	if (this.players.self.host === false) {
+		board_score = - board_score;
+	}
+	state_score = board_score + this.players.self.hand.length * card_value_self + this.players.other.hand.length * card_value_enemy;
+
+	return state_score;
+};
+
 game_core.prototype.choose_card = function() {
 
-}
+	temp_player_state = this.players.self.player_state;
 
-game_core.prototype.choose_effect_resolve = function() {
-	
+	var card_selection = {
+		card 	: undefined,
+		score 	: this.evaluate_game_state()
+	}
+
+	console.log('ARGHHHHHH  First >>>>>>> ' + card_selection.score);
+
+	//for card in hand
+	for (var i = 0; i < this.players.self.hand.length; i++){
+		console.log('Trying out ' + cards[i].name);
+		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
+
+		temp_score = this.evaluate_game_state();
+
+		console.log('ARGHHHHHH >>>>>>> ' + temp_score);
+
+		if (temp_score > card_selection.score) {
+			card_selection = {
+				card : i,
+				score: temp_score
+			}
+		}
+
+		this.players.self.player_state = temp_player_state;
+	}
+
+	return card_selection.card;
 }
 
 /*  -----------------------------  End turn button classs  -----------------------------  */
@@ -658,13 +927,23 @@ game_core.prototype.client_update = function() {
 
 	if ( this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
 		console.log('Playing card');
-		var cardNumber = Math.floor(Math.random() * this.players.self.hand.length);
-		if (this.players.self.hand[cardNumber]){
-			input = 'ca-' + this.players.self.hand[cardNumber].cardName;
+
+		var card_choice = this.choose_card();
+		console.log(card_choice);
+		if (card_choice === undefined) { 
+			console.log('resolving effect');
+			var moves = undefined;
+			moves = this.choose_square(moves);
+			console.log(moves);
+			if (moves === undefined) { return; } //make sure it is better than the current board state too?
+			input = 'sq-' + (moves.x + 1) + (moves.y + 1);
+		}
+
+		if (this.players.self.hand[card_choice]){
+			input = 'ca-' + this.players.self.hand[card_choice].cardName;
 		}
 	} else if ( this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
 		console.log('resolving effect');
-		//input = 'sq-' + (Math.floor(Math.random() * 4) + 1) + (Math.floor(Math.random() * 4) + 1);
 		var moves = undefined;
 		moves = this.choose_square(moves);
 		console.log(moves);
