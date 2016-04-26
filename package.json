@@ -18,7 +18,9 @@
   "homepage": "https://github.com/mcclowes/Networked_Sigil#readme",
   "dependencies": {
     "express": "^4.13.4",
+    "fs": "0.0.2",
     "http": "0.0.0",
+    "jsonfile": "^2.3.0",
     "node-uuid": "^1.4.7",
     "socket.io": "^1.4.5",
     "socket.io-client": "^1.4.5"

@@ -6,13 +6,16 @@ var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
-var card_value_self = 1,
-	card_value_enemy = 1,
+var player_card_value = 1,
+	enemy_card_value = 1,
 	center_mod = 1.5,
 	enemy_mod = 1.5,
 	shield_mod = 1.3,
 	freeze_mod = 0.2,
 	rock_mod = 0.4;
+
+var fs = require('fs');
+var file = 'json/card_data.json';
 
 // Card effect list - move to json, load decks?
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
@@ -52,7 +55,7 @@ Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixe
 // Array shuffle function
 var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
 // Scale number
-var scale_number = function(base, exp) { if (base < 0) { return parseFloat( - Math.pow(base, exp)); } else { return parseFloat(Math.pow(base, exp)); } };
+var scale_number = function(base, exp) { if (base < 0) { return Number( - Math.pow(base, exp)); } else { return Number(Math.pow(base, exp)); } };
 
 // initialise an array of cards - e.g. for new hand or deck
 var create_card_array = function(data) {
@@ -75,8 +78,8 @@ var create_card = function(data) {
 //This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
 
 var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance){
-	card_value_self = arg1,
-	card_value_enemy = arg2,
+	player_card_value = arg1,
+	enemy_card_value = arg2,
 	center_mod = arg3,
 	enemy_mod = arg4,
 	shield_mod = arg5,
@@ -289,6 +292,7 @@ game_core.prototype.checkFrozen = function(){
 
 game_core.prototype.evaluate_square = function(x, y) {
 	var square = this.board.board_state.results[x][y];
+	square = square * 10;
 
 	if (this.board.board_state.shields[x][y] > 0) {
 		square = square * shield_mod;
@@ -318,31 +322,46 @@ game_core.prototype.evaluate_square = function(x, y) {
 		} 
 	}
 
-	return square;
+	//console.log('Square > ' + square);
+	return Number(square).toFixed(0);
 };
 
 // Move else where
 game_core.prototype.checkDistance = function(){ //If host, + is good, if other, - is good
-	var row1 = this.evaluate_square(0,0) + this.evaluate_square(0,1) + this.evaluate_square(0,2) + this.evaluate_square(0,3),
-		row2 = this.evaluate_square(1,0) + this.evaluate_square(1,1) + this.evaluate_square(1,2) + this.evaluate_square(1,3),
-		row3 = this.evaluate_square(2,0) + this.evaluate_square(2,1) + this.evaluate_square(2,2) + this.evaluate_square(2,3),
-		row4 = this.evaluate_square(3,0) + this.evaluate_square(3,1) + this.evaluate_square(3,2) + this.evaluate_square(3,3),
-		col1 = this.evaluate_square(0,0) + this.evaluate_square(1,0) + this.evaluate_square(2,0) + this.evaluate_square(3,0),
-		col2 = this.evaluate_square(0,1) + this.evaluate_square(1,1) + this.evaluate_square(2,1) + this.evaluate_square(3,1),
-		col3 = this.evaluate_square(0,2) + this.evaluate_square(1,2) + this.evaluate_square(2,2) + this.evaluate_square(3,2),
-		col4 = this.evaluate_square(0,3) + this.evaluate_square(1,3) + this.evaluate_square(2,3) + this.evaluate_square(3,3),
-		dia1 = this.evaluate_square(0,0) + this.evaluate_square(1,1) + this.evaluate_square(2,2) + this.evaluate_square(3,3),
-		dia2 = this.evaluate_square(0,3) + this.evaluate_square(1,2) + this.evaluate_square(2,1) + this.evaluate_square(3,0);
+	var row1 = Number(this.evaluate_square(0,0)) + Number(this.evaluate_square(0,1)) + Number(this.evaluate_square(0,2)) + Number(this.evaluate_square(0,3)),
+		row2 = Number(this.evaluate_square(1,0)) + Number(this.evaluate_square(1,1)) + Number(this.evaluate_square(1,2)) + Number(this.evaluate_square(1,3)),
+		row3 = Number(this.evaluate_square(2,0)) + Number(this.evaluate_square(2,1)) + Number(this.evaluate_square(2,2)) + Number(this.evaluate_square(2,3)),
+		row4 = Number(this.evaluate_square(3,0)) + Number(this.evaluate_square(3,1)) + Number(this.evaluate_square(3,2)) + Number(this.evaluate_square(3,3)),
+		col1 = Number(this.evaluate_square(0,0)) + Number(this.evaluate_square(1,0)) + Number(this.evaluate_square(2,0)) + Number(this.evaluate_square(3,0)),
+		col2 = Number(this.evaluate_square(0,1)) + Number(this.evaluate_square(1,1)) + Number(this.evaluate_square(2,1)) + Number(this.evaluate_square(3,1)),
+		col3 = Number(this.evaluate_square(0,2)) + Number(this.evaluate_square(1,2)) + Number(this.evaluate_square(2,2)) + Number(this.evaluate_square(3,2)),
+		col4 = Number(this.evaluate_square(0,3)) + Number(this.evaluate_square(1,3)) + Number(this.evaluate_square(2,3)) + Number(this.evaluate_square(3,3)),
+		dia1 = Number(this.evaluate_square(0,0)) + Number(this.evaluate_square(1,1)) + Number(this.evaluate_square(2,2)) + Number(this.evaluate_square(3,3)),
+		dia2 = Number(this.evaluate_square(0,3)) + Number(this.evaluate_square(1,2)) + Number(this.evaluate_square(2,1)) + Number(this.evaluate_square(3,0));
 
-	return scale_number(row1,2) + scale_number(row2,2) + scale_number(row3,2) + scale_number(row4,2) + scale_number(col1,2) + scale_number(col2,2) + scale_number(col3,2) + scale_number(col4,2) + scale_number(dia1,2) + scale_number(dia2,2);
+	row1 = Number(scale_number(row1, 2));
+	row2 = Number(scale_number(row2, 2));
+	row3 = Number(scale_number(row3, 2));
+	row4 = Number(scale_number(row4, 2));
+	col1 = Number(scale_number(col1, 2));
+	col2 = Number(scale_number(col2, 2));
+	col3 = Number(scale_number(col3, 2));
+	col4 = Number(scale_number(col4, 2));
+	dia1 = Number(scale_number(dia1, 2));
+	dia2 = Number(scale_number(dia2, 2));
+
+	
+	value = row1 + row2 + row3 + row4 + col1 + col2 + col3 + col4 + dia1 + dia2;
+	//console.log('Calculating >>>>> ' + value + ' >>>>> ' + row1 + ' ' + row2 + ' ' + row3 + ' ' + row4 + ' ' + col1 + ' ' + col2 + ' ' + col3 + ' ' + col4 + ' ' + dia1 + ' ' + dia2);
+	return value;
 };
 
 game_core.prototype.choose_square = function(moves){
-	var temp_count = 0;
-	var temp_flag = 0;
-
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
+			var temp_count = 0;
+			var temp_flag = 0;
+
 			if (((this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.damagingA > 0) && this.board.board_state.results[i][j] !== 0 ) ||
 				((this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingS > 0) && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) ) ||
 				((this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.damagingE > 0) && ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) ) ||
@@ -361,7 +380,7 @@ game_core.prototype.choose_square = function(moves){
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.thawing > 0 && this.board.board_state.frost[i][j] > 0) { // placing frost
+				} else if (this.players.self.player_state.thawing > 0) { // placing frost
 					if (this.board.board_state.frost[i][j] > 0) {
 						temp_count = temp_state.frost[i][j];
 						temp_state.frost[i][j] = 0; //1/-1
@@ -457,7 +476,8 @@ game_core.prototype.choose_square = function(moves){
 				} 
 				
 				var dist = this.checkDistance();
-				//console.log('>>>>>> ' + dist + ' >>>>>> ' + i + ', ' + j);
+				//console.log(dist);
+				
 				if (    (   this.players.self.host === true && ( (moves !== undefined && (dist >= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist >= this.board.board_distance*/) || 
 						(   this.players.self.host === false && ( (moves !== undefined && (dist <= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist <= this.board.board_distance*/) 
 					) {
@@ -466,6 +486,7 @@ game_core.prototype.choose_square = function(moves){
 						y : j,
 						distance : dist
 					};
+					console.log('Moves distance = ' + moves.distance + ' >>>>>> ' + i + ', ' + j);
 				}
 
 				// Reverse things
@@ -504,6 +525,7 @@ game_core.prototype.choose_square = function(moves){
 			}
 		}
 	}
+
 	return moves;
 }
 
@@ -703,7 +725,6 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 			}
 		}
 	}
-	//console.log(this.players.self.player_state);
 }; // resolve card
 
 game_core.prototype.evaluate_game_state = function() {
@@ -715,12 +736,18 @@ game_core.prototype.evaluate_game_state = function() {
 	}*/
 	
 	temp_move = this.choose_square();
-	board_score = temp_move === undefined ? 0 : temp_move.distance;
+
+	//console.log(this.players.self.player_state);
+	board_score = temp_move === undefined ? 0 : Number(temp_move.distance);
 
 	if (this.players.self.host === false) {
 		board_score = - board_score;
 	}
-	state_score = board_score + this.players.self.hand.length * card_value_self + this.players.other.hand.length * card_value_enemy;
+	player_hand_value = this.players.self.hand.length * player_card_value;
+	enemy_hand_value = this.players.other.hand.length * enemy_card_value;
+	state_score = board_score + player_hand_value + enemy_hand_value;
+
+	//console.log('does this f(ing work? ' + board_score + ' + ' + player_hand_value + ' + ' + enemy_hand_value + ' = ' + state_score);
 
 	return state_score;
 };
@@ -743,9 +770,11 @@ game_core.prototype.choose_card = function(best) {
 		blocking        : this.players.self.player_state.blocking
 	}
 
+	var starting_value = Number(this.evaluate_game_state());
+
 	var card_selection = {
 		card    : undefined,
-		score   : this.evaluate_game_state()
+		score   : starting_value
 	}
 
 	//console.log('ARGHHHHHH  First >>>>>>> ' + card_selection.score);
@@ -755,13 +784,8 @@ game_core.prototype.choose_card = function(best) {
 		//console.log('Trying out ' + this.players.self.hand[i].cardName);
 		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
 		//console.log(this.players.self.player_state);
-		temp_score = this.evaluate_game_state();
+		temp_score = Number(this.evaluate_game_state());
 
-		//console.log('ARGHHHHHH >>>>>>> ' + temp_score);
-
-		/*if (best === false) {
-			console.log('whats worse... ' + temp_score + ' vs. ' + card_selection.score);
-		}*/
 		if ((best === true && temp_score >= card_selection.score) || (best === false && temp_score <= card_selection.score)) {
 			card_selection = {
 				card : i,
@@ -786,10 +810,24 @@ game_core.prototype.choose_card = function(best) {
 			blocking        : temp_player_state.blocking
 		}
 	}
-	/*if (best === false) {
-		console.log('discardddingggggggg ..... ' + card_selection.card + ' >>>>> ' + card_selection.score);
-	}*/
 
+	if (card_selection.card !== undefined && best === true) {
+		console.log('Playing ' + this.players.self.hand[card_selection.card].cardName + ' for >>> ' + (card_selection.score - starting_value));
+		var content = JSON.parse(fs.readFileSync(file));
+		for ( var i = 0; i < content.length; i++ ) {
+			if (content[i].name === this.players.self.hand[card_selection.card].cardName) {
+				content[i].count++;
+				content[i].total = content[i].total + (card_selection.score - starting_value);
+				if (content[i].min > (card_selection.score - starting_value)) {
+					content[i].min = (card_selection.score - starting_value);
+				}
+				if (content[i].max < (card_selection.score - starting_value)) {
+					content[i].max = (card_selection.score - starting_value);
+				}
+			}
+		}
+		fs.writeFileSync(file, JSON.stringify(content));
+	}
 
 	return card_selection.card;
 }
@@ -1010,7 +1048,7 @@ game_core.prototype.client_onreadygame = function(data) {
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
 
 	this.local_time = server_time + this.net_latency;
-	console.log('server time is about ' + this.local_time);
+	//console.log('server time is about ' + this.local_time);
 		
 	//Update their information
 	player_host.state = 'local_pos(hosting)';

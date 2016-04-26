@@ -10,7 +10,7 @@ try {
 
 }
 
-for (var i = 0; i < 10; i++) {
+//for (var i = 0; i < 10; i++) {
 	var clientio  = require('socket.io-client');
 	var client    = clientio.connect(address + ':' + gameport);
 
@@ -18,7 +18,7 @@ for (var i = 0; i < 10; i++) {
 	// Make AI game
 	var game = {};
 	//game = new game_core();
-	game = new game_core(1, 1, 1.5, 1.5, 1.3, 0.2, 0.4);
+	game = new game_core(10, 10, 1.5, 1.5, 1.3, 2, 4);
 	
 	if (game.mmr === undefined) {
 		game.mmr = 0;
@@ -38,20 +38,4 @@ for (var i = 0; i < 10; i++) {
 	game.socket.on('error', game.client_ondisconnect.bind(game)); 						// Error -> not connected for now
 	game.socket.on('message', game.client_onnetmessage.bind(game)); 					// Parse message from server, send to handlers
 	game.update( new Date().getTime() );
-}
-
-/*
-	// AI Manager
-	//Initialise 100 AI instances with randomised game state variables 
-	while (AI improvement improves from each round) {
-		for (each AI) { 
-			for (n times) {
-				//Matchmake via the Elo Rating System, n times per AI instance 
-				//Play game, using algorithm 2
-				//Rank each AI using the Elo Rating System
-			}
-		}
-		//Eliminate the lowest 25 instances
-		//Create 25 new AI from the remaining AI, via genetic crossover method
-	}
-	return gathered data*/
+//}
