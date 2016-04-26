@@ -17,7 +17,8 @@ try {
 	var	game_core		= require('./game.core.ai.js');
 	// Make AI game
 	var game = {};
-	game = new game_core();
+	//game = new game_core();
+	game = new game_core(1, 1, 1.5, 1.5, 1.3, 0.2, 0.4);
 	game.socket = client;
 	game.socket.on('connect', function(){
 		game.players.self.state = 'connecting';

@@ -151,6 +151,9 @@ var game_core = function(game_instance){
 	this.server_updates = []; //A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
 	this.client_connect_to_server(); //Connect to the socket.io server!
 	this.client_create_ping_timer(); //We start pinging the server to determine latency
+
+	this.cardBack = new Image();
+	this.cardBack.src = this.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
 }; //game_core.constructor
 
 //server side we set the 'game_core' class to a global type, so that it can use it anywhere.
@@ -187,16 +190,10 @@ var game_board = function() {
 			this.board_state.shields[i][j] = 0;
 		}
 	}
-};
-
-game_board.prototype.draw = function(){
-	this.boardImage = new Image();
-	this.boardImage.src = "img/board.png";
-	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
-	game.ctx.fillRect(this.x, this.y, 400, 400);
-	game.ctx.drawImage(this.boardImage, this.x, this.y, 400, 400);
 
 	//Assign images
+	this.boardImage = new Image();
+	this.boardImage.src = "img/board.png";
 	this.p1PieceImage = new Image();
 	this.p1PieceImage.src = "img/piece_p1.png";
 	this.p2PieceImage = new Image();
@@ -215,6 +212,12 @@ game_board.prototype.draw = function(){
 	this.p1ShieldImage.src = "img/piece_p1_shielded.png";
 	this.p2ShieldImage = new Image();
 	this.p2ShieldImage.src = "img/piece_p2_shielded.png";
+};
+
+game_board.prototype.draw = function(){
+	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
+	game.ctx.fillRect(this.x, this.y, 400, 400);
+	game.ctx.drawImage(this.boardImage, this.x, this.y, 400, 400);
 
 	//for each square, draw the relevant piece
 	game.ctx.shadowBlur = 20;
@@ -377,13 +380,6 @@ end_turn_button.prototype.draw = function(){
 	game.ctx.fillRect(this.x, canvasHeight/2, this.w, this.h);
 	game.ctx.shadowBlur=0;
 
-	// Set faux rounded corners
-	/*context.lineJoin = "round";
-	context.lineWidth = cornerRadius;
-	// Change origin and dimensions to match true size (a stroke makes the shape a bit larger)
-	context.strokeRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);
-	context.fillRect(rectX+(cornerRadius/2), rectY+(cornerRadius/2), rectWidth-cornerRadius, rectHeight-cornerRadius);*/
-
 	game.ctx.fillStyle = 'rgba(0, 0, 0, 1)';
 	game.ctx.textAlign="center"; 
 	game.ctx.fillText(this.text, 20 + this.w / 2, canvasHeight / 2 + 30);
@@ -400,7 +396,9 @@ end_turn_button.prototype.contains = function(mx, my) {
 
 var game_card = function( card_name ) {
 	this.cardName = card_name;
-	this.cardImage = '';
+	//this.cardImage = '';
+	this.cardImage = new Image();
+	this.cardImage.src = "img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
 
 	this.pos = { x:0, y:0 };
 	this.size = { x:140, y:210, hx:0, hy:0 };
@@ -416,12 +414,6 @@ game_card.prototype.draw = function(self){ //draw card
 			cardEffects = cards[i].effects;
 		}
 	}
-
-	this.cardBody = new Image();
-	this.cardBody.src = "img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
-
-	this.cardBack = new Image();
-	this.cardBack.src = game.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
 
 	game.ctx.shadowBlur = 20;
 	if ((self === true) && (game.players.self.player_state.discarding > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
@@ -444,9 +436,9 @@ game_card.prototype.draw = function(self){ //draw card
 	game.ctx.clip();
 	
 	if (self === true) {
-		game.ctx.drawImage(this.cardBody, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		game.ctx.drawImage(this.cardImage, this.pos.x, this.pos.y, this.size.x, this.size.y);
 	} else {
-		game.ctx.drawImage(this.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		game.ctx.drawImage(game.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
 	}
 
 	game.ctx.restore();

@@ -6,6 +6,15 @@ var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
+
+var card_value_self = 1,
+	card_value_enemy = 1,
+	center_mod = 1.5,
+	enemy_mod = 1.5,
+	shield_mod = 1.3,
+	freeze_mod = 0.2,
+	rock_mod = 0.4;
+
 // Card effect list - move to json, load decks?
 var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
 
@@ -66,7 +75,15 @@ var create_card = function(data) {
 /* ----------------------------- The game_core class (the main class) -----------------------------  */
 //This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
 
-var game_core = function(game_instance){
+var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance){
+	card_value_self = arg1,
+	card_value_enemy = arg2,
+	center_mod = arg3,
+	enemy_mod = arg4,
+	shield_mod = arg5,
+	freeze_mod = arg6,
+	rock_mod = arg7;
+
 	this.instance = game_instance; //Store the instance, if any
 	this.server = this.instance !== undefined; //Store a flag if we are the server
 	this.world = { //Used in collision etc.
@@ -251,7 +268,7 @@ game_core.prototype.checkShield = function(){
 };
 
 // Checks that there is a target to shield
-game_core.prototype.checkNoShield = function(){
+game_core.prototype.checkUnshielded = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
 			if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
@@ -276,12 +293,7 @@ game_core.prototype.checkFrozen = function(){
 /*  -----------------------------  AI Decision Making functions  -----------------------------  */
 
 game_core.prototype.evaluate_square = function(x, y) {
-	var square = this.board.board_state.results[x][y],
-		center_mod = 1.5,
-		enemy_mod = 1.5,
-		shield_mod = 1.3,
-		freeze_mod = 0.2,
-		rock_mod = 0.4;
+	var square = this.board.board_state.results[x][y];
 
 	if (this.board.board_state.shields[x][y] > 0) {
 		square = square * shield_mod;
@@ -331,7 +343,6 @@ game_core.prototype.checkDistance = function(){ //If host, + is good, if other, 
 };
 
 game_core.prototype.choose_square = function(moves){
-	//this.board.board_distance = this.checkDistance(); // Current state
 	var temp_count = 0;
 	var temp_flag = 0;
 
@@ -579,7 +590,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 						}
 					}
 				} else { //else deshield many
-					deshielding = effect[1];
+					player.player_state.deshielding = effect[1];
 				}
 			} else { //
 				if (effect[1] && effect[1].match(one)){
@@ -608,20 +619,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 				}
 			}
 		} else if (effect[0] && effect[0].match(draw)){ // Drawing cards
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-					player.hand.push(player.deck[0]);
-					player.deck.splice(0, 1);
-				} else {
-				}
-			} else { //else many
-				for (var i = 0; i < effect[1]; i++) {
-					if (player.deck.length > 0 && player.hand.length < maxHandSize) {
-						player.hand.push(player.deck[0]);
-						player.deck.splice(0, 1);
-					}
-				}
-			}
+			//do nothing
 		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
 
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
@@ -680,30 +678,10 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 				player.player_state.shielding = effect[1];
 			}
 		} else if (effect[0] && effect[0].match(discard)){ //Discarding
-			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.discarding++;
-			} else if (effect[1] && effect[1].match(every)) {
-				player.hand = [];
-			} else {
-				player.player_state.discarding = player.player_state.discarding + effect[1]; // Discarding some
-			}
+			//dont
 		} else if (effect[0] && effect[0].match(targetSelf)){ //You / your
 			if (effect[1] && effect[1].match(targetEnemy)){ // Your enemy
-				if (effect[2] && effect[2].match(draw)){ // Your enemy draws
-					if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-						if (enemy.deck.length > 0 && enemy.hand.length < maxHandSize) {
-							enemy.hand.push(enemy.deck[0]);
-							enemy.deck.splice(0, 1);
-						}
-					} else {
-						for (var i = 0; i < effect[1]; i++) {
-							if (enemy.deck.length > 0 && enemy.hand.length < maxHandSize) {
-								enemy.hand.push(enemy.deck[0]);
-								enemy.deck.splice(0, 1);
-							}
-						}
-					}
-				}
+				// don't draw
 			}
 		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
 			console.log("Doing an if");
@@ -735,9 +713,13 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 }; // resolve card
 
 game_core.prototype.evaluate_game_state = function() {
-	var card_value_self = 1,
-		card_value_enemy = 1;
+	//temp_move only resolves to one depth
 
+	// seperate choose square into two functions - one that tests and reverses and one that just makes the move without reversing
+	/*while (this.players.self.player_state.cards_to_play !== 0 && this.players.self.player_state.damagingA && this.players.self.player_state.damagingE && this.players.self.player_state.damagingS && this.players.self.player_state.destroyingA && this.players.self.player_state.destroyingE && this.players.self.player_state.destroyingS && this.players.self.player_state.discarding && this.players.self.player_state.shielding && this.players.self.player_state.deshielding && this.players.self.player_state.freezing && this.players.self.player_state.thawing && this.players.self.player_state.blocking) {
+		temp_move = this.choose_square();
+	}*/
+	
 	temp_move = this.choose_square();
 	board_score = temp_move === undefined ? 0 : temp_move.distance;
 
@@ -750,6 +732,8 @@ game_core.prototype.evaluate_game_state = function() {
 };
 
 game_core.prototype.choose_card = function() {
+
+	console.log(this.players.self.hand);
 
 	temp_player_state = {
 		cards_to_play 	: this.players.self.player_state.cards_to_play,
@@ -777,9 +761,9 @@ game_core.prototype.choose_card = function() {
 
 	//for card in hand
 	for (var i = 0; i < this.players.self.hand.length; i++){
-		console.log('Trying out ' + cards[i].name);
+		console.log('Trying out ' + this.players.self.hand[i].name);
 		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
-		console.log(this.players.self.player_state);
+		//console.log(this.players.self.player_state);
 		temp_score = this.evaluate_game_state();
 
 		console.log('ARGHHHHHH >>>>>>> ' + temp_score);
@@ -947,13 +931,10 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 //require('test_file.js');
 
 game_core.prototype.client_update = function() {
-	if ((this.players.self.host === true && this.turn === -1) || (this.players.self.host === false && this.turn === 1)) { // not players turn
+	if ((this.players.self.host === true && this.turn === -1) || (this.players.self.host === false && this.turn === 1) || this.players.self.state === 'hosting.waiting for a player') { // not players turn
 		return;
 	}
-	if (this.players.self.state === 'hosting.waiting for a player') {
-		return;
-	}
-	console.log(this.players.self.player_state);
+	//console.log(this.players.self.player_state);
 
 	var input = '';
 
@@ -974,6 +955,7 @@ game_core.prototype.client_update = function() {
 		if (this.players.self.hand[card_choice]){
 			input = 'ca-' + this.players.self.hand[card_choice].cardName;
 		}
+
 	} else if ( this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
 		console.log('resolving effect');
 		var moves = undefined;
@@ -988,9 +970,8 @@ game_core.prototype.client_update = function() {
 
 	console.log(input);
 
-	// Process input
+	// Process and send input
 	this.input_seq += 1;
-	//Send inputs
 	var server_packet = 'i.' + input + '.' + this.local_time.toFixed(3).replace('.','-') + '.' + this.input_seq;
 	this.socket.send( server_packet );
 

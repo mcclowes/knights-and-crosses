@@ -119,7 +119,7 @@ game_core.prototype.checkFreeSquare = function(){
 game_core.prototype.checkEnemySquare = function(player){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if ((this.players.self === player && this.board.board_state.results[i][j] === 1) || (this.players.self === player && this.board.board_state.results[i][j] === -1)) {
+			if ((this.players.self === player && this.board.board_state.results[i][j] === -1) || (this.players.self !== player && this.board.board_state.results[i][j] === 1)) {
 				return true;
 			} 
 		}
@@ -130,7 +130,7 @@ game_core.prototype.checkEnemySquare = function(player){
 game_core.prototype.checkSelfSquare = function(player){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if ((this.players.self === player && this.board.board_state.results[i][j] === -1) || (this.players.self === player && this.board.board_state.results[i][j] === 1)) {
+			if ((this.players.self === player && this.board.board_state.results[i][j] === 1) || (this.players.self !== player && this.board.board_state.results[i][j] === -1)) {
 				return true;
 			} 
 		}
@@ -151,7 +151,7 @@ game_core.prototype.checkShield = function(){
 };
 
 // Checks that there is a target to shield
-game_core.prototype.checkNoShield = function(){
+game_core.prototype.checkUnshielded = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
 			if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
@@ -206,7 +206,7 @@ game_core.prototype.satisfy_player_states = function(player){
 			return true;
 		}
 	} else if (player.player_state.shielding > 0){
-		if (this.checkNoShield() === false){ // Shielding
+		if (this.checkUnshielded() === false){ // Shielding
 			player.player_state.shielding--;
 		} else {
 			return true;
@@ -225,7 +225,6 @@ game_core.prototype.satisfy_player_states = function(player){
 		}
 	} else if (player.player_state.destroyingS > 0) {
 		if (this.checkSelfSquare(player) === false) {
-			console.log('!!!!!!');
 			player.player_state.destroyingS--;
 		} else {
 			return true;
@@ -238,14 +237,12 @@ game_core.prototype.satisfy_player_states = function(player){
 		}
 	} else if (player.player_state.damagingA > 0) {
 		if (this.checkEnemySquare(player) === false && this.checkSelfSquare(player) === false) {
-			console.log('!!!!!!!!!!!!!!!!!!!!');
 			player.player_state.damagingA--;
 		} else {
 			return true;
 		}
 	} else if (player.player_state.damagingS > 0){
 		if (this.checkSelfSquare(player) === false) {
-			console.log('!!!!!!');
 			player.player_state.damagingS--;
 		} else {
 			return true;
@@ -739,7 +736,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 						}
 					}
 				} else { //else deshield many
-					deshielding = effect[1];
+					player.player_state.deshielding = effect[1];
 				}
 			} else { //
 				if (effect[1] && effect[1].match(one)){
