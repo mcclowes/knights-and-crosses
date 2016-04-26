@@ -709,7 +709,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 			}
 		}
 	}
-	console.log(this.players.self.player_state);
+	//console.log(this.players.self.player_state);
 }; // resolve card
 
 game_core.prototype.evaluate_game_state = function() {
@@ -733,7 +733,7 @@ game_core.prototype.evaluate_game_state = function() {
 
 game_core.prototype.choose_card = function() {
 
-	console.log(this.players.self.hand);
+	//console.log(this.players.self.hand);
 
 	temp_player_state = {
 		cards_to_play 	: this.players.self.player_state.cards_to_play,
@@ -757,16 +757,16 @@ game_core.prototype.choose_card = function() {
 		score 	: this.evaluate_game_state()
 	}
 
-	console.log('ARGHHHHHH  First >>>>>>> ' + card_selection.score);
+	//console.log('ARGHHHHHH  First >>>>>>> ' + card_selection.score);
 
 	//for card in hand
 	for (var i = 0; i < this.players.self.hand.length; i++){
-		console.log('Trying out ' + this.players.self.hand[i].name);
+		console.log('Trying out ' + this.players.self.hand[i].cardName);
 		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
 		//console.log(this.players.self.player_state);
 		temp_score = this.evaluate_game_state();
 
-		console.log('ARGHHHHHH >>>>>>> ' + temp_score);
+		//console.log('ARGHHHHHH >>>>>>> ' + temp_score);
 
 		if (temp_score > card_selection.score) {
 			card_selection = {
@@ -881,7 +881,7 @@ var game_player = function( game_instance, player_instance ) {
 
 //Main update loop
 game_core.prototype.update = function(t) {
-	if (t - this.lastframetime > 5000 || this.lastframetime === undefined) {
+	if (t - this.lastframetime > 1000 || this.lastframetime === undefined) {
 		this.lastframetime = t; //Store the last frame time
 		//Update the game specifics
 		this.client_update();
@@ -939,15 +939,15 @@ game_core.prototype.client_update = function() {
 	var input = '';
 
 	if ( this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
-		console.log('Playing card');
+		//console.log('Playing card');
 
 		var card_choice = this.choose_card();
-		console.log(card_choice);
+		//console.log(card_choice);
 		if (card_choice === undefined) { 
-			console.log('resolving effect');
+			//console.log('resolving effect');
 			var moves = undefined;
 			moves = this.choose_square(moves);
-			console.log(moves);
+			//console.log(moves);
 			if (moves === undefined) { return; } //make sure it is better than the current board state too?
 			input = 'sq-' + (moves.x + 1) + (moves.y + 1);
 		}
@@ -957,10 +957,10 @@ game_core.prototype.client_update = function() {
 		}
 
 	} else if ( this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
-		console.log('resolving effect');
+		//console.log('resolving effect');
 		var moves = undefined;
 		moves = this.choose_square(moves);
-		console.log(moves);
+		//console.log(moves);
 		if (moves === undefined) { return; } //make sure it is better than the current board state too?
 		input = 'sq-' + (moves.x + 1) + (moves.y + 1);
 
@@ -968,7 +968,7 @@ game_core.prototype.client_update = function() {
 		input = 'en';
 	}
 
-	console.log(input);
+	//console.log(input);
 
 	// Process and send input
 	this.input_seq += 1;
