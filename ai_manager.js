@@ -10,7 +10,7 @@ try {
 
 }
 
-//for (var i = 0; i < 2; i++) {
+for (var i = 0; i < 10; i++) {
 	var clientio  = require('socket.io-client');
 	var client    = clientio.connect(address + ':' + gameport);
 
@@ -19,6 +19,14 @@ try {
 	var game = {};
 	//game = new game_core();
 	game = new game_core(1, 1, 1.5, 1.5, 1.3, 0.2, 0.4);
+	
+	if (game.mmr === undefined) {
+		game.mmr = 0;
+	} else {
+		game.mmr++;
+		console.log(game.mrr);
+	}
+
 	game.socket = client;
 	game.socket.on('connect', function(){
 		game.players.self.state = 'connecting';
@@ -30,7 +38,7 @@ try {
 	game.socket.on('error', game.client_ondisconnect.bind(game)); 						// Error -> not connected for now
 	game.socket.on('message', game.client_onnetmessage.bind(game)); 					// Parse message from server, send to handlers
 	game.update( new Date().getTime() );
-//}
+}
 
 /*
 	// AI Manager

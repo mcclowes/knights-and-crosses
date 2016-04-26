@@ -6,7 +6,6 @@ var maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
-
 var card_value_self = 1,
 	card_value_enemy = 1,
 	center_mod = 1.5,
@@ -84,6 +83,8 @@ var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance
 	freeze_mod = arg6,
 	rock_mod = arg7;
 
+	this.mmr;
+
 	this.instance = game_instance; //Store the instance, if any
 	this.server = this.instance !== undefined; //Store a flag if we are the server
 	this.world = { //Used in collision etc.
@@ -138,8 +139,8 @@ var game_board = function() {
 
 	this.board_state = {
 		results : [],
-		frost 	: [],
-		rock 	: [],
+		frost   : [],
+		rock    : [],
 		shields : []
 	}
 
@@ -159,12 +160,6 @@ var game_board = function() {
 			this.board_state.shields[i][j] = 0;
 		}
 	}
-};
-
-// Check if co-ordinates are within Board object
-game_board.prototype.contains = function(mx, my) {
-	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
-	return (this.x <= mx) && (this.x + this.w >= mx) && (this.y <= my) && (this.y + this.h >= my);
 };
 
 // Decrement frost and rock array values
@@ -462,9 +457,9 @@ game_core.prototype.choose_square = function(moves){
 				} 
 				
 				var dist = this.checkDistance();
-				console.log('>>>>>> ' + dist + ' >>>>>> ' + i + ', ' + j);
-				if ( 	(	this.players.self.host === true && ( (moves !== undefined && (dist >= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist >= this.board.board_distance*/) || 
-						(	this.players.self.host === false && ( (moves !== undefined && (dist <= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist <= this.board.board_distance*/) 
+				//console.log('>>>>>> ' + dist + ' >>>>>> ' + i + ', ' + j);
+				if (    (   this.players.self.host === true && ( (moves !== undefined && (dist >= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist >= this.board.board_distance*/) || 
+						(   this.players.self.host === false && ( (moves !== undefined && (dist <= moves.distance || moves.distance === undefined)) || moves === undefined) /*&& dist <= this.board.board_distance*/) 
 					) {
 					moves = {
 						x : i,
@@ -684,7 +679,6 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 				// don't draw
 			}
 		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
-			console.log("Doing an if");
 			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
 				if (effect[4] && effect[4].match(conditionLeast)) {
 					if (effect[5] && effect[5].match(piece)) {
@@ -731,44 +725,44 @@ game_core.prototype.evaluate_game_state = function() {
 	return state_score;
 };
 
-game_core.prototype.choose_card = function() {
-
-	//console.log(this.players.self.hand);
-
+game_core.prototype.choose_card = function(best) {
 	temp_player_state = {
-		cards_to_play 	: this.players.self.player_state.cards_to_play,
-		pieces_to_play 	: this.players.self.player_state.pieces_to_play,
-		damagingA 		: this.players.self.player_state.damagingA,
-		damagingE 		: this.players.self.player_state.damagingE,
-		damagingS 		: this.players.self.player_state.damagingS,
-		destroyingA 	: this.players.self.player_state.destroyingA,
-		destroyingE 	: this.players.self.player_state.destroyingE,
-		destroyingS 	: this.players.self.player_state.destroyingS,
-		discarding 		: this.players.self.player_state.discarding,
-		shielding 		: this.players.self.player_state.shielding,
-		deshielding 	: this.players.self.player_state.deshielding,
-		freezing 		: this.players.self.player_state.freezing,
-		thawing 		: this.players.self.player_state.thawing,
-		blocking 		: this.players.self.player_state.blocking
+		cards_to_play   : this.players.self.player_state.cards_to_play,
+		pieces_to_play  : this.players.self.player_state.pieces_to_play,
+		damagingA       : this.players.self.player_state.damagingA,
+		damagingE       : this.players.self.player_state.damagingE,
+		damagingS       : this.players.self.player_state.damagingS,
+		destroyingA     : this.players.self.player_state.destroyingA,
+		destroyingE     : this.players.self.player_state.destroyingE,
+		destroyingS     : this.players.self.player_state.destroyingS,
+		discarding      : this.players.self.player_state.discarding,
+		shielding       : this.players.self.player_state.shielding,
+		deshielding     : this.players.self.player_state.deshielding,
+		freezing        : this.players.self.player_state.freezing,
+		thawing         : this.players.self.player_state.thawing,
+		blocking        : this.players.self.player_state.blocking
 	}
 
 	var card_selection = {
-		card 	: undefined,
-		score 	: this.evaluate_game_state()
+		card    : undefined,
+		score   : this.evaluate_game_state()
 	}
 
 	//console.log('ARGHHHHHH  First >>>>>>> ' + card_selection.score);
 
 	//for card in hand
 	for (var i = 0; i < this.players.self.hand.length; i++){
-		console.log('Trying out ' + this.players.self.hand[i].cardName);
+		//console.log('Trying out ' + this.players.self.hand[i].cardName);
 		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
 		//console.log(this.players.self.player_state);
 		temp_score = this.evaluate_game_state();
 
 		//console.log('ARGHHHHHH >>>>>>> ' + temp_score);
 
-		if (temp_score > card_selection.score) {
+		/*if (best === false) {
+			console.log('whats worse... ' + temp_score + ' vs. ' + card_selection.score);
+		}*/
+		if ((best === true && temp_score >= card_selection.score) || (best === false && temp_score <= card_selection.score)) {
 			card_selection = {
 				card : i,
 				score: temp_score
@@ -776,22 +770,26 @@ game_core.prototype.choose_card = function() {
 		}
 
 		this.players.self.player_state = {
-			cards_to_play 	: temp_player_state.cards_to_play,
-			pieces_to_play 	: temp_player_state.pieces_to_play,
-			damagingA 		: temp_player_state.damagingA,
-			damagingE 		: temp_player_state.damagingE,
-			damagingS 		: temp_player_state.damagingS,
-			destroyingA 	: temp_player_state.destroyingA,
-			destroyingE 	: temp_player_state.destroyingE,
-			destroyingS 	: temp_player_state.destroyingS,
-			discarding 		: temp_player_state.discarding,
-			shielding 		: temp_player_state.shielding,
-			deshielding 	: temp_player_state.deshielding,
-			freezing 		: temp_player_state.freezing,
-			thawing 		: temp_player_state.thawing,
-			blocking 		: temp_player_state.blocking
+			cards_to_play   : temp_player_state.cards_to_play,
+			pieces_to_play  : temp_player_state.pieces_to_play,
+			damagingA       : temp_player_state.damagingA,
+			damagingE       : temp_player_state.damagingE,
+			damagingS       : temp_player_state.damagingS,
+			destroyingA     : temp_player_state.destroyingA,
+			destroyingE     : temp_player_state.destroyingE,
+			destroyingS     : temp_player_state.destroyingS,
+			discarding      : temp_player_state.discarding,
+			shielding       : temp_player_state.shielding,
+			deshielding     : temp_player_state.deshielding,
+			freezing        : temp_player_state.freezing,
+			thawing         : temp_player_state.thawing,
+			blocking        : temp_player_state.blocking
 		}
 	}
+	/*if (best === false) {
+		console.log('discardddingggggggg ..... ' + card_selection.card + ' >>>>> ' + card_selection.score);
+	}*/
+
 
 	return card_selection.card;
 }
@@ -805,12 +803,6 @@ var end_turn_button = function() {
 	this.text = "End Turn";
 };
 
-end_turn_button.prototype.contains = function(mx, my) {
-	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
-	return  (this.x <= mx) && (this.x + this.w >= mx) && (canvasHeight/2 <= my) && (canvasHeight/2 + this.h >= my);
-};
-
-
 /*  -----------------------------  Card class  -----------------------------  */
 
 var game_card = function( card_name ) {
@@ -823,14 +815,9 @@ var game_card = function( card_name ) {
 	this.size.hy = this.size.y/2;
 };
 
-game_card.prototype.contains = function(mx, my) {
-	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
-	return  (this.pos.x <= mx) && (this.pos.x + this.size.x >= mx) && (this.pos.y <= my) && (this.pos.y + this.size.y >= my);
-};
-
 
 /*  -----------------------------  The player class -----------------------------  */
-/*	A simple class to maintain state of a player on screen,
+/*  A simple class to maintain state of a player on screen,
 	as well as to draw that state when required.
 */
 
@@ -843,20 +830,20 @@ var game_player = function( game_instance, player_instance ) {
 	this.id = '';
 
 	this.player_state = {
-		cards_to_play 	: 0,
-		pieces_to_play 	: 0,
-		damagingA 		: 0,
-		damagingE 		: 0,
-		damagingS 		: 0,
-		destroyingA 	: 0,
-		destroyingE 	: 0,
-		destroyingS 	: 0,
-		discarding 		: 0,
-		shielding 		: 0,
-		deshielding 	: 0,
-		freezing 		: 0,
-		thawing 		: 0,
-		blocking 		: 0
+		cards_to_play   : 0,
+		pieces_to_play  : 0,
+		damagingA       : 0,
+		damagingE       : 0,
+		damagingS       : 0,
+		destroyingA     : 0,
+		destroyingE     : 0,
+		destroyingS     : 0,
+		discarding      : 0,
+		shielding       : 0,
+		deshielding     : 0,
+		freezing        : 0,
+		thawing         : 0,
+		blocking        : 0
 	}
 
 	//Player arrays
@@ -938,38 +925,25 @@ game_core.prototype.client_update = function() {
 
 	var input = '';
 
+	//console.log(this.players.self.player_state.cards_to_play > 0);
 	if ( this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
-		//console.log('Playing card');
+		var card_choice = this.players.self.player_state.discarding > 0 ? this.choose_card(false) : this.choose_card(true);
 
-		var card_choice = this.choose_card();
-		//console.log(card_choice);
 		if (card_choice === undefined) { 
-			//console.log('resolving effect');
-			var moves = undefined;
-			moves = this.choose_square(moves);
-			//console.log(moves);
-			if (moves === undefined) { return; } //make sure it is better than the current board state too?
-			input = 'sq-' + (moves.x + 1) + (moves.y + 1);
-		}
-
-		if (this.players.self.hand[card_choice]){
+			input = 'ca-skip';
+		} else if (this.players.self.hand[card_choice]){
 			input = 'ca-' + this.players.self.hand[card_choice].cardName;
 		}
-
 	} else if ( this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
 		//console.log('resolving effect');
 		var moves = undefined;
 		moves = this.choose_square(moves);
-		//console.log(moves);
 		if (moves === undefined) { return; } //make sure it is better than the current board state too?
 		input = 'sq-' + (moves.x + 1) + (moves.y + 1);
 
 	} else if (input === '') { // If no action possible...
 		input = 'en';
 	}
-
-	//console.log(input);
-
 	// Process and send input
 	this.input_seq += 1;
 	var server_packet = 'i.' + input + '.' + this.local_time.toFixed(3).replace('.','-') + '.' + this.input_seq;
@@ -1058,6 +1032,7 @@ game_core.prototype.client_onhostgame = function(data) {
 }; //client_onhostgame
 
 game_core.prototype.client_onconnected = function(data) { // Ping ready
+	console.log(this.mmr);
 	this.players.self.id = data.id;
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
@@ -1108,9 +1083,9 @@ game_core.prototype.client_connect_to_server = function() {
 		this.players.self.state = 'connecting';
 	}.bind(this));*/
 /*
-	this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
-	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
-	this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
-	this.socket.on('error', this.client_ondisconnect.bind(this)); 						// Error -> not connected for now
-	this.socket.on('message', this.client_onnetmessage.bind(this)); 	*/				// Parse message from server, send to handlers
+	this.socket.on('disconnect', this.client_ondisconnect.bind(this));                  // Disconnected - e.g. network, server failed, etc.
+	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this));   // Tick of the server simulation - main update
+	this.socket.on('onconnected', this.client_onconnected.bind(this));                  // Connect to server - show state, store id
+	this.socket.on('error', this.client_ondisconnect.bind(this));                       // Error -> not connected for now
+	this.socket.on('message', this.client_onnetmessage.bind(this));     */              // Parse message from server, send to handlers
 }; //game_core.client_connect_to_server

@@ -49,6 +49,7 @@ console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
 // Handle successful connection
 io.sockets.on('connection', function (client) {
     client.userid = UUID(); //Generate new user ID
+    console.log(client.userid);
     client.emit('onconnected', { id: client.userid } ); // Ping successful connect
     console.log('\t socket.io:: player ' + client.userid + ' connected');
 

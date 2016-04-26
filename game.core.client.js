@@ -153,7 +153,6 @@ var game_core = function(game_instance){
 	this.client_create_ping_timer(); //We start pinging the server to determine latency
 
 	this.cardBack = new Image();
-	this.cardBack.src = this.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
 }; //game_core.constructor
 
 //server side we set the 'game_core' class to a global type, so that it can use it anywhere.
@@ -438,6 +437,7 @@ game_card.prototype.draw = function(self){ //draw card
 	if (self === true) {
 		game.ctx.drawImage(this.cardImage, this.pos.x, this.pos.y, this.size.x, this.size.y);
 	} else {
+		game.cardBack.src = game.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
 		game.ctx.drawImage(game.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
 	}
 

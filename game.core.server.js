@@ -539,7 +539,9 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 		} else if (input_parts[0] == 'ca') { // Clicked card
 			target = input_parts[1];
 			for (var i = player_client.hand.length - 1; i >= 0; i--) {
-				if (player_client.hand[i].cardName === target) {
+				if (target === 'skip') {
+					player_client.player_state.cards_to_play--;
+				} else if (player_client.hand[i].cardName === target) {
 					player_client.hand.splice(i, 1);
 					player_client.player_state.cards_to_play = player_client.player_state.cards_to_play - 1;
 					this.resolve_card(target, player_client, player_other);
@@ -863,7 +865,6 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 				}
 			}
 		} else if (effect[0] && effect[0].match(conditionIf)){ // Resolves 'If you have the least... return to hand'
-			console.log("Doing an if");
 			if (effect[1] && effect[1].match(targetSelf)){ // Resolves 'you'
 				if (effect[4] && effect[4].match(conditionLeast)) {
 					if (effect[5] && effect[5].match(piece)) {
