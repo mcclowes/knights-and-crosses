@@ -510,9 +510,6 @@ var game_player = function( game_instance, player_instance ) {
 	});
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
-	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
-	//Our local history of inputs
-	this.inputs = [];
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){

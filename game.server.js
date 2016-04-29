@@ -36,13 +36,12 @@ game_server.onMessage = function(client,message) {
 };
 
 game_server._onMessage = function(client, message) {
-	console.log(message);
 	var message_parts = message.split('.'); //Cut the message up into sub components
 	var message_type = message_parts[0]; //The first is always the type of message
 	var other_client = (client.game.player_host.userid == client.userid) ? client.game.player_client : client.game.player_host;
-	console.log(message);
 
 	if (message_type == 'i') { //Input handler will forward this
+		console.log(message);
 		this.onInput(client, message_parts);
 	} else if (message_type == 'p') {
 		client.send('s.p.' + message_parts[1]);
@@ -102,30 +101,20 @@ game_server.createGame = function(player) {
 	return thegame; //return the game
 }; //game_server.createGame
 
-//we are requesting to kill a game in progress.
-game_server.endGame = function(gameid, userid) {
+// End game in progress
+game_server.endGame = function(gameid, userid) { //userid is leaving
 	var thegame = this.games[gameid];
 
 	if (thegame) {
 		thegame.gamecore.stop_update(); //stop game updates (otherwise sockets crash)
 
 		if(thegame.player_count > 1) { //if the game has two players, one is leaving
-			console.log('Hootpppy');
 			this.updateMMR(thegame, userid);
-			console.log('Hoot');
 
-			if(userid == thegame.player_host.userid) {//send the players the message the game is ending
-				if(thegame.player_client) { //the host left, oh snap. Lets try join another game
-					thegame.player_client.send('s.e'); //tell them the game is over
-					this.findGame(thegame.player_client); //now look for/create a new game.
-				}
-			} else {
-				if (thegame.player_host) { //the other player left, we were hosting
-					thegame.player_host.send('s.e'); //tell the client the game is ended
-					thegame.player_host.hosting = false; //I am no longer hosting, this game is going down
-					this.findGame(thegame.player_host); //now look for/create a new game.
-				}
-			}
+			thegame.player_client.send('s.e'); //tell them the game is over
+			thegame.player_host.send('s.e'); //tell the client the game is ended
+			thegame.player_host.hosting = false; //I am no longer hosting, this game is going down
+			this.findGame(thegame.player_host); //now look for/create a new game.
 		}
 
 		delete this.games[gameid];

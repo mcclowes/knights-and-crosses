@@ -1,15 +1,13 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60 / 1000,
+var frame_time = 45,
 	maxHandSize = 10,
 	fs = require('fs'),
 	cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
 
 /*  -----------------------------  Update   -----------------------------   */
-
-if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
 
 // Manages frames/animation
 ( function () {
@@ -382,9 +380,6 @@ var game_player = function( game_instance, player_instance ) {
 	var deck_temp = JSON.parse(fs.readFileSync('json/deck_p1.json'));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
-	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
-	//Our local history of inputs
-	this.inputs = [];
 }; //game_player.constructor
 
 /*  -----------------------------  Common Core Game functions  -----------------------------  
@@ -500,19 +495,17 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				blocking 		: 0
 			}
 
-			if (this.board.check_win() !== undefined /*|| (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0)*/ ){ //check for win
+			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
 				console.log('The game was won');
 				this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
-				//if (this.win === 1){
-				this.server.endGame(this.instance, this.players.self);
-					//this.server.findGame(this.players.self);
-				/*} else {
+				if (this.win === 1){
+					this.server.endGame(this.instance, this.players.self);
+				} else {
 					this.server.endGame(this.instance, this.players.other);
-					this.server.findGame(this.players.other);
-				}*/
+				}
 			} else {
-				this.board.reduce_state();
-
+				this.board.reduce_state(); // remove frost
+				// Draw card
 				if (player_other.deck.length > 0 && player_other.hand.length < maxHandSize) {
 					player_other.hand.push(player_other.deck[0]);
 					player_other.deck.splice(0, 1);
@@ -541,7 +534,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				player_client.deck.splice(0, 1);
 			}
 		} 
-	} //if we have inputs
+	}
 }; //game_core.handle_server_input
 
 game_core.prototype.resolve_square = function(row, col, player) {

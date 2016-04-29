@@ -875,9 +875,6 @@ var game_player = function( game_instance, player_instance ) {
 	var deck_temp = JSON.parse(fs.readFileSync('json/deck_p1.json'));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
-	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
-	//Our local history of inputs
-	this.inputs = [];
 }; //game_player.constructor
 
 
@@ -1027,7 +1024,6 @@ game_core.prototype.client_create_configuration = function() {
 
 game_core.prototype.client_onreadygame = function(data) {
 	console.log('Connected, with mmr > ' + this.mmr);
-	console.log(this.mmr);
 	this.socket.send( 'm.' + this.mmr );
 
 	var server_time = parseFloat(data.replace('-','.'));
