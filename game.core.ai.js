@@ -1,12 +1,9 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60 / 1000; // run the local game at 16ms/ 60hz
-var maxHandSize = 10,
-	canvasWidth = 720,
-	canvasHeight = 800;
-
-var player_card_value = 1,
+var frame_time = 60 / 1000,
+	maxHandSize = 10,
+	player_card_value = 1, // Default initialised AI variables
 	enemy_card_value = 1,
 	center_mod = 1.5,
 	enemy_mod = 1.5,
@@ -15,10 +12,8 @@ var player_card_value = 1,
 	rock_mod = 0.4;
 
 var fs = require('fs');
-var file = 'json/card_data.json';
-
-// Card effect list - move to json, load decks?
-var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
+var results_file = 'json/card_data.json';
+var cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -87,13 +82,10 @@ var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance
 	rock_mod = arg7;
 
 	this.mmr;
+	this.game_count;
 
-	this.instance = game_instance; //Store the instance, if any
-	this.server = this.instance !== undefined; //Store a flag if we are the server
-	this.world = { //Used in collision etc.
-		width : canvasWidth,
-		height : canvasHeight
-	};
+	this.instance = game_instance; //Store instance (if arg)
+	this.server = this.instance !== undefined; // Flag for server
 
 	this.board = new game_board();
 	this.end_turn_button = new end_turn_button();
@@ -135,10 +127,6 @@ if ( 'undefined' != typeof global ) {
 /*  -----------------------------  The board classs  -----------------------------  */
 
 var game_board = function() {
-	this.w = 400;
-	this.h = 400;
-	this.x = canvasWidth / 2 - this.w / 2;
-	this.y = canvasWidth / 2 - this.h / 2;
 
 	this.board_state = {
 		results : [],
@@ -486,7 +474,7 @@ game_core.prototype.choose_square = function(moves){
 						y : j,
 						distance : dist
 					};
-					console.log('Moves distance = ' + moves.distance + ' >>>>>> ' + i + ', ' + j);
+					//console.log('Moves distance = ' + moves.distance + ' >>>>>> ' + i + ', ' + j);
 				}
 
 				// Reverse things
@@ -813,7 +801,7 @@ game_core.prototype.choose_card = function(best) {
 
 	if (card_selection.card !== undefined && best === true) {
 		console.log('Playing ' + this.players.self.hand[card_selection.card].cardName + ' for >>> ' + (card_selection.score - starting_value));
-		var content = JSON.parse(fs.readFileSync(file));
+		var content = JSON.parse(fs.readFileSync(results_file));
 		for ( var i = 0; i < content.length; i++ ) {
 			if (content[i].name === this.players.self.hand[card_selection.card].cardName) {
 				content[i].count++;
@@ -826,7 +814,7 @@ game_core.prototype.choose_card = function(best) {
 				}
 			}
 		}
-		fs.writeFileSync(file, JSON.stringify(content));
+		fs.writeFileSync(results_file, JSON.stringify(content));
 	}
 
 	return card_selection.card;
@@ -860,7 +848,6 @@ var game_card = function( card_name ) {
 */
 
 var game_player = function( game_instance, player_instance ) {
-	//Store the instance, if any
 	this.instance = player_instance; //dont need these?
 	//this.game = game_instance; //??
 	//Set up initial values for our state information
@@ -888,8 +875,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
-	//var deck_temp = ["Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up"];
+	var deck_temp = JSON.parse(fs.readFileSync('json/deck_p1.json'));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -1043,6 +1029,10 @@ game_core.prototype.client_create_configuration = function() {
 }; //game_core.client_create_configuration
 
 game_core.prototype.client_onreadygame = function(data) {
+	console.log('Connected, with mmr > ' + this.mmr);
+	console.log(this.mmr);
+	this.socket.send( 'm.' + this.mmr );
+
 	var server_time = parseFloat(data.replace('-','.'));
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
@@ -1070,7 +1060,6 @@ game_core.prototype.client_onhostgame = function(data) {
 }; //client_onhostgame
 
 game_core.prototype.client_onconnected = function(data) { // Ping ready
-	console.log(this.mmr);
 	this.players.self.id = data.id;
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
@@ -1100,6 +1089,39 @@ game_core.prototype.client_onnetmessage = function(data) {
 					this.client_ondisconnect(commanddata); break;
 				case 'p' : //server ping
 					this.client_onping(commanddata); break;
+				case 'm' : //update mmr
+					if(commands[3]){commanddata = Number(commanddata + '.' + commands[3]).toFixed(3);}
+					this.mmr = this.mmr + Number(55 - this.game_count).toFixed(0) * Number(commanddata).toFixed(0);
+					this.game_count++;
+					if (this.game_count > 30) { this.game_count = 30; }; 
+					//update data file
+					var ai_results = JSON.parse(fs.readFileSync('json/ai.json'));
+					for ( var i = 0; i < ai_results.length; i++ ) {
+						if (ai_results[i].player_card_value == player_card_value && // Default initialised AI variables
+							ai_results[i].enemy_card_value == enemy_card_value &&
+							ai_results[i].center_mod == center_mod &&
+							ai_results[i].enemy_mod == enemy_mod &&
+							ai_results[i].shield_mod == shield_mod &&
+							ai_results[i].freeze_mod == freeze_mod &&
+							ai_results[i].rock_mod == rock_mod ) {
+
+							ai_results[i].mmr = this.mmr;
+							fs.writeFileSync('json/ai.json', JSON.stringify(ai_results));
+							break;
+						}
+					}
+					ai_results.push({
+						player_card_value: player_card_value, 
+						enemy_card_value: enemy_card_value, 
+						center_mod: center_mod, 
+						enemy_mod: enemy_mod, 
+						shield_mod: shield_mod, 
+						freeze_mod: freeze_mod, 
+						rock_mod: rock_mod, 
+						mmr: this.mmr
+					});
+					fs.writeFileSync('json/ai.json', JSON.stringify(ai_results));
+					break;
 			} //subcommand
 		break; //'s'
 	} //command

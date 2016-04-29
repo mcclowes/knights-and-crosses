@@ -1,13 +1,16 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60/1000; // run the local game at 16ms/ 60hz
-var maxHandSize = 10,
+var frame_time = 60/1000,
+	maxHandSize = 10,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
-// Card effect list
-var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
+
+var cards = []; // Load cards (with jQuery)
+$.getJSON("json/cards.json", function(json) {
+    cards = json;
+});
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -480,6 +483,9 @@ var game_player = function( game_instance, player_instance ) {
 	this.state = 'not-connected';
 	this.id = '';
 
+	this.mmr = 1;
+	this.game_count = 0;
+
 	this.player_state = {
 		cards_to_play 	: 0,
 		pieces_to_play 	: 0,
@@ -501,7 +507,10 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	var deck_temp = []//["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	$.getJSON("json/deck_p1.json", function(json) {
+	    deck_temp = json;
+	});
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -631,6 +640,10 @@ game_core.prototype.client_create_configuration = function() {
 }; //game_core.client_create_configuration
 
 game_core.prototype.client_onreadygame = function(data) {
+	if (this.mmr === undefined) {this.mmr = 1;}
+	console.log('Connected, with mmr > ' + this.mmr);
+	this.socket.send( 'm.' + this.mmr );
+
 	var server_time = parseFloat(data.replace('-','.'));
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
@@ -689,6 +702,13 @@ game_core.prototype.client_onnetmessage = function(data) {
 					this.client_ondisconnect(commanddata); break;
 				case 'p' : //server ping
 					this.client_onping(commanddata); break;
+				case 'm' : //update mmr
+					if(commands[3]){commanddata = Number(commanddata + '.' + commands[3]).toFixed(3);}
+					console.log('here >>>  ' + commanddata);
+					this.mmr = Number(this.mmr + (55 - this.game_count) * (commanddata)).toFixed(0);
+					console.log("Boop >> " + this.mmr);
+					this.game_count++;
+					if (this.game_count > 30) { this.game_count = 30; }; break;
 			} //subcommand
 		break; //'s'
 	} //command

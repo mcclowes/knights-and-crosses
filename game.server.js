@@ -45,11 +45,14 @@ game_server._onMessage = function(client, message) {
 		this.onInput(client, message_parts);
 	} else if (message_type == 'p') {
 		client.send('s.p.' + message_parts[1]);
-	} else if (message_type == 'c') {    //Client changed their color!
-		if (other_client) // if other player exists, forward
-			other_client.send('s.c.' + message_parts[1]);
 	} else if (message_type == 'r') {    //A client is asking for lag simulation
 		this.fake_latency = parseFloat(message_parts[1]);
+	} else if (message_type == 'm') {    //A client is asking for lag simulation
+		if (client.game.player_host.userid == client.userid) {
+			client.game.player_client.mmr = message_parts[1];
+		} else {
+			client.game.player_host.mmr = message_parts[1];
+		}
 	}
 }; //game_server.onMessage
 
@@ -102,6 +105,8 @@ game_server.createGame = function(player) {
 game_server.endGame = function(gameid, userid) {
 	var thegame = this.games[gameid];
 
+	this.updateMMR(thegame, userid);
+
 	if (thegame) {
 		thegame.gamecore.stop_update(); //stop the game updates immediate
 
@@ -129,6 +134,18 @@ game_server.endGame = function(gameid, userid) {
 		this.log('That game was not found!');
 	}
 }; //game_server.endGame
+
+game_server.updateMMR = function(thegame, userid) {
+	console.log('Ending a game');
+	//Update mmrs
+	var host_prob = 1 / (1 + Math.pow(10, (-(thegame.player_host.mmr - thegame.player_client.mmr ))/400));
+	var other_prob = 1 / (1 + Math.pow(10, (-(thegame.player_client.mmr - thegame.player_host.mmr ))/400));
+	host_prob = userid == thegame.player_host.userid ? (1 - host_prob) : (- host_prob);
+	other_prob = userid == thegame.player_host.userid ? (- other_prob) : (1 - other_prob);
+	//console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
+	thegame.player_host.send('s.m.' + Number(host_prob).toFixed(3));
+	thegame.player_client.send('s.m.' + Number(other_prob).toFixed(3));
+};
 
 game_server.startGame = function(game) {
 	//so a game has 2 players and wants to begin the host already knows they are hosting, tell the other client they are joining a game s=server message, j=you are joining, send them the host id

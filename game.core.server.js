@@ -1,20 +1,12 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60 / 1000; // run the local game at 16ms/ 60hz
-var maxHandSize = 10,
-	canvasWidth = 720,
-	canvasHeight = 800;
+var frame_time = 60 / 1000,
+	maxHandSize = 10;
 
-// Card effect list
-var cards = [{"name":"Fire Blast","rarity":"Basic","effects":["Deal 1 damage"]},{"name":"Floods","rarity":"Rare","effects":["Destroy all pieces","End your turn"]},{"name":"Armour Up","rarity":"Basic","effects":["Shield a piece","Draw a card"]},{"name":"Flurry","rarity":"Rare","effects":["Deal 2 damage to your pieces","Deal 2 damage to enemy pieces"]},{"name":"Sabotage","rarity":"Elite","effects":["Remove 5 shields"]},{"name":"Summer","rarity":"Basic","effects":["Thaw 1 square","Draw a card"]},{"name":"Ice Blast","rarity":"Basic","effects":["Freeze a square"]},{"name":"Sacrifice","rarity":"Rare","effects":["Destroy a piece of yours","Draw 3 cards"]},{"name":"Boulder","rarity":"Rare","effects":["Discard a card","Block a square"]},{"name":"Frost","rarity":"Basic","effects":["Freeze all squares"]},{"name":"Taxes","rarity":"Rare","effects":["Discard 2 cards","Shield 3 pieces"]},{"name":"Barrage","rarity":"Basic","effects":["Damage all pieces","Discard 2 cards"]},{"name":"Bezerker","rarity":"Rare","effects":["Discard a card","Deal 1 damage","If you have the least pieces return this card to your hand"]},{"name":"Reckless","rarity":"Rare","effects":["Your opponent draws 2 cards","Destroy a piece"]}]
+var fs = require('fs');
+var cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
-//var node = (typeof module !== 'undefined' && module.exports)
-/*
-if (node) { // Handle node servers (primarily for AI instances)
-	var io = require('socket.io-client');
-	global.window = global.document = global;
-}*/
 
 /*  -----------------------------  WHat is this bit  -----------------------------   */
 
@@ -74,10 +66,6 @@ var create_card = function(data) {
 var game_core = function(game_instance){
 	this.instance = game_instance; //Store the instance, if any
 	this.server = this.instance !== undefined; //Store a flag if we are the server
-	this.world = { //Used in collision etc.
-		width : canvasWidth,
-		height : canvasHeight
-	};
 
 	this.board = new game_board();
 	this.turn = 1;
@@ -270,10 +258,6 @@ game_core.prototype.satisfy_player_states = function(player){
 /*  -----------------------------  The board classs  -----------------------------  */
 
 var game_board = function() {
-	this.w = 400;
-	this.h = 400;
-	this.x = canvasWidth / 2 - this.w / 2;
-	this.y = canvasWidth / 2 - this.h / 2;
 
 	this.board_state = {
 		results : [],
@@ -396,9 +380,10 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	//var deck_temp = ["Armour Up", "Armour Up", "Armour Up", "Armour Up", "Armour Up", "Fire Blast", "Fire Blast", "Fire Blast", "Fire Blast", "Fire Blast"];
-	var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
-	//var deck_temp = ["Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Ice Blast", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up", "Summer", "Armour Up"];
+	this.mmr = 1;
+
+	//var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	var deck_temp = JSON.parse(fs.readFileSync('json/deck_p1.json'));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 	//this.deck = JSON.parse('json/deck_p1.json'); //asign deck //var tempDeck = JSON.parse(eval("deck_p" + this.playerNo));
@@ -521,13 +506,13 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 
 			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
 				this.win = this.board.check_win();
-				console.log("Win? >>> " + this.win);
-				//send server message s.e.
-				this.server.endGame(this.instance, this.players.self);
-				this.server.endGame(this.instance, this.players.other);
-				this.server.findGame(this.players.self);
-				this.server.findGame(this.players.other);
-				console.log('Game ended fully');
+				if (this.win === 1){
+					this.server.endGame(this.instance, this.players.self);
+					this.server.findGame(this.players.self);
+				} else {
+					this.server.endGame(this.instance, this.players.other);
+					this.server.findGame(this.players.other);
+				}
 			} else {
 				this.board.reduce_state();
 
