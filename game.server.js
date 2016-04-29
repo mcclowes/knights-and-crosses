@@ -40,6 +40,7 @@ game_server._onMessage = function(client, message) {
 	var message_parts = message.split('.'); //Cut the message up into sub components
 	var message_type = message_parts[0]; //The first is always the type of message
 	var other_client = (client.game.player_host.userid == client.userid) ? client.game.player_client : client.game.player_host;
+	console.log(message);
 
 	if (message_type == 'i') { //Input handler will forward this
 		this.onInput(client, message_parts);
@@ -105,15 +106,15 @@ game_server.createGame = function(player) {
 game_server.endGame = function(gameid, userid) {
 	var thegame = this.games[gameid];
 
-	this.updateMMR(thegame, userid);
-
 	if (thegame) {
-		thegame.gamecore.stop_update(); //stop the game updates immediate
+		thegame.gamecore.stop_update(); //stop game updates (otherwise sockets crash)
 
-		//if the game has two players, the one is leaving
-		if(thegame.player_count > 1) {
-			//send the players the message the game is ending
-			if(userid == thegame.player_host.userid) {
+		if(thegame.player_count > 1) { //if the game has two players, one is leaving
+			console.log('Hootpppy');
+			this.updateMMR(thegame, userid);
+			console.log('Hoot');
+
+			if(userid == thegame.player_host.userid) {//send the players the message the game is ending
 				if(thegame.player_client) { //the host left, oh snap. Lets try join another game
 					thegame.player_client.send('s.e'); //tell them the game is over
 					this.findGame(thegame.player_client); //now look for/create a new game.
@@ -138,11 +139,12 @@ game_server.endGame = function(gameid, userid) {
 game_server.updateMMR = function(thegame, userid) {
 	console.log('Ending a game');
 	//Update mmrs
+	console.log('Existing MMRs >> ' + thegame.player_host.mmr + ' vs. ' + thegame.player_client.mmr);
 	var host_prob = 1 / (1 + Math.pow(10, (-(thegame.player_host.mmr - thegame.player_client.mmr ))/400));
 	var other_prob = 1 / (1 + Math.pow(10, (-(thegame.player_client.mmr - thegame.player_host.mmr ))/400));
 	host_prob = userid == thegame.player_host.userid ? (1 - host_prob) : (- host_prob);
 	other_prob = userid == thegame.player_host.userid ? (- other_prob) : (1 - other_prob);
-	//console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
+	console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
 	thegame.player_host.send('s.m.' + Number(host_prob).toFixed(3));
 	thegame.player_client.send('s.m.' + Number(other_prob).toFixed(3));
 };

@@ -41,9 +41,6 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 }() );
 
 /*  -----------------------------  Helper Functions  -----------------------------  */
-
-// Returns fixed point number, default n = 3
-Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
 // Array shuffle function
 var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
  
@@ -645,8 +642,8 @@ game_core.prototype.client_onreadygame = function(data) {
 	this.socket.send( 'm.' + this.mmr );
 
 	var server_time = parseFloat(data.replace('-','.'));
-	var player_host = this.players.self.host ?  this.players.self : this.players.other;
-	var player_client = this.players.self.host ?  this.players.other : this.players.self;
+	var player_host = this.players.self.host ? this.players.self : this.players.other;
+	var player_client = this.players.self.host ? this.players.other : this.players.self;
 
 	this.local_time = server_time + this.net_latency;
 	console.log('server time is about ' + this.local_time);

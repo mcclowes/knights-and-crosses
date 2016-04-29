@@ -2,13 +2,12 @@
 /*  ----------------------------- Key variables  -----------------------------   */
 
 var frame_time = 60 / 1000,
-	maxHandSize = 10;
+	maxHandSize = 10,
+	fs = require('fs'),
+	cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
-var fs = require('fs');
-var cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
-
-/*  -----------------------------  WHat is this bit  -----------------------------   */
+/*  -----------------------------  Update   -----------------------------   */
 
 if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
 
@@ -37,9 +36,6 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 }() );
 
 /*  -----------------------------  Helper Functions  -----------------------------  */
-
-// Returns fixed point number, default n = 3
-Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
 // Array shuffle function
 var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
  
@@ -504,15 +500,16 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				blocking 		: 0
 			}
 
-			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
-				this.win = this.board.check_win();
-				if (this.win === 1){
-					this.server.endGame(this.instance, this.players.self);
-					this.server.findGame(this.players.self);
-				} else {
+			if (this.board.check_win() !== undefined /*|| (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0)*/ ){ //check for win
+				console.log('The game was won');
+				this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
+				//if (this.win === 1){
+				this.server.endGame(this.instance, this.players.self);
+					//this.server.findGame(this.players.self);
+				/*} else {
 					this.server.endGame(this.instance, this.players.other);
 					this.server.findGame(this.players.other);
-				}
+				}*/
 			} else {
 				this.board.reduce_state();
 
@@ -537,14 +534,13 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 			target = input_parts[1];
 			this.resolve_square(target[0] - 1, target[1] - 1, player_client);
 		} else if (input_parts[0] === 'dr') {
-			if (player_client.deck.length > 0 && player_client.hand.length < maxHandSize) {
+			if (player_client.deck.length > 0 && player_client.hand.length < maxHandSize) { // Draw
 				player_client.hand.push(player_client.deck[0]);
 				player_client.deck.splice(0, 1);
+			} else if (player_client.deck.length > 0 && player_client.hand.length > maxHandSize) { // Overdraw
+				player_client.deck.splice(0, 1);
 			}
-		} /*else if (input_parts[0] === 'up') {
-			console.log('updating stats');
-			player_client.player_state = JSON.parse(input_parts[1])
-		}*/
+		} 
 	} //if we have inputs
 }; //game_core.handle_server_input
 

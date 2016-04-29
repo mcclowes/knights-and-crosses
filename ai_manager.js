@@ -12,19 +12,19 @@ try {
 	console.log(err);
 }
 
-var ai_count = 2,
+var ai_count = 4,
 	ai_solutions = [];
 
 // Randomly seed the AI
 for (var i = 0; i < ai_count; i++) {
 	ai_solutions.push([
-		(Math.random() * 20) + 1, // 10
-		(Math.random() * 20) + 1, // 10, 
-		((Math.random() * 20) + 1 ) / 10, // 1.5, 
-		((Math.random() * 20) + 1 ) / 10, // 1.5, 
-		((Math.random() * 20) + 1 ) / 10, // 1.3, 
-		(Math.random() * 20) + 1, // 2, 
-		(Math.random() * 20) + 1, // 4
+		Math.floor((Math.random() * 20) + 1), // 10),	player_card_value = 1, // Default initialised AI variables
+		Math.floor((Math.random() * 20) + 1), // 10), 	enemy_card_value = 1,
+		Math.floor((Math.random() * 20) + 11) / 10, // 1.5), 	center_mod = 1.5,
+		Math.floor((Math.random() * 20) + 1) / 10, // 1.5), 	enemy_mod = 1.5,
+		Math.floor((Math.random() * 20) + 11) / 10, // 1.3), 	shield_mod = 1.3,
+		Math.floor((Math.random() * 20) + 1), // 2), 	freeze_mod = 0.2,
+		Math.floor((Math.random() * 20) + 1), // 4	rock_mod = 0.4;
 	]);
 }
 

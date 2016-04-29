@@ -44,9 +44,6 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 }() );
 
 /*  -----------------------------  Helper Functions  -----------------------------  */
-
-// Returns fixed point number, default n = 3
-Number.prototype.fixed = function(n) { n = n || 3; return parseFloat(this.toFixed(n)); };
 // Array shuffle function
 var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
 // Scale number
