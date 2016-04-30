@@ -1,8 +1,10 @@
-// Seek server
-var address 	= 'http://localhost',
-	gameport 	= '3013',
-	game_core 	= require('./game.core.ai.js'),
-	clientio  	= require('socket.io-client');
+var address 		= 'http://localhost', // Set IP
+	gameport 		= '3013', // Set Port
+	fs 				= require('fs'),
+	game_core 		= require('./game.core.ai.js'),
+	clientio  		= require('socket.io-client'),
+	ai_count 		= 10, // Set no. AI instances
+	ai_solutions 	= [];
 
 try {
     require('dns').lookup(require('os').hostname(), function (err, add, fam) {
@@ -11,9 +13,6 @@ try {
 } catch(err) {
 	console.log(err);
 }
-
-var ai_count = 4,
-	ai_solutions = [];
 
 // Randomly seed the AI
 for (var i = 0; i < ai_count; i++) {
@@ -25,13 +24,12 @@ for (var i = 0; i < ai_count; i++) {
 		Math.floor((Math.random() * 20) + 11) / 10, // 1.3), 	shield_mod = 1.3,
 		Math.floor((Math.random() * 20) + 1), // 2), 	freeze_mod = 0.2,
 		Math.floor((Math.random() * 20) + 1), // 4	rock_mod = 0.4;
+		1
 	]);
 }
 
-for (var i = 0; i < ai_count; i++) {
-	//Socket for AI
+create_game = function(i) {
 	var client = clientio.connect(address + ':' + gameport);
-
 	// Make AI game
 	var game = {};
 	game = new game_core(
@@ -42,7 +40,8 @@ for (var i = 0; i < ai_count; i++) {
 		ai_solutions[i][4],
 		ai_solutions[i][5],
 		ai_solutions[i][6],
-		ai_solutions[i][7]
+		ai_solutions[i][7],
+		ai_solutions[i][8]
 	);
 	
 	if (game.mmr === undefined) { game.mmr = 1; }
@@ -60,3 +59,12 @@ for (var i = 0; i < ai_count; i++) {
 	game.socket.on('message', game.client_onnetmessage.bind(game)); 					// Parse message from server, send to handlers
 	game.update( new Date().getTime() );
 }
+
+//Initialise games
+for (var i = 0; i < ai_count; i++) {
+	//Socket for AI
+	create_game(i);
+}
+
+
+

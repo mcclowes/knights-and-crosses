@@ -41,7 +41,6 @@ game_server._onMessage = function(client, message) {
 	var other_client = (client.game.player_host.userid == client.userid) ? client.game.player_client : client.game.player_host;
 
 	if (message_type == 'i') { //Input handler will forward this
-		console.log(message);
 		this.onInput(client, message_parts);
 	} else if (message_type == 'p') {
 		client.send('s.p.' + message_parts[1]);
@@ -108,37 +107,22 @@ game_server.endGame = function(gameid, userid) { //userid is leaving
 	if (thegame) {
 		thegame.gamecore.stop_update(); //stop game updates (otherwise sockets crash)
 
-		if(thegame.player_count > 1) { //if the game has two players, one is leaving
-			this.updateMMR(thegame, userid);
-
+		if (thegame.player_count > 1) { //if the game has two players, one is leaving
 			thegame.player_client.send('s.e'); //tell them the game is over
 			thegame.player_host.send('s.e'); //tell the client the game is ended
 			thegame.player_host.hosting = false; //I am no longer hosting, this game is going down
-			this.findGame(thegame.player_host); //now look for/create a new game.
 		}
 
 		delete this.games[gameid];
 		this.game_count--;
-		this.log('Game removed. there are now ' + this.game_count + ' games' );
+		this.log('Game removed. There are ' + this.game_count + ' games' );
 	} else {
-		this.log('That game was not found!');
+		this.log('Game not found.');
 	}
 }; //game_server.endGame
 
-game_server.updateMMR = function(thegame, userid) {
-	console.log('Ending a game');
-	//Update mmrs
-	console.log('Existing MMRs >> ' + thegame.player_host.mmr + ' vs. ' + thegame.player_client.mmr);
-	var host_prob = 1 / (1 + Math.pow(10, (-(thegame.player_host.mmr - thegame.player_client.mmr ))/400));
-	var other_prob = 1 / (1 + Math.pow(10, (-(thegame.player_client.mmr - thegame.player_host.mmr ))/400));
-	host_prob = userid == thegame.player_host.userid ? (1 - host_prob) : (- host_prob);
-	other_prob = userid == thegame.player_host.userid ? (- other_prob) : (1 - other_prob);
-	console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
-	thegame.player_host.send('s.m.' + Number(host_prob).toFixed(3));
-	thegame.player_client.send('s.m.' + Number(other_prob).toFixed(3));
-};
-
 game_server.startGame = function(game) {
+	console.log('Starting game');
 	//so a game has 2 players and wants to begin the host already knows they are hosting, tell the other client they are joining a game s=server message, j=you are joining, send them the host id
 	game.player_client.send('s.j.' + game.player_host.userid);
 	game.player_client.game = game;

@@ -111,7 +111,7 @@ var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance
 	//Client specific initialisation
 	this.client_create_configuration(); //Create the default configuration settings
 	this.server_updates = []; //A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
-	this.client_connect_to_server(); //Connect to the socket.io server!
+	//this.client_connect_to_server(); //Connect to the socket.io server!
 	this.client_create_ping_timer(); //We start pinging the server to determine latency
 }; //game_core.constructor
 
@@ -797,7 +797,7 @@ game_core.prototype.choose_card = function(best) {
 	}
 
 	if (card_selection.card !== undefined && best === true) {
-		console.log('Playing ' + this.players.self.hand[card_selection.card].cardName + ' for >>> ' + (card_selection.score - starting_value));
+		console.log(this.players.self.id + ' playing ' + this.players.self.hand[card_selection.card].cardName + ' for >>> ' + (card_selection.score - starting_value));
 		var content = JSON.parse(fs.readFileSync(results_file));
 		for ( var i = 0; i < content.length; i++ ) {
 			if (content[i].name === this.players.self.hand[card_selection.card].cardName) {
@@ -1023,7 +1023,7 @@ game_core.prototype.client_create_configuration = function() {
 }; //game_core.client_create_configuration
 
 game_core.prototype.client_onreadygame = function(data) {
-	console.log('Connected, with mmr > ' + this.mmr);
+	console.log(this.players.self.id + ' connected, with mmr > ' + this.mmr);
 	this.socket.send( 'm.' + this.mmr );
 
 	var server_time = parseFloat(data.replace('-','.'));
@@ -1127,18 +1127,3 @@ game_core.prototype.client_ondisconnect = function(data) {
 	this.players.self.online = false;
 	this.players.other.state = 'not-connected';
 }; //client_ondisconnect
-
-game_core.prototype.client_connect_to_server = function() {
-	//this.socket = io.connect('http://10.245.145.51:4004'); //Store a local reference to our connection to the server
-
-	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
-	/*this.socket.on('connect', function(){
-		this.players.self.state = 'connecting';
-	}.bind(this));*/
-/*
-	this.socket.on('disconnect', this.client_ondisconnect.bind(this));                  // Disconnected - e.g. network, server failed, etc.
-	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this));   // Tick of the server simulation - main update
-	this.socket.on('onconnected', this.client_onconnected.bind(this));                  // Connect to server - show state, store id
-	this.socket.on('error', this.client_ondisconnect.bind(this));                       // Error -> not connected for now
-	this.socket.on('message', this.client_onnetmessage.bind(this));     */              // Parse message from server, send to handlers
-}; //game_core.client_connect_to_server

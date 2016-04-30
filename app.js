@@ -63,9 +63,8 @@ io.sockets.on('connection', function (client) {
     // Handle user disconnect
     client.on('disconnect', function () {
         console.log('\t socket.io:: client disconnected ' + client.userid);
-        //If the client was in a game, set by game_server.findGame, we can tell the game server to update that game state.
         if ( client.game && client.game.id ) {
             game_server.endGame(client.game.id, client.userid); //player leaving a game should destroy that game
-        } // client.game_id
+        }
     }); // client.on disconnect
 }); // io.sockets.on connection

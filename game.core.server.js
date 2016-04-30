@@ -348,10 +348,11 @@ var game_card = function( card_name ) {
 var game_player = function( game_instance, player_instance ) {
 	//Store the instance, if any
 	this.instance = player_instance; //dont need these?
-	//this.game = game_instance; //??
+	this.game = game_instance; //??
 	//Set up initial values for our state information
 	this.state = 'not-connected';
 	this.id = '';
+	this.mmr = 1;
 
 	this.player_state = {
 		cards_to_play 	: 0,
@@ -374,28 +375,19 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	this.mmr = 1;
-
-	//var deck_temp = ["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
 	var deck_temp = JSON.parse(fs.readFileSync('json/deck_p1.json'));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 }; //game_player.constructor
 
-/*  -----------------------------  Common Core Game functions  -----------------------------  
-	These functions are shared between client and server, and are generic
-	for the game state. The client functions are client_* and server functions
-	are server_* so these have no prefix.
-*/
+/*  -----------------------------  Common Core Game functions  -----------------------------  */
 
 //Main update loop
 game_core.prototype.update = function(t) {
 	this.lastframetime = t; //Store the last frame time
-	//Update the game specifics
 	this.server_update();
-	//schedule the next update
-	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
-}; //game_core.update
+	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport ); //schedule next update
+};
 
 //For the server, we need to cancel the setTimeout that the polyfill creates
 game_core.prototype.stop_update = function() { 
@@ -403,25 +395,18 @@ game_core.prototype.stop_update = function() {
 };
 
 
-/*  -----------------------------  Server side functions  -----------------------------  
-	These functions below are specific to the server side only,
-	and usually start with server_* to make things clearer.
+/*  -----------------------------  Server side functions  -----------------------------  */
 
-*/
-
-//Makes sure things run smoothly and notifies clients of changes on the server side
-game_core.prototype.server_update = function(){
-	//Update the state of our local clock to match the timer
-	this.server_time = this.local_time;
-	//Make a snapshot of the current state, for updating the clients
+// Updates clients with new game state
+game_core.prototype.server_update = function(){	
+	this.server_time = this.local_time; //Update the state of our local clock to match the timer
 
 	if (this.players.self && this.satisfy_player_states(this.players.self) === false) {
-		console.log('something wasnt satisfying');
+		//console.log('First player state satisfied.');
 	}
 	if (this.players.other && this.satisfy_player_states(this.players.other) === false) {
-		console.log('something wasnt satisfying');
+		//console.log('Second player state satisfied.');
 	}
-
 
 	this.tempstate = {
 		tu 	: this.turn,
@@ -498,13 +483,18 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 			if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
 				console.log('The game was won');
 				this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
-				if (this.win === 1){
-					this.server.endGame(this.instance, this.players.self);
-				} else {
-					this.server.endGame(this.instance, this.players.other);
-				}
+				
+				//Update mmrs
+				console.log('Existing MMRs >> ' + this.players.self.mmr + ' vs. ' + this.players.other.mmr);
+				var host_prob = 1 / (1 + Math.pow(10, (-(this.players.self.mmr - this.players.other.mmr ))/400));
+				var other_prob = 1 / (1 + Math.pow(10, (-(this.players.other.mmr - this.players.self.mmr ))/400));
+				host_prob = this.win === 1 ? (1 - host_prob) : (- host_prob);
+				other_prob = this.win === -1 ? (- other_prob) : (1 - other_prob);
+				console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
+				player_client.instance.send('s.m.' + Number(host_prob).toFixed(3));
+				player_other.instance.send('s.m.' + Number(other_prob).toFixed(3));
 			} else {
-				this.board.reduce_state(); // remove frost
+				this.board.reduce_state(); // Remove frost, and rocks
 				// Draw card
 				if (player_other.deck.length > 0 && player_other.hand.length < maxHandSize) {
 					player_other.hand.push(player_other.deck[0]);
@@ -848,14 +838,6 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 								piece_counter = piece_counter + this.board.board_state.results[i][j];
 							}
 						}
-						/*
-						#TODO
-						console.log(player + ' vs. ' + piece_counter)
-						console.log(this.players.self + ' vs. ' ce_counter)
-
-						if ((player.host === true && piece_counter > 0) || (player.host === false && piece_counter < 0)) { // if least
-							player.hand.push(card);
-						}*/
 					} else if (effect[3] && effect[3].match(shield)) { // You have the least shields
 						player.hand.push(card);
 					}
