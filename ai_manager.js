@@ -3,7 +3,7 @@ var address 		= 'http://localhost', // Set IP
 	fs 				= require('fs'),
 	game_core 		= require('./game.core.ai.js'),
 	clientio  		= require('socket.io-client'),
-	ai_count 		= 29, // Set no. AI instances
+	ai_count 		= 1, // Set no. AI instances
 	ai_solutions 	= [];
 
 try {
