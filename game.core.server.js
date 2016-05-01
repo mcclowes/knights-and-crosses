@@ -486,10 +486,12 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				
 				//Update mmrs
 				console.log('Existing MMRs >> ' + this.players.self.mmr + ' vs. ' + this.players.other.mmr);
-				var host_prob = 1 / (1 + Math.pow(10, (-(this.players.self.mmr - this.players.other.mmr ))/400));
-				var other_prob = 1 / (1 + Math.pow(10, (-(this.players.other.mmr - this.players.self.mmr ))/400));
+
+				var host_prob = 1 / (1 + Math.pow(10, (-this.players.self.mmr - this.players.other.mmr )/400));
+				var other_prob = 1 / (1 + Math.pow(10, (-this.players.other.mmr - this.players.self.mmr )/400));
+
 				host_prob = this.win === 1 ? (1 - host_prob) : (- host_prob);
-				other_prob = this.win === -1 ? (- other_prob) : (1 - other_prob);
+				other_prob = this.win === 1 ? (- other_prob) : (1 - other_prob);
 				console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
 				player_client.instance.send('s.m.' + Number(host_prob).toFixed(3));
 				player_other.instance.send('s.m.' + Number(other_prob).toFixed(3));

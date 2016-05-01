@@ -46,12 +46,15 @@ game_server._onMessage = function(client, message) {
 		client.send('s.p.' + message_parts[1]);
 	} else if (message_type == 'r') {    //A client is asking for lag simulation
 		this.fake_latency = parseFloat(message_parts[1]);
-	} else if (message_type == 'm') {    //A client is asking for lag simulation
+	} else if (message_type == 'm') {    //take update mmr
+		console.log(message_parts[1]);
 		if (client.game.player_host.userid == client.userid) {
 			client.game.player_client.mmr = message_parts[1];
 		} else {
 			client.game.player_host.mmr = message_parts[1];
 		}
+	} else if (message_type == 'w') {
+		this.winGame(client.game.id);
 	}
 }; //game_server.onMessage
 
@@ -108,10 +111,19 @@ game_server.endGame = function(gameid, userid) { //userid is leaving
 		thegame.gamecore.stop_update(); //stop game updates (otherwise sockets crash)
 
 		if (thegame.player_count > 1) { //if the game has two players, one is leaving
-			thegame.player_client.send('s.e'); //tell them the game is over
-			thegame.player_host.send('s.e'); //tell the client the game is ended
-			thegame.player_host.hosting = false; //I am no longer hosting, this game is going down
-		}
+			if(userid == thegame.player_host.userid) { //the host left, oh snap. Lets try join another game
+	            if(thegame.player_client) {
+	                thegame.player_client.send('s.e'); //tell them the game is over
+	                this.findGame(thegame.player_client); //now look for/create a new game.
+	            }
+	        } else { //the other player left, we were hosting
+	            if(thegame.player_host) {
+	                thegame.player_host.send('s.e'); //tell the client the game is ended
+	                thegame.player_host.hosting = false; //i am no longer hosting, this game is going down
+	                this.findGame(thegame.player_host);  //now look for/create a new game.
+	            }
+	        }
+	    }
 
 		delete this.games[gameid];
 		this.game_count--;
@@ -120,6 +132,28 @@ game_server.endGame = function(gameid, userid) { //userid is leaving
 		this.log('Game not found.');
 	}
 }; //game_server.endGame
+
+game_server.winGame = function(gameid) { //userid is leaving
+	console.log('THE GAME WAS WON FFS' + gameid);
+	var thegame = this.games[gameid];
+
+	if (thegame) {
+		thegame.gamecore.stop_update(); //stop game updates (otherwise sockets crash)
+		console.log('\t Game > ' + gameid);
+
+        thegame.player_client.send('s.e'); //tell them the game is over
+        this.findGame(thegame.player_client); //now look for/create a new game.
+        thegame.player_host.send('s.e'); //tell the client the game is ended
+        thegame.player_host.hosting = false; //i am no longer hosting, this game is going down
+        this.findGame(thegame.player_host);  //now look for/create a new game.
+
+		delete this.games[gameid];
+		this.game_count--;
+		this.log('Game removed. There are ' + this.game_count + ' games' );
+	} else {
+		this.log('Game not found.');
+	}
+};
 
 game_server.startGame = function(game) {
 	console.log('Starting game');

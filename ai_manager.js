@@ -3,7 +3,7 @@ var address 		= 'http://localhost', // Set IP
 	fs 				= require('fs'),
 	game_core 		= require('./game.core.ai.js'),
 	clientio  		= require('socket.io-client'),
-	ai_count 		= 10, // Set no. AI instances
+	ai_count 		= 29, // Set no. AI instances
 	ai_solutions 	= [];
 
 try {
@@ -14,34 +14,19 @@ try {
 	console.log(err);
 }
 
-// Randomly seed the AI
-for (var i = 0; i < ai_count; i++) {
-	ai_solutions.push([
-		Math.floor((Math.random() * 20) + 1), // 10),	player_card_value = 1, // Default initialised AI variables
-		Math.floor((Math.random() * 20) + 1), // 10), 	enemy_card_value = 1,
-		Math.floor((Math.random() * 20) + 11) / 10, // 1.5), 	center_mod = 1.5,
-		Math.floor((Math.random() * 20) + 1) / 10, // 1.5), 	enemy_mod = 1.5,
-		Math.floor((Math.random() * 20) + 11) / 10, // 1.3), 	shield_mod = 1.3,
-		Math.floor((Math.random() * 20) + 1), // 2), 	freeze_mod = 0.2,
-		Math.floor((Math.random() * 20) + 1), // 4	rock_mod = 0.4;
-		1
-	]);
-}
-
-create_game = function(i) {
+// Create an ai instance
+create_ai_instance = function(i) {
 	var client = clientio.connect(address + ':' + gameport);
 	// Make AI game
 	var game = {};
 	game = new game_core(
-		ai_solutions[i][0],
-		ai_solutions[i][1],
-		ai_solutions[i][2],
-		ai_solutions[i][3],
-		ai_solutions[i][4],
-		ai_solutions[i][5],
-		ai_solutions[i][6],
-		ai_solutions[i][7],
-		ai_solutions[i][8]
+		ai_solutions[i].player_card_value,
+		ai_solutions[i].enemy_card_value,
+		ai_solutions[i].center_mod,
+		ai_solutions[i].enemy_mod,
+		ai_solutions[i].shield_mod,
+		ai_solutions[i].freeze_mod,
+		ai_solutions[i].rock_mod
 	);
 	
 	if (game.mmr === undefined) { game.mmr = 1; }
@@ -60,11 +45,88 @@ create_game = function(i) {
 	game.update( new Date().getTime() );
 }
 
-//Initialise games
-for (var i = 0; i < ai_count; i++) {
-	//Socket for AI
-	create_game(i);
-}
+init_games = function() {
+	//Initialise games
+	for (var i = 0; i < ai_solutions.length; i++) {
+		//Create ai instance
+		(function(x) {
+			create_ai_instance(x);
+		})(i);
+	}
+};
 
+// seed and initialise ai randomly
+seed_random_ai = function() {
+	// Randomly seed the AI
+	for (var i = 0; i < ai_count; i++) {
+		/*ai_solutions.push({
+			player_card_value : Math.floor((Math.random() * 100) + 1), // 10),	player_card_value = 1, // Default initialised AI variables
+			enemy_card_value : Math.floor((Math.random() * 100) + 1), // 10), 	enemy_card_value = 1,
+			center_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.5), 	center_mod = 1.5,
+			enemy_mod : Math.floor((Math.random() * 20) + 1) / 10, // 1.5), 	enemy_mod = 1.5,
+			shield_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.3), 	shield_mod = 1.3,
+			freeze_mod : Math.floor((Math.random() * 20) + 1), // 2), 	freeze_mod = 0.2,
+			rock_mod : Math.floor((Math.random() * 20) + 1) // 4	rock_mod = 0.4;
+		}); */
+
+		ai_solutions.push({
+			player_card_value : 88,
+			enemy_card_value : 40,
+			center_mod : 2.1,
+			enemy_mod : 1.1,
+			shield_mod : 1.5,
+			freeze_mod : 10,
+			rock_mod : 20
+		}); 
+	}
+
+	return init_games();
+};
+
+// seed and initialise ai randomly
+seed_set_ai = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+	// Randomly seed the AI
+	for (var i = 0; i < ai_count; i++) {
+		ai_solutions.push({
+			player_card_value : arg1,
+			enemy_card_value : arg2,
+			center_mod : arg3,
+			enemy_mod : arg4,
+			shield_mod : arg5,
+			freeze_mod : arg6,
+			rock_mod : arg7,
+		}); 
+	}
+
+	return init_games();
+};
+
+// seed and initialise ai from json
+seed_ai = function() {
+	var data = JSON.parse(fs.readFileSync('json/ai.json'));
+	// Randomly seed the AI
+	for (var i = 0; i < data.length; i++) {
+		(function(solution){
+			//console.log(solution.player_card_value +  ' + solution.enemy_card_value + ', ' + solution.center_mod + ', ' + solution.enemy_mod + ', ' + solution.shield_mod + ', ' + solution.freeze_mod + ', ' + solution.rock_mod);
+			ai_solutions.push({
+				player_card_value : solution.player_card_value,
+				enemy_card_value : solution.enemy_card_value,
+				center_mod : solution.center_mod,
+				enemy_mod : solution.enemy_mod,
+				shield_mod : solution.shield_mod,
+				freeze_mod : solution.freeze_mod,
+				rock_mod : solution.rock_mod
+			});
+		})(data[i]);
+	}
+
+	return init_games();
+};
+
+//seed_random_ai();
+
+seed_set_ai(88, 40, 2.1, 1.1, 1.5, 10, 20);
+
+//seed_ai();
 
 

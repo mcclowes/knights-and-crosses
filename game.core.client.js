@@ -698,16 +698,12 @@ game_core.prototype.client_onnetmessage = function(data) {
 					this.client_onping(commanddata); break;
 				case 'm' : //update mmr
 					if(commands[3]){commanddata = Number(commanddata + '.' + commands[3]).toFixed(3);}
-					this.mmr = this.mmr + Number(55 - this.game_count).toFixed(0) * Number(commanddata).toFixed(0);
+					this.mmr = Number(this.mmr + Number(55 - this.game_count).toFixed(0) * Number(commanddata).toFixed(0)).toFixed(0);
 					this.game_count++;
 					if (this.game_count > 30) { this.game_count = 30; }; 
-
-					if (this.players.self.host === true){
-						this.players.self.state = 'not-connected';
-						this.players.self.online = false;
-						this.players.other.state = 'not-connected';
-						this.socket.disconnect();
-						this.socket.connect();
+					if (this.players.self.host === true) {
+						console.log('W SENT');
+						this.socket.send( 'w' );
 					}
 					break;
 			} //subcommand

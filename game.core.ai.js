@@ -1,15 +1,7 @@
 
 /*  ----------------------------- Key variables  -----------------------------   */
 
-var frame_time = 60 / 1000,
-	maxHandSize = 10,
-	player_card_value = 1, // Default initialised AI variables
-	enemy_card_value = 1,
-	center_mod = 1.5,
-	enemy_mod = 1.5,
-	shield_mod = 1.3,
-	freeze_mod = 0.2,
-	rock_mod = 0.4;
+var frame_time = 60 / 1000;
 
 var fs = require('fs');
 var results_file = 'json/card_data.json';
@@ -70,13 +62,14 @@ var create_card = function(data) {
 //This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
 
 var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance){
-	player_card_value = arg1,
-	enemy_card_value = arg2,
-	center_mod = arg3,
-	enemy_mod = arg4,
-	shield_mod = arg5,
-	freeze_mod = arg6,
-	rock_mod = arg7;
+	this.player_card_value = arg1,
+	this.enemy_card_value = arg2,
+	this.center_mod = arg3,
+	this.enemy_mod = arg4,
+	this.shield_mod = arg5,
+	this.freeze_mod = arg6,
+	this.rock_mod = arg7;
+	//console.log(this.player_card_value + ', ' + this.enemy_card_value + ', ' + this.center_mod + ', ' + this.enemy_mod + ', ' + this.shield_mod + ', ' + this.freeze_mod + ', ' + this.rock_mod);
 
 	this.mmr;
 	this.game_count;
@@ -87,16 +80,6 @@ var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance
 	this.board = new game_board();
 	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
-
-	/*this.ai_values = {
-		card_self : ,// The value of having a card in hand
-		card_other : ,// The value of the opponent having a card in hand
-		piece_self : ,// The value of possessing a piece, dependent on the strategic value of each specific grid square
-		piece_other : ,// The value of the opponent possessing a piece, dependent on the strategic value of each specific grid square
-		shield_self : ,// The value of a shield
-		square_frozen : ,// The value of a square being blocked through freezing
-		square_blocked : // The value of a square being blocked through boulders
-	}*/
 
 	//We create a player set, passing them to the game that is running them, as well
 	this.players = {
@@ -280,29 +263,29 @@ game_core.prototype.evaluate_square = function(x, y) {
 	square = square * 10;
 
 	if (this.board.board_state.shields[x][y] > 0) {
-		square = square * shield_mod;
+		square = square * this.shield_mod;
 	}
 
 	if (x === 1 || x === 2) { // If in the middle 4
 		if (y === 1 || y === 2) {
-			square = square * center_mod;
+			square = square * this.center_mod;
 		}
 	}
 
 	if ( (this.players.self.host === true && square < 0) || (this.players.self.host === false && square > 0) ) {
-		square = enemy_mod * square;
+		square = this.enemy_mod * square;
 	} else if (square === 0){
 		if (this.board.board_state.frost[x][y] > 0) { //frozen
 			if (this.board.board_state.frost[x][y] % 2 === 0) { //self
-				square = this.players.self.host === true ? freeze_mod : (- freeze_mod);
+				square = this.players.self.host === true ? this.freeze_mod : (- this.freeze_mod);
 			} else {
-				square = this.players.self.host === true ? (- freeze_mod) : freeze_mod;
+				square = this.players.self.host === true ? (- this.freeze_mod) : this.freeze_mod;
 			}
 		} else if (this.board.board_state.rock[x][y] > 0) { // blocked
 			if (this.board.board_state.rock[x][y] % 2 === 0) { //self
-				square = this.players.self.host === true ? rock_mod : (- rock_mod);
+				square = this.players.self.host === true ? this.rock_mod : (- this.rock_mod);
 			} else {
-				square = this.players.self.host === true ? (- rock_mod) : rock_mod;
+				square = this.players.self.host === true ? (- this.rock_mod) : this.rock_mod;
 			}
 		} 
 	}
@@ -728,8 +711,8 @@ game_core.prototype.evaluate_game_state = function() {
 	if (this.players.self.host === false) {
 		board_score = - board_score;
 	}
-	player_hand_value = this.players.self.hand.length * player_card_value;
-	enemy_hand_value = this.players.other.hand.length * enemy_card_value;
+	player_hand_value = this.players.self.hand.length * this.player_card_value;
+	enemy_hand_value = this.players.other.hand.length * this.enemy_card_value;
 	state_score = board_score + player_hand_value + enemy_hand_value;
 
 	//console.log('does this f(ing work? ' + board_score + ' + ' + player_hand_value + ' + ' + enemy_hand_value + ' = ' + state_score);
@@ -1024,6 +1007,7 @@ game_core.prototype.client_create_configuration = function() {
 
 game_core.prototype.client_onreadygame = function(data) {
 	console.log(this.players.self.id + ' connected, with mmr > ' + this.mmr);
+	//console.log(this.player_card_value + ', ' + this.enemy_card_value + ', ' + this.center_mod + ', ' + this.enemy_mod + ', ' + this.shield_mod + ', ' + this.freeze_mod + ', ' + this.rock_mod);
 	this.socket.send( 'm.' + this.mmr );
 
 	var server_time = parseFloat(data.replace('-','.'));
@@ -1083,37 +1067,47 @@ game_core.prototype.client_onnetmessage = function(data) {
 				case 'p' : //server ping
 					this.client_onping(commanddata); break;
 				case 'm' : //update mmr
-					if(commands[3]){commanddata = Number(commanddata + '.' + commands[3]).toFixed(3);}
-					this.mmr = this.mmr + Number(55 - this.game_count).toFixed(0) * Number(commanddata).toFixed(0);
+					if(commands[3]){ commanddata = Number(commanddata + '.' + commands[3]).toFixed(3); }
+
+					console.log('components ' +  commanddata + ' >>>> ' + this.mmr + ' + ' +  (55 - this.game_count) + ' * ' + commanddata + ' = ' + ( this.mmr + ((55 - this.game_count) * commanddata)));
+
+					this.mmr = this.mmr + ((55 - this.game_count) * commanddata);
+
+					console.log('New mmr = ' + this.mmr);
 					this.game_count++;
 					if (this.game_count > 30) { this.game_count = 30; }; 
 					//update data file
 					var ai_results = JSON.parse(fs.readFileSync('json/ai.json'));
 					for ( var i = 0; i < ai_results.length; i++ ) {
-						if (ai_results[i].player_card_value == player_card_value && // Default initialised AI variables
-							ai_results[i].enemy_card_value == enemy_card_value &&
-							ai_results[i].center_mod == center_mod &&
-							ai_results[i].enemy_mod == enemy_mod &&
-							ai_results[i].shield_mod == shield_mod &&
-							ai_results[i].freeze_mod == freeze_mod &&
-							ai_results[i].rock_mod == rock_mod ) {
-
+						//console.log(ai_results[i].player_card_value + ' vs. ' +  this.player_card_value);
+						if (ai_results[i].player_card_value === this.player_card_value &&
+							ai_results[i].enemy_card_value === this.enemy_card_value &&
+							ai_results[i].center_mod === this.center_mod &&
+							ai_results[i].enemy_mod === this.enemy_mod &&
+							ai_results[i].shield_mod === this.shield_mod &&
+							ai_results[i].freeze_mod === this.freeze_mod &&
+							ai_results[i].rock_mod === this.rock_mod ) {
+							console.log("Found it");
 							ai_results[i].mmr = this.mmr;
 							fs.writeFileSync('json/ai.json', JSON.stringify(ai_results));
 							break;
 						}
 					}
 					ai_results.push({
-						player_card_value: player_card_value, 
-						enemy_card_value: enemy_card_value, 
-						center_mod: center_mod, 
-						enemy_mod: enemy_mod, 
-						shield_mod: shield_mod, 
-						freeze_mod: freeze_mod, 
-						rock_mod: rock_mod, 
+						player_card_value: this.player_card_value, 
+						enemy_card_value: this.enemy_card_value, 
+						center_mod: this.center_mod, 
+						enemy_mod: this.enemy_mod, 
+						shield_mod: this.shield_mod, 
+						freeze_mod: this.freeze_mod, 
+						rock_mod: this.rock_mod, 
 						mmr: this.mmr
 					});
 					fs.writeFileSync('json/ai.json', JSON.stringify(ai_results));
+					if (this.players.self.host === true) {
+						console.log('W SENT');
+						this.socket.send( 'w' );
+					}
 					break;
 			} //subcommand
 		break; //'s'
