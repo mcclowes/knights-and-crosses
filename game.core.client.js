@@ -513,7 +513,6 @@ var game_player = function( game_instance, player_instance ) {
 
 	this.mouseX = null;
 	this.mouseY = null;
-
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){

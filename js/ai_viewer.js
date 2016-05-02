@@ -104,11 +104,11 @@ $(function(){
     $( "#evolveAI" ).click(function( event ) {
         var temp_solutions = [];
 
-        for (var i = 0; i < ai_solutions.length / 2; i++) {
+        for (var i = 0; i < ai_solutions.length / 2 + 1; i++) {
             temp_solutions.push(ai_solutions[i]);
         }
 
-        for (var i = 0; i < ai_solutions.length / 2; i++) {
+        for (var i = 0; i < ai_solutions.length / 2 + 1; i++) {
             var newSolution = [];
 
             if (Math.floor(Math.random() * 5) === 0) { //mutate
@@ -118,8 +118,8 @@ $(function(){
                     center_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.5),   center_mod = 1.5,
                     enemy_mod : Math.floor((Math.random() * 20) + 1) / 10, // 1.5),     enemy_mod = 1.5,
                     shield_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.3),   shield_mod = 1.3,
-                    freeze_mod : Math.floor((Math.random() * 20) + 1), // 2),   freeze_mod = 0.2,
-                    rock_mod : Math.floor((Math.random() * 20) + 1),
+                    freeze_mod : Math.floor((Math.random() * 20) + 1) / 10, // 2),   freeze_mod = 0.2,
+                    rock_mod : Math.floor((Math.random() * 20) + 1) / 10,
                     mmr : 1 // 4    rock_mod = 0.4;
                 };
             } else {

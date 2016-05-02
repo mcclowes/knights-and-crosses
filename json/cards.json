@@ -10,7 +10,7 @@
 
 	{
 		"name": "Floods",
-		"rarity": "Rare",
+		"rarity": "Elite",
 		"effects":
 			[
 				"Destroy all pieces",
@@ -52,8 +52,7 @@
 		"rarity": "Basic",
 		"effects":
 			[
-				"Thaw 1 square",
-				"Draw a card"
+				"Thaw 1 square"
 			]
 	},
 
@@ -72,7 +71,7 @@
 		"effects":
 			[
 				"Destroy a piece of yours",
-				"Draw 3 cards"
+				"Draw 4 cards"
 			]
 	},
 
@@ -97,21 +96,21 @@
 
 	{
 		"name": "Taxes",
-		"rarity": "Rare",
+		"rarity": "Basic",
 		"effects":
 			[
-				"Discard 2 cards",
+				"Discard a card",
 				"Shield 3 pieces"
 			]
 	},
 
 	{
 		"name": "Barrage",
-		"rarity": "Basic",
+		"rarity": "Rare",
 		"effects":
 			[
 				"Damage all pieces",
-				"Discard 2 cards"
+				"Discard 3 cards"
 			]
 	},
 

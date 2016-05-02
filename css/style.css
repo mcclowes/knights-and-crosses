@@ -284,17 +284,17 @@ button {
 }
 html,
 .box.opened.flipper.flip {
-  cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76012), auto;
+  cursor: url("../img/mouse_small.png"), auto;
 }
 .card {
-  cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), auto;
+  cursor: url("../img/mouse_small.png"), auto;
 }
 button {
-  cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), auto;
+  cursor: url("../img/mouse_small.png"), auto;
 }
 .box:not(.frost1):not(.frost2),
 .wrapper,
 .flip-container,
 li {
-  cursor: url(http://www.rw-designer.com/cursor-extern.php?id=76022), auto;
+  cursor: url("../img/mouse_small.png"), auto;
 }
