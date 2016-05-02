@@ -87,10 +87,11 @@
 
 	{
 		"name": "Frost",
-		"rarity": "Basic",
+		"rarity": "Rare",
 		"effects":
 			[
-				"Freeze all squares"
+				"Freeze all squares",
+				"End your turn"
 			]
 	},
 

@@ -113,8 +113,8 @@ seed_ai = function() {
 	return init_games();
 };
 
-seed_random_ai();
-seed_set_ai(97, 70, 2.7, 1.4, 2.2, 0.6, 0.8);
+//seed_random_ai();
+seed_set_ai(97, 70, 1.9, 1.4, 1.8, 0.6, 0.8);
 //seed_set_ai(77, 53, 2.3, 1, 1.9, 0.9, 1.3);
 //seed_set_ai(88, 40, 2.1, 1.1, 1.5, 10, 20);
 
