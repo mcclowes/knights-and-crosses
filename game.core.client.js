@@ -510,6 +510,10 @@ var game_player = function( game_instance, player_instance ) {
 	});
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
+
+	this.mouseX = null;
+	this.mouseY = null;
+
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){
@@ -537,6 +541,16 @@ game_player.prototype.draw = function(){
 		} else {
 			this.hand[i].pos.y = 20;
 			this.hand[i].draw(false);
+		}
+	}
+
+	if (this.mouseX !== undefined && this.mouseY !== undefined){
+		console.log(this.mouseX + ', ' + this.mouseY);
+		for (var i = this.hand.length - 1; i >= 0; i--) { // Check all clickable objects
+		  	if (this.hand[i].contains(this.mouseX, this.mouseY)) {
+				this.hand[i].draw(true);
+				return;
+			}
 		}
 	}
 }; //game_player.draw

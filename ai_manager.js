@@ -3,7 +3,7 @@ var address 		= 'http://localhost', // Set IP
 	fs 				= require('fs'),
 	game_core 		= require('./game.core.ai.js'),
 	clientio  		= require('socket.io-client'),
-	ai_count 		= 1, // Set no. AI instances
+	ai_count 		= 29, // Set no. AI instances
 	ai_solutions 	= [];
 
 try {
@@ -59,24 +59,14 @@ init_games = function() {
 seed_random_ai = function() {
 	// Randomly seed the AI
 	for (var i = 0; i < ai_count; i++) {
-		/*ai_solutions.push({
+		ai_solutions.push({
 			player_card_value : Math.floor((Math.random() * 100) + 1), // 10),	player_card_value = 1, // Default initialised AI variables
 			enemy_card_value : Math.floor((Math.random() * 100) + 1), // 10), 	enemy_card_value = 1,
 			center_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.5), 	center_mod = 1.5,
 			enemy_mod : Math.floor((Math.random() * 20) + 1) / 10, // 1.5), 	enemy_mod = 1.5,
 			shield_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.3), 	shield_mod = 1.3,
-			freeze_mod : Math.floor((Math.random() * 20) + 1), // 2), 	freeze_mod = 0.2,
-			rock_mod : Math.floor((Math.random() * 20) + 1) // 4	rock_mod = 0.4;
-		}); */
-
-		ai_solutions.push({
-			player_card_value : 88,
-			enemy_card_value : 40,
-			center_mod : 2.1,
-			enemy_mod : 1.1,
-			shield_mod : 1.5,
-			freeze_mod : 10,
-			rock_mod : 20
+			freeze_mod : Math.floor((Math.random() * 20) + 1) / 10, // 2), 	freeze_mod = 0.2,
+			rock_mod : Math.floor((Math.random() * 20) + 1) / 10 // 4	rock_mod = 0.4;
 		}); 
 	}
 
@@ -125,8 +115,8 @@ seed_ai = function() {
 
 //seed_random_ai();
 
-seed_set_ai(88, 40, 2.1, 1.1, 1.5, 10, 20);
+//seed_set_ai(88, 40, 2.1, 1.1, 1.5, 10, 20);
 
-//seed_ai();
+seed_ai();
 
 

@@ -13,18 +13,17 @@ window.onload = function(){
 	// Handle mouse events
 	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
 	// Handle mouse over events
-	game.ctx.canvas.addEventListener('mousemove', function(e) {
-		var mx = event.clientX,
-			my = event.clientY;
+	game.ctx.canvas.addEventListener('mousemove', onMouseUpdate, false);
+	game.ctx.canvas.addEventListener('mouseenter', onMouseUpdate, false);
 
-		for (var i = game.players.self.hand.length - 1; i >= 0; i--) { // Check all clickable objects
-		  	if (game.players.self.hand[i].contains(mx, my)) {
-				game.players.self.hand[i].draw(true);
-				return;
-			}
-		}
-	}, true);
-	// Handle click events
+	function onMouseUpdate(e) {
+		console.log('boop');
+	    game.players.self.mouseX = e.pageX;
+	    game.players.self.mouseY = e.pageY;
+	}
+	function getMouseX() { return mouseX; }
+	function getMouseY() { return mouseY; }
+
 	game.ctx.canvas.addEventListener('click', function(e) { 
 		if (game.players.self.host === true && game.turn === -1) { // not players turn
 			return;
@@ -63,5 +62,5 @@ window.onload = function(){
 		}
 	}, true);
 
-	game.update( new Date().getTime() );//Start game update loop
+	game.update( new Date().getTime() ); //Start game update loop
 }; //window.onload
