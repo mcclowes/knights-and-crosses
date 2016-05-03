@@ -3,7 +3,7 @@ var address 		= 'http://localhost', // Set IP
 	fs 				= require('fs'),
 	game_core 		= require('./game.core.ai.js'),
 	clientio  		= require('socket.io-client'),
-	ai_count 		= 29, // Set no. AI instances
+	ai_count 		= 1, // Set no. AI instances
 	ai_solutions 	= [];
 
 try {
@@ -55,7 +55,7 @@ init_games = function() {
 	}
 };
 
-// seed and initialise ai randomly
+// Seed and initialise AI randomly
 seed_random_ai = function() {
 	// Randomly seed the AI
 	for (var i = 0; i < ai_count; i++) {
@@ -73,9 +73,8 @@ seed_random_ai = function() {
 	return init_games();
 };
 
-// seed and initialise ai randomly
+// Seed and initialise AI from input values
 seed_set_ai = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
-	// Randomly seed the AI
 	for (var i = 0; i < ai_count; i++) {
 		ai_solutions.push({
 			player_card_value : arg1,
@@ -91,13 +90,11 @@ seed_set_ai = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
 	return init_games();
 };
 
-// seed and initialise ai from json
+// Seed and initialise AI from JSON input
 seed_ai = function() {
 	var data = JSON.parse(fs.readFileSync('json/ai.json'));
-	// Randomly seed the AI
 	for (var i = 0; i < data.length; i++) {
 		(function(solution){
-			//console.log(solution.player_card_value +  ' + solution.enemy_card_value + ', ' + solution.center_mod + ', ' + solution.enemy_mod + ', ' + solution.shield_mod + ', ' + solution.freeze_mod + ', ' + solution.rock_mod);
 			ai_solutions.push({
 				player_card_value : solution.player_card_value,
 				enemy_card_value : solution.enemy_card_value,
@@ -114,10 +111,9 @@ seed_ai = function() {
 };
 
 //seed_random_ai();
-seed_set_ai(97, 70, 1.9, 1.4, 1.8, 0.6, 0.8);
-//seed_set_ai(77, 53, 2.3, 1, 1.9, 0.9, 1.3);
-//seed_set_ai(88, 40, 2.1, 1.1, 1.5, 10, 20);
 
-//seed_ai();
+seed_set_ai(97, 70, 1.9, 1.5, 1.8, 0.6, 0.8);
+
+//seed_ai(); 
 
 

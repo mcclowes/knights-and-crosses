@@ -265,6 +265,7 @@ button {
 .card .cardAvgValue,
 .card .cardMinValue,
 .card .cardMaxValue {
+  display: none;
   position: absolute;
   top: 0px;
   left: -10px;
