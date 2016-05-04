@@ -7,7 +7,7 @@ var frame_time = 45,
 	cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
 
-/*  -----------------------------  Update   -----------------------------   */
+/*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
 // Manages frames/animation
 ( function () {
@@ -54,35 +54,32 @@ var create_card = function(data) {
 }
 
 
-/* ----------------------------- The game_core class (the main class) -----------------------------  */
-//This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
+/* ----------------------------- Game Core -----------------------------  */
 
 var game_core = function(game_instance){
 	this.instance = game_instance; //Store the instance, if any
-	this.server = this.instance !== undefined; //Store a flag if we are the server
+	this.server = this.instance !== undefined; //Store a flag if server
 
 	this.board = new game_board();
 	this.turn = 1;
 
-	//We create a player set, passing them to the game that is running them, as well
+	// Create players
 	this.players = {
 		self : new game_player(this, this.instance.player_host),
 		other : new game_player(this, this.instance.player_client)
 	};
-	//A local timer for precision on server and client
-	this.local_time = 0.016;            //The local timer
-	this._dt = new Date().getTime();    //The local timer delta
-	this._dte = new Date().getTime();   //The local timer last frame time
+	
+	//A local timer for precision
+	this.local_time = 0.016;   
+	this._dt = new Date().getTime();  
+	this._dte = new Date().getTime();  
 
 	//Client specific initialisation
 	this.server_time = 0;
 	this.laststate = {};
-}; //game_core.constructor
+};
 
-//server side we set the 'game_core' class to a global type, so that it can use it anywhere.
-if ( 'undefined' != typeof global ) {
-	module.exports = global.game_core = game_core;
-}
+module.exports = global.game_core = game_core;
 
 /*  -----------------------------  Play State Checkers  -----------------------------  */
 
@@ -341,15 +338,11 @@ var game_card = function( card_name ) {
 };
 
 /*  -----------------------------  The player class -----------------------------  */
-/*	A simple class to maintain state of a player on screen,
-	as well as to draw that state when required.
-*/
 
 var game_player = function( game_instance, player_instance ) {
 	//Store the instance, if any
-	this.instance = player_instance; //dont need these?
-	this.game = game_instance; //??
-	//Set up initial values for our state information
+	this.instance = player_instance;
+	this.game = game_instance;
 	this.state = 'not-connected';
 	this.id = '';
 	this.mmr = 1;
@@ -380,7 +373,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = create_card_array(deck_temp);
 }; //game_player.constructor
 
-/*  -----------------------------  Common Core Game functions  -----------------------------  */
+/*  -----------------------------  Server side functions  -----------------------------  */
 
 //Main update loop
 game_core.prototype.update = function(t) {
@@ -389,17 +382,14 @@ game_core.prototype.update = function(t) {
 	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport ); //schedule next update
 };
 
-//For the server, we need to cancel the setTimeout that the polyfill creates
+// Cancel game update loop
 game_core.prototype.stop_update = function() { 
 	window.cancelAnimationFrame( this.updateid );  
 };
 
-
-/*  -----------------------------  Server side functions  -----------------------------  */
-
 // Updates clients with new game state
 game_core.prototype.server_update = function(){	
-	this.server_time = this.local_time; //Update the state of our local clock to match the timer
+	this.server_time = this.local_time; 
 
 	if (this.players.self && this.satisfy_player_states(this.players.self) === false) {
 		//console.log('First player state satisfied.');
@@ -417,9 +407,7 @@ game_core.prototype.server_update = function(){
 		cp  : this.players.other.player_state,
 		ch  : this.players.other.hand,  
 		cd  : this.players.other.deck,             
-		his : this.players.self.last_input_seq,     //'host input sequence', the last input we processed for the host
-		cis : this.players.other.last_input_seq,    //'client input sequence', the last input we processed for the client
-		t   : this.server_time                      // our current local time on the server
+		t   : this.server_time                      // current local time
 	};
 
 	this.laststate = this.tempstate;
@@ -484,15 +472,13 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 				console.log('The game was won');
 				this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
 				
-				//Update mmrs
+				//Update mmrs, via elo
 				console.log('Existing MMRs >> ' + this.players.self.mmr + ' vs. ' + this.players.other.mmr);
 
 				var host_prob = 1 / (1 + Math.pow(10, (-this.players.self.mmr - this.players.other.mmr )/400));
 				var other_prob = 1 / (1 + Math.pow(10, (-this.players.other.mmr - this.players.self.mmr )/400));
-
 				host_prob = this.win === 1 ? (1 - host_prob) : (- host_prob);
 				other_prob = this.win === 1 ? (- other_prob) : (1 - other_prob);
-				console.log('Probability of win >> ' + Number(host_prob).toFixed(3) + ' vs. ' + Number(other_prob).toFixed(3));
 				player_client.instance.send('s.m.' + Number(host_prob).toFixed(3));
 				player_other.instance.send('s.m.' + Number(other_prob).toFixed(3));
 			} else {
@@ -655,7 +641,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 		shield = new RegExp("^shield$|^shields$", "i"),
 		block = new RegExp("^block$", "i"),
 		discard = new RegExp("^discard$", "i"),
-		piece = new RegExp("^piece$|pieces$", "i"),
+		piece = new RegExp("^piece$|pieces$|pieces,$", "i"),
 		hand = new RegExp("^hand$|^hands$", "i");
 		//= new RegExp("", "i"),
 
@@ -839,6 +825,11 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 							for (var j = 0; j < 4; j++) {
 								piece_counter = piece_counter + this.board.board_state.results[i][j];
 							}
+						}
+						console.log('here>>> ' + piece_counter);
+						console.log(player === this.players.self);
+						if (player === this.players.self && piece_counter < 0 || player !== this.players.self && piece_counter > 0){
+							player.hand.push(create_card(card));
 						}
 					} else if (effect[3] && effect[3].match(shield)) { // You have the least shields
 						player.hand.push(card);

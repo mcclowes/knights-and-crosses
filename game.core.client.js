@@ -12,9 +12,7 @@ $.getJSON("json/cards.json", function(json) {
     cards = json;
 });
 
-/*  -----------------------------  WHat is this bit  -----------------------------   */
-
-if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
+/*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
 // Manages frames/animation
 ( function () {
@@ -44,7 +42,7 @@ if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 
 // Array shuffle function
 var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x); return o; }
  
-// initialise an array of cards - e.g. for new hand or deck
+// Initialise an array of cards - e.g. for new hand or deck
 var create_card_array = function(data) {
 	var cards = []
 	for (var i = 0; i < data.length; i++) {
@@ -75,11 +73,10 @@ var roundedImage = function(x, y, width, height, radius){
 	game.ctx.closePath();
 }
 
-// Draw text in box
-// #TODO refactor this
+// Fit text in box
 var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 	var loutout_lines = function(ctx, mw, text) {
-		// We give a little "padding" This should probably be an input param but for the sake of simplicity we will keep it this way
+		// Pad text
 		mw = mw - 10;
 		var words = text.split(' ');
 		var new_line = words[0];
@@ -102,16 +99,13 @@ var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 		canvas.fillRect(x, y, w, h);
 		// Paint text
 		var lines = loutout_lines(canvas, w, text);
-		// Block of text height
-		var both = lines.length * (font_size + spl);
+		var both = lines.length * (font_size + spl);// Block of text height
 		if (both >= h) {
-			// We won't be able to wrap the text inside the area the area is too small. We should inform the user  about this in a meaningful way
+			console.log('Too much text!');
 		} else {
-			// We determine the y of the first line
 			var ly = (h - both)/2 + y + spl * lines.length;
 			var lx = 0;
 			for (var j = 0, ly; j < lines.length; ++j, ly+=font_size+spl) {
-				// We continue to centralize the lines
 				lx = x + w / 2 - canvas.measureText(lines[j]).width / 2;
 				game.ctx.fillStyle = 'rgba(0,0,0,1)';
 				canvas.fillText(lines[j], lx, ly);
@@ -121,12 +115,73 @@ var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 }
 
 
-/* ----------------------------- The game_core class (the main class) -----------------------------  */
-//This gets created on both server and client. Server creates one for each game that is hosted, and client creates one for itself to play the game.
+/* --------------------- Handle Load and touch ----------------------- */
+
+window.onload = function(){
+	game = new game_core(); // Create game
+	game.viewport = document.getElementById('viewport');
+	game.viewport.width = game.world.width; //Adjust canvas size
+	game.viewport.height = game.world.height;
+	game.ctx = game.viewport.getContext('2d');//Fetch canvas
+
+	// Handle mouse events
+	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
+	// Handle mouse hovering/moving
+	game.ctx.canvas.addEventListener('mousemove', onMouseUpdate, false);
+	game.ctx.canvas.addEventListener('mouseenter', onMouseUpdate, false);
+
+	function onMouseUpdate(e) {
+	    game.players.self.mouseX = e.pageX;
+	    game.players.self.mouseY = e.pageY;
+	}
+
+	game.ctx.canvas.addEventListener('click', function(e) { 
+		if (game.players.self.host === true && game.turn === -1) { // not players turn
+			return;
+		} else if (game.players.self.host === false && game.turn === 1) { // not players turn (can condense)
+			return;
+		}
+
+		var mx = event.clientX,
+			my = event.clientY,
+			shapes = [game.board];
+			shapes = shapes.concat(game.end_turn_button, game.players.self.hand);
+
+		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
+		  	if (shapes[i].contains(mx, my)) {
+		  		var input = '';
+
+		  		if (shapes[i] === game.board) {
+		  			if (game.players.self.player_state.pieces_to_play > 0 || game.players.self.player_state.destroyingA > 0 || game.players.self.player_state.destroyingE > 0 || game.players.self.player_state.destroyingS > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.damagingE > 0 || game.players.self.player_state.damagingS > 0 || game.players.self.player_state.thawing > 0 || game.players.self.player_state.blocking > 0 || game.players.self.player_state.shielding > 0 || game.players.self.player_state.deshielding > 0) {
+		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
+		  			}
+		  		} else if (shapes[i] === game.end_turn_button) {
+		  			input = 'en'
+		  		} else {
+		  			if (game.players.self.player_state.cards_to_play > 0 || game.players.self.player_state.discarding > 0) {
+		  				input = 'ca-' + shapes[i].cardName;
+		  			}
+		  		}
+				// Process input
+				game.input_seq += 1;
+				//Send inputs
+				var server_packet = 'i.' + input + '.' + game.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
+				game.socket.send( server_packet );
+
+				return;
+			}
+		}
+	}, true);
+
+	game.update( new Date().getTime() ); //Start game update loop
+}; //window.onload
+
+
+/* ----------------------------- Game Core -----------------------------  */
 
 var game_core = function(game_instance){
 	this.instance = game_instance; //Store the instance, if any
-	this.server = this.instance !== undefined; //Store a flag if we are the server
+	this.server = false; //Store a flag for not server
 	this.world = { //Used in collision etc.
 		width : canvasWidth,
 		height : canvasHeight
@@ -136,29 +191,27 @@ var game_core = function(game_instance){
 	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
 
-	//We create a player set, passing them to the game that is running them, as well
+	// Create players
 	this.players = {
 		self : new game_player(this),
 		other : new game_player(this)
 	};
-	//A local timer for precision on server and client
-	this.local_time = 0.016;            //The local timer
-	this._dt = new Date().getTime();    //The local timer delta
-	this._dte = new Date().getTime();   //The local timer last frame time
+	
+	//A local timer for precision
+	this.local_time = 0.016;   
+	this._dt = new Date().getTime();  
+	this._dte = new Date().getTime();  
 
 	//Client specific initialisation
+	this.server_time = 0;
+	this.laststate = {};
+	//Client specific initialisation
 	this.client_create_configuration(); //Create the default configuration settings
-	this.server_updates = []; //A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
 	this.client_connect_to_server(); //Connect to the socket.io server!
-	this.client_create_ping_timer(); //We start pinging the server to determine latency
+	this.client_create_ping_timer(); //Ping the server to determine latency
 
 	this.cardBack = new Image();
 }; //game_core.constructor
-
-//server side we set the 'game_core' class to a global type, so that it can use it anywhere.
-if ( 'undefined' != typeof global ) {
-	module.exports = global.game_core = game_core;
-}
 
 
 /*  -----------------------------  The board classs  -----------------------------  */
@@ -303,7 +356,6 @@ game_board.prototype.draw = function(){
 
 // Check if co-ordinates are within Board object
 game_board.prototype.contains = function(mx, my) {
-	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return (this.x <= mx) && (this.x + this.w >= mx) && (this.y <= my) && (this.y + this.h >= my);
 };
 
@@ -386,7 +438,6 @@ end_turn_button.prototype.draw = function(){
 };
 
 end_turn_button.prototype.contains = function(mx, my) {
-	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return  (this.x <= mx) && (this.x + this.w >= mx) && (canvasHeight/2 <= my) && (canvasHeight/2 + this.h >= my);
 };
 
@@ -425,13 +476,11 @@ game_card.prototype.draw = function(self){ //draw card
 
 	//Just makes the glow
 	game.ctx.fillStyle = 'rgba(140,120,100,1)';
-	//game.ctx.fillRect(this.pos.x, this.pos.y, this.size.x, this.size.y);
 	roundedImage(this.pos.x, this.pos.y, this.size.x, this.size.y, 10);
 	game.ctx.fill();
 
 	//Clipping
 	game.ctx.save();
-	//roundedImage(this.pos.x, this.pos.y, this.size.x, this.size.y, 10);
 	game.ctx.clip();
 	
 	if (self === true) {
@@ -450,7 +499,6 @@ game_card.prototype.draw = function(self){ //draw card
 }; 
 
 game_card.prototype.contains = function(mx, my) {
-	// All we have to do is make sure the Mouse X,Y fall in the area between the shape's X and (X + Width) and its Y and (Y + Height)
 	return  (this.pos.x <= mx) && (this.pos.x + this.size.x >= mx) && (this.pos.y <= my) && (this.pos.y + this.size.y >= my);
 };
 
@@ -468,15 +516,9 @@ game_card.prototype.checkPlayable = function(){
 
 
 /*  -----------------------------  The player class -----------------------------  */
-/*	A simple class to maintain state of a player on screen,
-	as well as to draw that state when required.
-*/
 
 var game_player = function( game_instance, player_instance ) {
-	//Store the instance, if any
-	this.instance = player_instance; //dont need these?
-	//this.game = game_instance; //??
-	//Set up initial values for our state information
+	this.instance = player_instance;
 	this.state = 'not-connected';
 	this.id = '';
 
@@ -504,7 +546,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = []//["Fire Blast", "Fire Blast", "Fire Blast", "Ice Blast", "Ice Blast", "Frost", "Summer", "Summer",  "Sabotage", "Armour Up", "Armour Up", "Taxes", "Flurry", "Sacrifice", "Boulder",  "Floods", "Floods", "Barrage", "Barrage", "Bezerker", "Bezerker", "Reckless"];
+	var deck_temp = []
 	$.getJSON("json/deck_p1.json", function(json) {
 	    deck_temp = json;
 	});
@@ -516,7 +558,6 @@ var game_player = function( game_instance, player_instance ) {
 }; //game_player.constructor
 
 game_player.prototype.draw = function(){
-	//Set the color for this player
 	game.ctx.clearRect(0, 0, 120, 120); //Clear the screen area
 	game.ctx.textAlign = "start"; 
 	game.ctx.fillStyle = "black";
@@ -530,10 +571,9 @@ game_player.prototype.draw = function(){
 		}
 	}
 
-	//draw drawn cards
+	// Draw drawn cards
 	for (var i = 0; i < this.hand.length; i++) {
 		this.hand[i].pos.x = canvasWidth / 2 - (this.hand[i].size.hx / 2 * (this.hand.length + 1)) + (this.hand[i].size.hx * i) ;
-
 		if (game.players.self === this){
 			this.hand[i].pos.y = 520;
 			this.hand[i].draw(true);
@@ -542,9 +582,8 @@ game_player.prototype.draw = function(){
 			this.hand[i].draw(false);
 		}
 	}
-
+	// Re-draw card if mouse is over
 	if (this.mouseX !== undefined && this.mouseY !== undefined){
-		console.log(this.mouseX + ', ' + this.mouseY);
 		for (var i = this.hand.length - 1; i >= 0; i--) { // Check all clickable objects
 		  	if (this.hand[i].contains(this.mouseX, this.mouseY)) {
 				this.hand[i].draw(true);
@@ -554,12 +593,7 @@ game_player.prototype.draw = function(){
 	}
 }; //game_player.draw
 
-/*  -----------------------------  Common Core Game functions  -----------------------------  
-	These functions are shared between client and server, and are generic
-	for the game state. The client functions are client_* and server functions
-	are server_* so these have no prefix.
-*/
-
+/* -----------------------------  Player Client side functions  ----------------------------- */
 //Main update loop
 game_core.prototype.update = function(t) {
 	this.lastframetime = t; //Store the last frame time
@@ -570,23 +604,19 @@ game_core.prototype.update = function(t) {
 	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport );
 }; //game_core.update
 
-//For the server, we need to cancel the setTimeout that the polyfill creates
+// Cancel game update loop
 game_core.prototype.stop_update = function() { 
 	window.cancelAnimationFrame( this.updateid );  
 };
 
-
-/* -----------------------------  Client side functions  ----------------------------- */
-
+// Hand update from server
 game_core.prototype.client_onserverupdate_recieved = function(data){
-	//Lets clarify the information we have locally. One of the players is 'hosting' and the other is a joined in client, so we name these host and client for making sure
-	//the positions we get from the server are mapped onto the correct local sprites
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
 	var this_player = this.players.self;
 	
-	this.server_time = data.t; //Store the server time (this is offset by the latency in the network, by the time we get it)
-	this.client_time = this.server_time - (this.net_offset/1000); //Update our local offset time from the last server update
+	this.server_time = data.t;
+	this.client_time = this.server_time - (this.net_offset/1000);
 
 	data = JSON.parse(data);
 	// Store server's last state
@@ -598,24 +628,20 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	player_client.player_state = data.cp;
 	player_client.hand = create_card_array(data.ch);
 	player_client.deck = create_card_array(data.cd);         
-	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
-	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
-	this.server_time = data.t;   // our current local time on the server
+	this.server_time = data.t;   // time
 }; //game_core.client_onserverupdate_recieved
 
-//require('test_file.js');
-
+// Update view
 game_core.prototype.client_update = function() {
-	// Only do if something has changed?
-	//console.log('hmmm' + !node || this.server);
-	this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear the screen area
+	this.ctx.clearRect(0, 0, canvasWidth, canvasHeight); //Clear canvas
 
 	this.end_turn_button.draw();
 	this.board.draw(); // Draw board
 	this.players.other.draw(); // draw other player (post server update)
 	this.players.self.draw(); //Draw self
-}; //game_core.update_client
+};
 
+// Setup a timer
 game_core.prototype.create_timer = function(){
 	setInterval(function(){
 		this._dt = new Date().getTime() - this._dte;
@@ -624,28 +650,28 @@ game_core.prototype.create_timer = function(){
 	}.bind(this), 4);
 }
 
+// Ping server at interval
 game_core.prototype.client_create_ping_timer = function() {
-	//Set a ping timer to 1 second, to maintain the ping/latency between
-	//client and server and calculated roughly how our connection is doing
 	setInterval(function(){
 		this.last_ping_time = new Date().getTime();
 		this.socket.send('p.' + (this.last_ping_time) );
-
 	}.bind(this), 1000);
-}; //game_core.client_create_ping_timer
+};
 
+// Setup client
 game_core.prototype.client_create_configuration = function() {
-	this.input_seq = 0;                 //When predicting client inputs, we store the last input as a sequence number
-	this.net_latency = 0.001;           //the latency between the client and the server (ping/2)
-	this.net_ping = 0.001;              //The round trip time from here to the server,and back
-	this.last_ping_time = 0.001;        //The time we last sent a ping
-	this.net_offset = 100;              //100 ms latency between server and client interpolation for other clients
-	this.client_time = 0.01;            //Our local 'clock' based on server time - client interpolation(net_offset).
-	this.server_time = 0.01;            //The time the server reported it was at, last we heard from it
+	this.input_seq = 0;                 
+	this.net_latency = 0.001;           
+	this.net_ping = 0.001;              
+	this.last_ping_time = 0.001;        
+	this.net_offset = 100;              
+	this.client_time = 0.01;            
+	this.server_time = 0.01;
 	this.lit = 0;
 	this.llt = new Date().getTime();
-}; //game_core.client_create_configuration
+};
 
+// Handle readying a game
 game_core.prototype.client_onreadygame = function(data) {
 	if (this.mmr === undefined) {this.mmr = 1;}
 	console.log('Connected, with mmr > ' + this.mmr);
@@ -662,34 +688,36 @@ game_core.prototype.client_onreadygame = function(data) {
 	player_client.state = 'local_pos(joined)';
 
 	this.players.self.state = 'YOU ' + this.players.self.state;
-}; //client_onreadygame
+};
 
+// Handle joining a game
 game_core.prototype.client_onjoingame = function(data) {
-	this.players.self.host = false; //We are not the host
+	this.players.self.host = false; //Player not the host
 	this.players.self.state = 'connected.joined.waiting'; // Update state
-}; //client_onjoingame
+};
 
+// Handle opening a game
 game_core.prototype.client_onhostgame = function(data) {
-	var server_time = parseFloat(data.replace('-','.')); //The server sends the time when asking us to host, but it should be a new game. so the value will be really small anyway (15 or 16ms)
-	this.local_time = server_time + this.net_latency; //Get an estimate of the current time on the server
+	var server_time = parseFloat(data.replace('-','.')); 
+	this.local_time = server_time + this.net_latency; //Estimate of the current time on the server
 	this.players.self.host = true; //Flag self as host
 	this.players.self.state = 'hosting.waiting for a player'; //Update debugging information to display state
-}; //client_onhostgame
+};
 
+// Handle connect to game
 game_core.prototype.client_onconnected = function(data) {
-	//The server responded that we are now in a game, this lets us store the information about ourselves and set the colors
-	//to show we are now ready to be playing.
 	this.players.self.id = data.id;
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
-}; //client_onconnected
+};
 
+// Handle server ping
 game_core.prototype.client_onping = function(data) {
 	this.net_ping = new Date().getTime() - parseFloat( data );
 	this.net_latency = this.net_ping/2;
+};
 
-}; //client_onping
-
+// Takes message from server and handles
 game_core.prototype.client_onnetmessage = function(data) {
 	var commands = data.split('.');
 	var command = commands[0];
@@ -719,27 +747,27 @@ game_core.prototype.client_onnetmessage = function(data) {
 						this.socket.send( 'w' );
 					}
 					break;
-			} //subcommand
-		break; //'s'
-	} //command
-				
+			}
+		break;
+	}			
 }; //client_onnetmessage
 
+// Handle socket disconnect (non-end game)
 game_core.prototype.client_ondisconnect = function(data) {
-	//When we disconnect, we don't know if the other player is connected or not, and since we aren't, everything goes to offline
 	this.players.self.state = 'not-connected';
 	this.players.self.online = false;
 	this.players.other.state = 'not-connected';
 }; //client_ondisconnect
 
+// Handle connecting to a server
 game_core.prototype.client_connect_to_server = function() {
-	this.socket = io.connect(); //Store a local reference to our connection to the server
+	this.socket = io.connect(); // Server socket
 
-	//When we connect, we are not 'connected' until we have a server id and are placed in a game by the server. The server sends us a message for that.
 	this.socket.on('connect', function(){
 		this.players.self.state = 'connecting';
 	}.bind(this));
 
+	//Bind other socket handlers
 	this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
 	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
 	this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
@@ -747,10 +775,11 @@ game_core.prototype.client_connect_to_server = function() {
 	this.socket.on('message', this.client_onnetmessage.bind(this)); 					// Parse message from server, send to handlers
 }; //game_core.client_connect_to_server
 
+// Draw player status
 game_core.prototype.client_draw_info = function() {
 	if (this.players.self.host) {  // If host
 		this.ctx.fillStyle = 'rgba(255,255,255,0.7)';
-		this.ctx.fillText('You are the host', 10 , 465);
+		this.ctx.fillText('You are hosting', 10 , 465);
 	}
 	this.ctx.fillStyle = 'rgba(255,255,255,1)'; //reset
-}; //game_core.client_draw_help
+};

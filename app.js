@@ -2,7 +2,7 @@
 
 var io              = require('socket.io').listen(3013),
     UUID            = require('node-uuid'),
-    gameport        = process.env.PORT || 3014,
+    port            = process.env.PORT || 3014,
     address         = 'http://localhost',
     express         = require('express'),
     verbose         = false,
@@ -16,32 +16,32 @@ var io              = require('socket.io').listen(3013),
 
 try {
     require('dns').lookup(require('os').hostname(), function (err, add, fam) {
-        server.listen(gameport, add);
+        server.listen(port, add);
         address = add;
         //Log something so we know that it succeeded.
-        console.log('\t :: Express :: Listening on ' + add + ', on port ' + gameport );
+        console.log('Listening on ' + add + ':' + port );
 
         /* ----------------------- File request handling ------------------------- */
 
         app.get( '/', function( req, res ){
-            console.log('trying to load %s', __dirname + '/index.html');
+            console.log('Loading %s', __dirname + '/index.html');
             res.sendFile( '/index.html' , { root:__dirname });
         });
 
         app.get( '/*' , function( req, res, next ) {
             var file = req.params[0]; // Current file they have requested
-            if(verbose) console.log('\t :: Express :: file requested : ' + file); //For debugging, we can track what files are requested.
+            if(verbose) console.log('File requested : ' + file); //For debugging, we can track what files are requested.
             res.sendFile( __dirname + '/' + file ); //Send the requesting client the file.
         });
 
         sio = io.listen(server); // Handle socket.io file request
     })
 } catch (err) {
-    server.listen(gameport)
+    server.listen(port)
 }
 
-//Tell the server to listen for incoming connections
-console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
+// Local version
+console.log('Listening on ' + address + ':' + port );
 
 
 /* ----------------------- Handle connection -----------------------  */
@@ -49,9 +49,8 @@ console.log('\t :: Express :: Listening on ' + address + ':' + gameport );
 // Handle successful connection
 io.sockets.on('connection', function (client) {
     client.userid = UUID(); //Generate new user ID
-    console.log(client.userid);
     client.emit('onconnected', { id: client.userid } ); // Ping successful connect
-    console.log('\t socket.io:: player ' + client.userid + ' connected');
+    console.log('Player ' + client.userid + ' connected');
 
     game_server.findGame(client);
 
@@ -62,9 +61,9 @@ io.sockets.on('connection', function (client) {
 
     // Handle user disconnect
     client.on('disconnect', function () {
-        console.log('\t socket.io:: client disconnected ' + client.userid);
+        console.log('Client ' + client.userid + 'disconnected');
         if ( client.game && client.game.id ) {
-            game_server.endGame(client.game.id, client.userid); //player leaving a game should destroy that game
+            game_server.endGame(client.game.id, client.userid); //player leaving -> destroy game
         }
-    }); // client.on disconnect
-}); // io.sockets.on connection
+    }); 
+});

@@ -7,11 +7,9 @@ var fs = require('fs');
 var results_file = 'json/card_data.json';
 var cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
-/*  -----------------------------  WHat is this bit  -----------------------------   */
+/*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
-if ('undefined' != typeof(global)) frame_time = 45; //on server we run at 45ms, 22hz
-
-// Manages frames/animation
+// Manage frames/animation
 ( function () {
 	var lastTime = 0;
 	var vendors = [ 'ms', 'moz', 'webkit', 'o' ];
@@ -41,7 +39,7 @@ var shuffle = function(o){ for (var j, x, i = o.length; i; j = Math.floor(Math.r
 // Scale number
 var scale_number = function(base, exp) { if (base < 0) { return Number( - Math.pow(base, exp)); } else { return Number(Math.pow(base, exp)); } };
 
-// initialise an array of cards - e.g. for new hand or deck
+// Initialise an array of cards - e.g. for new hand or deck
 var create_card_array = function(data) {
 	var cards = []
 	for (var i = 0; i < data.length; i++) {
@@ -69,39 +67,38 @@ var game_core = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7, game_instance
 	this.shield_mod = arg5,
 	this.freeze_mod = arg6,
 	this.rock_mod = arg7;
-	//console.log(this.player_card_value + ', ' + this.enemy_card_value + ', ' + this.center_mod + ', ' + this.enemy_mod + ', ' + this.shield_mod + ', ' + this.freeze_mod + ', ' + this.rock_mod);
 
 	this.mmr;
 	this.game_count;
 
 	this.instance = game_instance; //Store instance (if arg)
-	this.server = this.instance !== undefined; // Flag for server
+	this.server = false; //Store a flag for not server
 
 	this.board = new game_board();
 	this.end_turn_button = new end_turn_button();
 	this.turn = 1;
 
-	//We create a player set, passing them to the game that is running them, as well
+	// Create players
 	this.players = {
 		self : new game_player(this),
 		other : new game_player(this)
 	};
-	//A local timer for precision on server and client
-	this.local_time = 0.016;            //The local timer
-	this._dt = new Date().getTime();    //The local timer delta
-	this._dte = new Date().getTime();   //The local timer last frame time
+	
+	//A local timer for precision
+	this.local_time = 0.016;   
+	this._dt = new Date().getTime();  
+	this._dte = new Date().getTime();  
 
 	//Client specific initialisation
-	this.client_create_configuration(); //Create the default configuration settings
-	this.server_updates = []; //A list of recent server updates we interpolate across this is the buffer that is the driving factor for our networking
-	//this.client_connect_to_server(); //Connect to the socket.io server!
-	this.client_create_ping_timer(); //We start pinging the server to determine latency
+	this.server_time = 0;
+	this.laststate = {};
+
+	//Client specific initialisation
+	this.client_create_configuration(); 
+	this.client_create_ping_timer();
 }; //game_core.constructor
 
-//server side we set the 'game_core' class to a global type, so that it can use it anywhere.
-if ( 'undefined' != typeof global ) {
-	module.exports = global.game_core = game_core;
-}
+module.exports = global.game_core = game_core; // global as needed by manager
 
 
 /*  -----------------------------  The board classs  -----------------------------  */
@@ -256,7 +253,7 @@ game_core.prototype.checkFrozen = function(){
 	return false;
 };
 
-/*  -----------------------------  AI Decision Making functions  -----------------------------  */
+/*  -----------------------------  AI Evaluation functions  -----------------------------  */
 
 game_core.prototype.evaluate_square = function(x, y) {
 	var square = this.board.board_state.results[x][y];
@@ -454,11 +451,9 @@ game_core.prototype.choose_square = function(moves){
 						y : j,
 						distance : dist
 					};
-					//console.log('Moves distance = ' + moves.distance + ' >>>>>> ' + i + ', ' + j);
 				}
 
 				// Reverse things
-
 				if (this.players.self.player_state.freezing > 0) { // placing frost
 					temp_state.frost[i][j] = 0; 
 				} else if (this.players.self.player_state.thawing > 0) { // placing frost
@@ -745,8 +740,6 @@ game_core.prototype.choose_card = function(best) {
 		score   : starting_value
 	}
 
-	//console.log('ARGHHHHHH  First >>>>>>> ' + card_selection.score);
-
 	//for card in hand
 	for (var i = 0; i < this.players.self.hand.length; i++){
 		//console.log('Trying out ' + this.players.self.hand[i].cardName);
@@ -823,14 +816,10 @@ var game_card = function( card_name ) {
 
 
 /*  -----------------------------  The player class -----------------------------  */
-/*  A simple class to maintain state of a player on screen,
-	as well as to draw that state when required.
-*/
 
 var game_player = function( game_instance, player_instance ) {
-	this.instance = player_instance; //dont need these?
-	//this.game = game_instance; //??
-	//Set up initial values for our state information
+	this.instance = player_instance;
+	this.game = game_instance;
 	this.state = 'not-connected';
 	this.id = '';
 
@@ -861,11 +850,7 @@ var game_player = function( game_instance, player_instance ) {
 }; //game_player.constructor
 
 
-/*  -----------------------------  Common Core Game functions  -----------------------------  
-	These functions are shared between client and server, and are generic
-	for the game state. The client functions are client_* and server functions
-	are server_* so these have no prefix.
-*/
+/* -----------------------------  AI Client functions  ----------------------------- */
 
 //Main update loop
 game_core.prototype.update = function(t) {
@@ -879,25 +864,19 @@ game_core.prototype.update = function(t) {
 	this.updateid = global.requestAnimationFrame( this.update.bind(this), this.viewport );
 }; //game_core.update
 
-//For the server, we need to cancel the setTimeout that the polyfill creates
+//Cancel game update
 game_core.prototype.stop_update = function() { 
 	global.cancelAnimationFrame( this.updateid );  
 };
 
-
-/* -----------------------------  Client side functions  ----------------------------- */
-
+// Handle server update
 game_core.prototype.client_onserverupdate_recieved = function(data){
-	//console.log(data);
-
-	//Lets clarify the information we have locally. One of the players is 'hosting' and the other is a joined in client, so we name these host and client for making sure
-	//the positions we get from the server are mapped onto the correct local sprites
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
 	var this_player = this.players.self;
 	
-	this.server_time = data.t; //Store the server time (this is offset by the latency in the network, by the time we get it)
-	this.client_time = this.server_time - (this.net_offset / 1000); //Update our local offset time from the last server update
+	this.server_time = data.t; //Store the server time
+	this.client_time = this.server_time - (this.net_offset / 1000); //Update local offset time from the last server update
 
 	data = JSON.parse(data);
 	// Store server's last state
@@ -909,20 +888,13 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	player_client.player_state = data.cp;
 	player_client.hand = create_card_array(data.ch);
 	player_client.deck = create_card_array(data.cd);         
-	this.players.self.last_input_seq = data.his;    //'host input sequence', the last input we processed for the host
-	this.players.other.last_input_seq = data.cis;   //'client input sequence', the last input we processed for the client
-	this.server_time = data.t;   // our current local time on the server
-
-	//this.client_update();
+	this.server_time = data.t;   // sever time
 }; //game_core.client_onserverupdate_recieved
-
-//require('test_file.js');
 
 game_core.prototype.client_update = function() {
 	if ((this.players.self.host === true && this.turn === -1) || (this.players.self.host === false && this.turn === 1) || this.players.self.state === 'hosting.waiting for a player') { // not players turn
 		return;
 	}
-	//console.log(this.players.self.player_state);
 
 	var input = '';
 
@@ -970,6 +942,7 @@ game_core.prototype.client_update = function() {
 	*/
 }; //game_core.update_client
 
+// Setup a timer
 game_core.prototype.create_timer = function(){
 	setInterval(function(){
 		this._dt = new Date().getTime() - this._dte;
@@ -978,9 +951,8 @@ game_core.prototype.create_timer = function(){
 	}.bind(this), 4);
 }
 
+// Ping server at interval
 game_core.prototype.client_create_ping_timer = function() {
-	//Set a ping timer to 1 second, to maintain the ping/latency between
-	//client and server and calculated roughly how our connection is doing
 	setInterval(function(){
 		this.last_ping_time = new Date().getTime();
 		this.socket.send('p.' + (this.last_ping_time) );
@@ -988,65 +960,63 @@ game_core.prototype.client_create_ping_timer = function() {
 	}.bind(this), 1000);
 }; //game_core.client_create_ping_timer
 
+// Setup client
 game_core.prototype.client_create_configuration = function() {
-	this.input_seq = 0;                 //When predicting client inputs, we store the last input as a sequence number
-
-	this.net_latency = 0.001;           //the latency between the client and the server (ping/2)
-	this.net_ping = 0.001;              //The round trip time from here to the server,and back
-	this.last_ping_time = 0.001;        //The time we last sent a ping
-
-	this.net_offset = 100;              //100 ms latency between server and client interpolation for other clients
-
-	this.client_time = 0.01;            //Our local 'clock' based on server time - client interpolation(net_offset).
-	this.server_time = 0.01;            //The time the server reported it was at, last we heard from it
-
+	this.input_seq = 0;                 
+	this.net_latency = 0.001;           
+	this.net_ping = 0.001;              
+	this.last_ping_time = 0.001;        
+	this.net_offset = 100;              
+	this.client_time = 0.01;            
+	this.server_time = 0.01;
 	this.lit = 0;
 	this.llt = new Date().getTime();
+};
 
-}; //game_core.client_create_configuration
-
+// Handle readying a game
 game_core.prototype.client_onreadygame = function(data) {
-	console.log(this.players.self.id + ' connected, with mmr > ' + this.mmr);
-	//console.log(this.player_card_value + ', ' + this.enemy_card_value + ', ' + this.center_mod + ', ' + this.enemy_mod + ', ' + this.shield_mod + ', ' + this.freeze_mod + ', ' + this.rock_mod);
-	this.socket.send( 'm.' + this.mmr );
+	console.log('Connected, with mmr > ' + this.mmr);
+	this.socket.send( 'm.' + this.mmr ); // Tell server this player's mmr
 
 	var server_time = parseFloat(data.replace('-','.'));
 	var player_host = this.players.self.host ?  this.players.self : this.players.other;
 	var player_client = this.players.self.host ?  this.players.other : this.players.self;
 
 	this.local_time = server_time + this.net_latency;
-	//console.log('server time is about ' + this.local_time);
 		
-	//Update their information
+	//Update information
 	player_host.state = 'local_pos(hosting)';
 	player_client.state = 'local_pos(joined)';
-
 	this.players.self.state = 'YOU ' + this.players.self.state;
-}; //client_onreadygame
+}; 
 
+// Handle opening a game
 game_core.prototype.client_onjoingame = function(data) {
-	this.players.self.host = false; //We are not the host
+	this.players.self.host = false; //Not the host
 	this.players.self.state = 'connected.joined.waiting'; // Update state
-}; //client_onjoingame
+};
 
 game_core.prototype.client_onhostgame = function(data) {
-	var server_time = parseFloat(data.replace('-','.')); //The server sends the time when asking us to host, but it should be a new game. so the value will be really small anyway (15 or 16ms)
-	this.local_time = server_time + this.net_latency; //Get an estimate of the current time on the server
+	var server_time = parseFloat(data.replace('-','.'));
+	this.local_time = server_time + this.net_latency; 
 	this.players.self.host = true; //Flag self as host
-	this.players.self.state = 'hosting.waiting for a player'; //Update debugging information to display state
-}; //client_onhostgame
+	this.players.self.state = 'hosting.waiting for a player';
+};
 
+// Handle connect to game
 game_core.prototype.client_onconnected = function(data) { // Ping ready
 	this.players.self.id = data.id;
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
-}; //client_onconnected
+};
 
+// Handle server ping
 game_core.prototype.client_onping = function(data) {
 	this.net_ping = new Date().getTime() - parseFloat( data );
 	this.net_latency = this.net_ping/2;
-}; //client_onping
+};
 
+// Handle message from server
 game_core.prototype.client_onnetmessage = function(data) {
 	var commands = data.split('.');
 	var command = commands[0];
@@ -1115,8 +1085,8 @@ game_core.prototype.client_onnetmessage = function(data) {
 				
 }; //client_onnetmessage
 
+// Handle socket disconnect (non-end game)
 game_core.prototype.client_ondisconnect = function(data) {
-	//When we disconnect, we don't know if the other player is connected or not, and since we aren't, everything goes to offline
 	this.players.self.state = 'not-connected';
 	this.players.self.online = false;
 	this.players.other.state = 'not-connected';

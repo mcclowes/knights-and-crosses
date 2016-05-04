@@ -1,9 +1,9 @@
-var address 		= 'http://localhost', // Set IP
-	gameport 		= '3013', // Set Port
+var address 		= 'http://localhost', 			// Set IP
+	port 			= '3013', 						// Set Port
 	fs 				= require('fs'),
 	game_core 		= require('./game.core.ai.js'),
 	clientio  		= require('socket.io-client'),
-	ai_count 		= 1, // Set no. AI instances
+	ai_count 		= 1, 							// Set no. AI instances
 	ai_solutions 	= [];
 
 try {
@@ -16,7 +16,7 @@ try {
 
 // Create an ai instance
 create_ai_instance = function(i) {
-	var client = clientio.connect(address + ':' + gameport);
+	var client = clientio.connect(address + ':' + port);
 	// Make AI game
 	var game = {};
 	game = new game_core(
@@ -112,7 +112,7 @@ seed_ai = function() {
 
 //seed_random_ai();
 
-seed_set_ai(97, 70, 1.9, 1.5, 1.8, 0.6, 0.8);
+seed_set_ai(80, 50, 1.2, 2.2, 1.5, 0.6, 0.8);
 
 //seed_ai(); 
 

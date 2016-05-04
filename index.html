@@ -1,38 +1,21 @@
 <!DOCTYPE html>
 <html>
 	<head>
-
 		<title>Sigil Crosses</title>
 
-		<!-- Load style sheet -->
 		<link href="css/style.css" media="screen" rel="stylesheet" type="text/css">
-
-	<!-- Library code -->
-		<!-- JSON Files - remove??? --> 
-		<script type="text/javascript" src="json/cards.json"></script>
-        <script type="text/javascript" src="json/deck_p1.json"></script>
-        <script type="text/javascript" src="json/deck_p2.json"></script>
 
         <!-- For JSON parsing only -->
 		<script src="js/jquery-2.1.4.min.js"></script>
 
-        <!-- Load socket.io client side contents. -->
 		<script src="/socket.io/socket.io.js"></script>
 
-	 	<!-- Load the GUI rendering library code. -->
-		<script type="text/javascript" src="lib/dat.gui.min.js"></script>
-	 	
-	<!-- Game code -->
-	 	<!-- Load the common game code. -->
-		<script type="text/javascript" src="game.core.client.js"></script>
-		<!-- Finally, Load the game client code. -->
-		<script type="text/javascript" src="client.js"></script>		
-
+		<script type="text/javascript" src="lib/dat.gui.min.js"></script> <!-- GUI -->
+		<script type="text/javascript" src="game.core.client.js"></script>	
 	</head>
 
 	<body>
 		<canvas id="viewport">
 		</canvas>
 	</body>
-
 </html>
