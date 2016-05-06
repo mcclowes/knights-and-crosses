@@ -9,6 +9,13 @@ var cards = JSON.parse(fs.readFileSync('json/cards.json'));
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
+/***************************************************************************************
+*    Title: requestAnimationFrame for Smart Animating
+*    Author: Paul irish
+*    Date: 22/02/2011
+*    Availability: http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+***************************************************************************************/
+
 // Manage frames/animation
 ( function () {
 	var lastTime = 0;

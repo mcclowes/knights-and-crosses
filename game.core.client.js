@@ -14,6 +14,13 @@ $.getJSON("json/cards.json", function(json) {
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
+/***************************************************************************************
+*    Title: requestAnimationFrame for Smart Animating
+*    Author: Paul irish
+*    Date: 22/02/2011
+*    Availability: http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+***************************************************************************************/
+
 // Manages frames/animation
 ( function () {
 	var lastTime = 0;

@@ -6,7 +6,6 @@ var game_server = module.exports = { games : {}, game_count:0 },
 
 global.window = global.document = global;
 
-//Import shared game library code.
 require('./game.core.server.js');
 
 //Displays logs
