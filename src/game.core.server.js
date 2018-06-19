@@ -4,7 +4,7 @@
 var frame_time = 45,
 	maxHandSize = 10,
 	fs = require('fs'),
-	cards = JSON.parse(fs.readFileSync('json/cards.json'));
+	cards = JSON.parse(fs.readFileSync('src/json/cards.json'));
 
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
@@ -375,7 +375,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = JSON.parse(fs.readFileSync('json/deck_p1.json'));
+	var deck_temp = JSON.parse(fs.readFileSync('src/json/deck_p1.json'));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 }; //game_player.constructor

@@ -9,7 +9,7 @@ var io              = require('socket.io').listen(3013),
     http            = require('http'),
     app             = express(),
     server          = http.createServer(app),
-    game_server     = require('./game.server.js'),
+    game_server     = require('./src/game.server.js'),
     sio             = '';
 
 /* ----------------------- Find IP, start listening ------------------------- */
@@ -25,7 +25,7 @@ try {
 
         app.get( '/', function( req, res ){
             console.log('Loading %s', __dirname + '/index.html');
-            res.sendFile( '/index.html' , { root:__dirname });
+            res.sendFile( 'index.html' , { root:__dirname });
         });
 
         app.get( '/*' , function( req, res, next ) {

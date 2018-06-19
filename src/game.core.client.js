@@ -8,7 +8,7 @@ var frame_time = 60/1000,
 
 
 var cards = []; // Load cards (with jQuery)
-$.getJSON("json/cards.json", function(json) {
+$.getJSON("src/json/cards.json", function(json) {
     cards = json;
 });
 
@@ -252,25 +252,25 @@ var game_board = function() {
 
 	//Assign images
 	this.boardImage = new Image();
-	this.boardImage.src = "img/board.png";
+	this.boardImage.src = "src/assets/img/board.png";
 	this.p1PieceImage = new Image();
-	this.p1PieceImage.src = "img/piece_p1.png";
+	this.p1PieceImage.src = "src/assets/img/piece_p1.png";
 	this.p2PieceImage = new Image();
-	this.p2PieceImage.src = "img/piece_p2.png";
+	this.p2PieceImage.src = "src/assets/img/piece_p2.png";
 	this.frostImage1 = new Image();
-	this.frostImage1.src = "img/frost1.png";
+	this.frostImage1.src = "src/assets/img/frost1.png";
 	this.frostImage2 = new Image();
-	this.frostImage2.src = "img/frost2.png";
+	this.frostImage2.src = "src/assets/img/frost2.png";
 	this.blockedImage1 = new Image();
-	this.blockedImage1.src = "img/rock1.png";
+	this.blockedImage1.src = "src/assets/img/rock1.png";
 	this.blockedImage2 = new Image();
-	this.blockedImage2.src = "img/rock2.png";
+	this.blockedImage2.src = "src/assets/img/rock2.png";
 	this.blockedImage3 = new Image();
-	this.blockedImage3.src = "img/rock3.png";
+	this.blockedImage3.src = "src/assets/img/rock3.png";
 	this.p1ShieldImage = new Image();
-	this.p1ShieldImage.src = "img/piece_p1_shielded.png";
+	this.p1ShieldImage.src = "src/assets/img/piece_p1_shielded.png";
 	this.p2ShieldImage = new Image();
-	this.p2ShieldImage.src = "img/piece_p2_shielded.png";
+	this.p2ShieldImage.src = "src/assets/img/piece_p2_shielded.png";
 };
 
 game_board.prototype.draw = function(){
@@ -455,7 +455,7 @@ var game_card = function( card_name ) {
 	this.cardName = card_name;
 	//this.cardImage = '';
 	this.cardImage = new Image();
-	this.cardImage.src = "img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
+	this.cardImage.src = "src/assets/img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
 
 	this.pos = { x:0, y:0 };
 	this.size = { x:140, y:210, hx:0, hy:0 };
@@ -493,7 +493,7 @@ game_card.prototype.draw = function(self){ //draw card
 	if (self === true) {
 		game.ctx.drawImage(this.cardImage, this.pos.x, this.pos.y, this.size.x, this.size.y);
 	} else {
-		game.cardBack.src = game.players.self.host === true ? "img/card_back2.png" : "img/card_back1.png";
+		game.cardBack.src = game.players.self.host === true ? "src/assets/img/card_back2.png" : "src/assets/img/card_back1.png";
 		game.ctx.drawImage(game.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
 	}
 
@@ -554,7 +554,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.hand = [];
 
 	var deck_temp = []
-	$.getJSON("json/deck_p1.json", function(json) {
+	$.getJSON("src/json/deck_p1.json", function(json) {
 	    deck_temp = json;
 	});
 	deck_temp = shuffle(deck_temp);
