@@ -1,21 +1,21 @@
 {
-  "name": "networked_sigil",
+  "name": "knights-and-crosses",
   "version": "1.0.0",
   "description": "",
-  "main": "ai_manager.js",
+  "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mcclowes/Networked_Sigil.git"
+    "url": "git+https://github.com/mcclowes/knights-and-crosses.git"
   },
-  "author": "",
+  "author": "Max Clayton Clowes <maxcc@me.com>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/mcclowes/Networked_Sigil/issues"
+    "url": "https://github.com/mcclowesknights-and-crosses/issues"
   },
-  "homepage": "https://github.com/mcclowes/Networked_Sigil#readme",
+  "homepage": "https://github.com/mcclowesknights-and-crosses#readme",
   "dependencies": {
     "express": "^4.13.4",
     "fs": "0.0.2",
