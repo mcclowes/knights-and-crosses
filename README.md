@@ -1,6 +1,6 @@
-# Sigil: Crosses
+# Knights and Crosses
 
-Sigil: Crosses is a networked competitive multiplayer TCG game.
+Knights and Crosses is a networked competitive multiplayer TCG game.
 
 ## An Investigation Into The Use of Genetic AI in the Balancing of Competitive Multiplayer Games
 
