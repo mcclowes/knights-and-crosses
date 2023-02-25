@@ -5,6 +5,7 @@
   "main": "index.html",
   "scripts": {
     "start": "node app.js",
+    "create-ai": "node ai_manager.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

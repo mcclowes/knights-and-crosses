@@ -34,7 +34,7 @@ This server will print its IP address to console. Visiting this address in the b
 AI instances can also be created:
 
 ```
-$ node ai_manager.js
+npm run create-ai
 ```
 
 This creates a number of AI instances; the quantity can be manually altered within the ai_manager.js file.
