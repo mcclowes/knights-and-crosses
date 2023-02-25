@@ -18,10 +18,15 @@ The success of the balancing process suggests that the proposed new approach to 
 
 ## Running the code
 
+Install dependencies
+```
+npm install
+```
+
 To mount the core game server, in the root directory run:
 
 ```
-$ node app.js
+npm run start
 ```
 
 This server will print its IP address to console. Visiting this address in the browser will allow human players to play the game. The server automatically handles matchmaking.
