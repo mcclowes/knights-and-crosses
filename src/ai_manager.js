@@ -15,7 +15,7 @@ try {
 }
 
 // Create an ai instance
-create_ai_instance = function(i) {
+const create_ai_instance = (i) => {
 	var client = clientio.connect(address + ':' + port);
 	// Make AI game
 	var game = {};
@@ -45,7 +45,7 @@ create_ai_instance = function(i) {
 	game.update( new Date().getTime() );
 }
 
-init_games = function() {
+const init_games = () => {
 	//Initialise games
 	for (var i = 0; i < ai_solutions.length; i++) {
 		//Create ai instance
@@ -56,7 +56,7 @@ init_games = function() {
 };
 
 // Seed and initialise AI randomly
-seed_random_ai = function() {
+const seed_random_ai = () => {
 	// Randomly seed the AI
 	for (var i = 0; i < ai_count; i++) {
 		ai_solutions.push({
@@ -74,7 +74,7 @@ seed_random_ai = function() {
 };
 
 // Seed and initialise AI from input values
-seed_set_ai = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+const seed_set_ai = (arg1, arg2, arg3, arg4, arg5, arg6, arg7) => {
 	for (var i = 0; i < ai_count; i++) {
 		ai_solutions.push({
 			player_card_value : arg1,
@@ -91,8 +91,8 @@ seed_set_ai = function(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
 };
 
 // Seed and initialise AI from JSON input
-seed_ai = function() {
-	var data = JSON.parse(fs.readFileSync('json/ai.json'));
+const seed_ai = () => {
+	var data = JSON.parse(fs.readFileSync('./json/ai.json'));
 	for (var i = 0; i < data.length; i++) {
 		(function(solution){
 			ai_solutions.push({
@@ -115,5 +115,3 @@ seed_ai = function() {
 seed_set_ai(80, 50, 1.2, 2.2, 1.5, 0.6, 0.8);
 
 //seed_ai(); 
-
-
