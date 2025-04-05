@@ -1,12 +1,12 @@
-var game_server = module.exports = { games : {}, game_count:0 },
-	UUID        = require('node-uuid'),
-	verbose     = true;
+import { v4 as UUID } from 'uuid';
+import './game.core.server.js';
+
+const game_server = { games: {}, game_count: 0 };
+const verbose = true;
 
 /*  ----------------------------- Server Functions  -----------------------------   */
 
 global.window = global.document = global;
-
-require('./game.core.server.js');
 
 //Displays logs
 game_server.log = function() {
@@ -197,3 +197,5 @@ game_server.findGame = function(player) {
 		this.createGame(player); // Start first game
 	}
 }; //game_server.findGame
+
+export default game_server;

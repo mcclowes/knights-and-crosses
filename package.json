@@ -1,12 +1,16 @@
 {
   "name": "knights-and-crosses",
   "version": "1.2.0",
-  "description": "",
-  "main": "index.html",
+  "description": "A multiplayer game using modern web technologies",
+  "type": "module",
+  "main": "app.js",
   "scripts": {
     "start": "node app.js",
+    "dev": "nodemon app.js",
+    "build": "tsc",
     "create-ai": "node src/ai_manager.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "lint": "eslint . --ext .ts,.js"
   },
   "repository": {
     "type": "git",
@@ -19,12 +23,23 @@
   },
   "homepage": "https://github.com/mcclowesknights-and-crosses#readme",
   "dependencies": {
-    "express": "^4.13.4",
-    "fs": "0.0.2",
-    "http": "0.0.0",
-    "jsonfile": "^2.3.0",
-    "node-uuid": "^1.4.7",
-    "socket.io": "^1.4.5",
-    "socket.io-client": "^1.4.5"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.4",
+    "uuid": "^9.0.1",
+    "dotenv": "^16.4.5",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.19",
+    "@types/uuid": "^9.0.8",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.3",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }

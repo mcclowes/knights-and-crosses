@@ -1,21 +1,29 @@
 /* ----------------------- Variables ------------------------- */
 
-var io              = require('socket.io').listen(3013),
-    UUID            = require('node-uuid'),
-    port            = process.env.PORT || 3014,
-    address         = 'http://localhost',
-    express         = require('express'),
-    verbose         = false,
-    http            = require('http'),
-    app             = express(),
-    server          = http.createServer(app),
-    game_server     = require('./src/game.server.js'),
-    sio             = '';
+import { Server } from 'socket.io';
+import { v4 as UUID } from 'uuid';
+import express from 'express';
+import http from 'http';
+import dns from 'dns';
+import os from 'os';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import game_server from './src/game.server.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const port = process.env.PORT || 3014;
+let address = 'http://localhost';
+const verbose = false;
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
 /* ----------------------- Find IP, start listening ------------------------- */
 
 try {
-    require('dns').lookup(require('os').hostname(), function (err, add, fam) {
+    dns.lookup(os.hostname(), function (err, add, fam) {
         server.listen(port, add);
         address = add;
         //Log something so we know that it succeeded.
@@ -24,17 +32,15 @@ try {
         /* ----------------------- File request handling ------------------------- */
 
         app.get( '/', function( req, res ){
-            console.log('Loading %s', __dirname + '/index.html');
-            res.sendFile( 'index.html' , { root:__dirname });
+            console.log('Loading %s', join(__dirname, 'index.html'));
+            res.sendFile('index.html', { root: __dirname });
         });
 
         app.get( '/*' , function( req, res, next ) {
-            var file = req.params[0]; // Current file they have requested
+            const file = req.params[0]; // Current file they have requested
             if(verbose) console.log('File requested : ' + file); //For debugging, we can track what files are requested.
-            res.sendFile( __dirname + '/' + file ); //Send the requesting client the file.
+            res.sendFile(join(__dirname, file)); //Send the requesting client the file.
         });
-
-        sio = io.listen(server); // Handle socket.io file request
     })
 } catch (err) {
     server.listen(port)
@@ -43,11 +49,10 @@ try {
 // Local version
 console.log('Listening on ' + address + ':' + port );
 
-
 /* ----------------------- Handle connection -----------------------  */
 
 // Handle successful connection
-io.sockets.on('connection', function (client) {
+io.on('connection', function (client) {
     client.userid = UUID(); //Generate new user ID
     client.emit('onconnected', { id: client.userid } ); // Ping successful connect
     console.log('Player ' + client.userid + ' connected');

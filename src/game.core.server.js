@@ -1,44 +1,17 @@
-
 /*  ----------------------------- Key variables  -----------------------------   */
+
+import fs from 'fs';
 
 var frame_time = 45,
 	maxHandSize = 10,
-	fs = require('fs'),
 	cards = JSON.parse(fs.readFileSync('src/json/cards.json'));
 
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
-/***************************************************************************************
-*    Title: requestAnimationFrame for Smart Animating
-*    Author: Paul irish
-*    Date: 22/02/2011
-*    Availability: http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
-***************************************************************************************/
-
-// Manages frames/animation
-( function () {
-	var lastTime = 0;
-	var vendors = [ 'ms', 'moz', 'webkit', 'o' ];
-
-	for ( var x = 0; x < vendors.length && !window.requestAnimationFrame; ++ x ) {
-		window.requestAnimationFrame = window[ vendors[ x ] + 'RequestAnimationFrame' ];
-		window.cancelAnimationFrame = window[ vendors[ x ] + 'CancelAnimationFrame' ] || window[ vendors[ x ] + 'CancelRequestAnimationFrame' ];
-	}
-
-	if ( !window.requestAnimationFrame ) {
-		window.requestAnimationFrame = function ( callback, element ) {
-			var currTime = Date.now(), timeToCall = Math.max( 0, frame_time - ( currTime - lastTime ) );
-			var id = window.setTimeout( function() { callback( currTime + timeToCall ); }, timeToCall );
-			lastTime = currTime + timeToCall;
-			return id;
-		};
-	}
-
-	if ( !window.cancelAnimationFrame ) {
-		window.cancelAnimationFrame = function ( id ) { clearTimeout( id ); };
-	}
-}() );
+// Server-side update mechanism
+var lastTime = 0;
+var updateInterval = frame_time;
 
 /*  -----------------------------  Helper Functions  -----------------------------  */
 // Array shuffle function
@@ -86,7 +59,7 @@ var game_core = function(game_instance){
 	this.laststate = {};
 };
 
-module.exports = global.game_core = game_core;
+export default global.game_core = game_core;
 
 /*  -----------------------------  Play State Checkers  -----------------------------  */
 
@@ -386,12 +359,12 @@ var game_player = function( game_instance, player_instance ) {
 game_core.prototype.update = function(t) {
 	this.lastframetime = t; //Store the last frame time
 	this.server_update();
-	this.updateid = window.requestAnimationFrame( this.update.bind(this), this.viewport ); //schedule next update
+	this.updateid = setTimeout(this.update.bind(this), updateInterval);
 };
 
 // Cancel game update loop
 game_core.prototype.stop_update = function() { 
-	window.cancelAnimationFrame( this.updateid );  
+	clearTimeout(this.updateid);  
 };
 
 // Updates clients with new game state
@@ -436,7 +409,7 @@ game_core.prototype.handle_server_input = function(client, input, input_time, in
 	if (input) {
 		//var c = input.length;
 		try { var input_parts = input.split('.'); } catch(err) { var input_parts = input;} // handle input accordingly
-		target = [];
+		var target = [];
 
 		if (input_parts[0] == 'en' && player_client !== undefined && player_other !== undefined && ((player_client === this.players.self && this.turn === 1) || (player_client === this.players.other && this.turn === -1))) { //end turn
 			this.turn = this.turn == 1 ? -1 : 1;
@@ -594,9 +567,9 @@ game_core.prototype.resolve_square = function(row, col, player) {
 			this.board.board_state.rock[row][col] = 6;
 			player.player_state.blocking--;
 		} else { //place piece
-			if (this.board.board_state.results[target[0] - 1][target[1] - 1] === 0){ // check unoccupied
+			if (this.board.board_state.results[row][col] === 0){ // check unoccupied
 				player.player_state.pieces_to_play = player.player_state.pieces_to_play - 1;
-				this.board.board_state.results[target[0] - 1][target[1] - 1] = this.turn;
+				this.board.board_state.results[row][col] = this.turn;
 				player.player_state = { // only pieces can be played
 					cards_to_play 	: 0,
 					pieces_to_play 	: player.player_state.pieces_to_play - 1,
@@ -626,7 +599,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 		return;
 	}
 
-	cardEffects = [];
+	var cardEffects = [];
 	for (var j = 0; j < cards.length; j++){
 		if (cards[j].name === card){
 			cardEffects = cards[j].effects;
@@ -635,7 +608,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 
 	var conditionIf = new RegExp("^if$", "i"),
 		conditionLeast = new RegExp("^least$", "i"),
-		deal = new RegExp("^deal$|^damage$", "i");     // ^x$ dictates explicit regex matching
+		deal = new RegExp("^deal$|^damage$", "i"),     // ^x$ dictates explicit regex matching
 		destroy = new RegExp("^destroy$|^remove$", "i"),
 		draw = new RegExp("^draw$|^draws$", "i"),
 		one = new RegExp("^a$|^1$", "i"),
