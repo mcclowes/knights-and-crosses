@@ -112,7 +112,7 @@ module.exports = global.game_core = game_core; // global as needed by manager
 
 var game_board = function() {
 
-	this.board_state = {
+	this.state = {
 		results : [],
 		frost   : [],
 		rock    : [],
@@ -123,16 +123,16 @@ var game_board = function() {
 
 	// initialise game board arrays
 	for (var i = 0; i < 4; i++){
-		this.board_state.results[i] = [];
-		this.board_state.frost[i] = [];
-		this.board_state.rock[i] = [];
-		this.board_state.shields[i] = [];
+		this.state.results[i] = [];
+		this.state.frost[i] = [];
+		this.state.rock[i] = [];
+		this.state.shields[i] = [];
 
 		for (var j = 0; j < 4; j++){
-			this.board_state.results[i][j] = 0;
-			this.board_state.frost[i][j] = 0;
-			this.board_state.rock[i][j] = 0;
-			this.board_state.shields[i][j] = 0;
+			this.state.results[i][j] = 0;
+			this.state.frost[i][j] = 0;
+			this.state.rock[i][j] = 0;
+			this.state.shields[i][j] = 0;
 		}
 	}
 };
@@ -141,8 +141,8 @@ var game_board = function() {
 game_board.prototype.reduce_state = function(){
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
-			if (this.board_state.frost[i][j] > 0) { this.board_state.frost[i][j]--};
-			if (this.board_state.rock[i][j] > 0) { this.board_state.rock[i][j]--};
+			if (this.state.frost[i][j] > 0) { this.state.frost[i][j]--};
+			if (this.state.rock[i][j] > 0) { this.state.rock[i][j]--};
 		}
 	}
 };
@@ -160,32 +160,32 @@ game_board.prototype.check_win = function(){
 
 game_board.prototype.checkRows = function(){
 	for (var i = 0; i < 4; i++){
-		var sum = this.board_state.results[i][0] + this.board_state.results[i][1] + this.board_state.results[i][2] + this.board_state.results[i][3];
+		var sum = this.state.results[i][0] + this.state.results[i][1] + this.state.results[i][2] + this.state.results[i][3];
 		if (sum === 4 || sum === -4){
-			return this.board_state.results[i][0];
+			return this.state.results[i][0];
 		}
 	}
 };
 
 game_board.prototype.checkCols = function(){
 	for (var i = 0; i < 4; i++){
-		var sum = this.board_state.results[0][i] + this.board_state.results[1][i] + this.board_state.results[2][i] + this.board_state.results[3][i];
+		var sum = this.state.results[0][i] + this.state.results[1][i] + this.state.results[2][i] + this.state.results[3][i];
 		if (sum === 4 || sum === -4){
-			return this.board_state.results[0][i];
+			return this.state.results[0][i];
 		}
 	}
 };
 
 game_board.prototype.checkDiagonals = function(){
 	// Right-wards diagonal
-	var sum = this.board_state.results[0][0] + this.board_state.results[1][1] + this.board_state.results[2][2] + this.board_state.results[3][3];
+	var sum = this.state.results[0][0] + this.state.results[1][1] + this.state.results[2][2] + this.state.results[3][3];
 	if (sum === 4 || sum === -4){
-		return this.board_state.results[1][1];
+		return this.state.results[1][1];
 	}
 	// Left-wards diagonal
-	sum = this.board_state.results[0][3] + this.board_state.results[1][2] + this.board_state.results[2][1] + this.board_state.results[3][0];
+	sum = this.state.results[0][3] + this.state.results[1][2] + this.state.results[2][1] + this.state.results[3][0];
 	if (sum === 4 || sum === -4){
-		return this.board_state.results[1][1];
+		return this.state.results[1][1];
 	}
 };
 
@@ -195,7 +195,7 @@ game_core.prototype.checkFreeSquare = function(){
 	var space = 0;
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+			if (this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0) {
 				space++;
 			}
 		}
@@ -206,7 +206,7 @@ game_core.prototype.checkFreeSquare = function(){
 game_core.prototype.checkEnemySquare = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if ((this.players.self.host === true && this.board.board_state.results[i][j] === 1) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1)) {
+			if ((this.players.self.host === true && this.board.state.results[i][j] === 1) || (this.players.self.host === false && this.board.state.results[i][j] === -1)) {
 				return true;
 			} 
 		}
@@ -217,7 +217,7 @@ game_core.prototype.checkEnemySquare = function(){
 game_core.prototype.checkSelfSquare = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if ((this.players.self.host === true && this.board.board_state.results[i][j] === -1) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1)) {
+			if ((this.players.self.host === true && this.board.state.results[i][j] === -1) || (this.players.self.host === false && this.board.state.results[i][j] === 1)) {
 				return true;
 			} 
 		}
@@ -229,7 +229,7 @@ game_core.prototype.checkSelfSquare = function(){
 game_core.prototype.checkShield = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if (this.board.board_state.shields[i][j] !== 0) {
+			if (this.board.state.shields[i][j] !== 0) {
 				return true;
 			}
 		}
@@ -241,7 +241,7 @@ game_core.prototype.checkShield = function(){
 game_core.prototype.checkUnshielded = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
+			if (this.board.state.shields[i][j] === 0 && this.board.state.results[i][j] !== 0) {
 				return true;
 			}
 		}
@@ -252,7 +252,7 @@ game_core.prototype.checkUnshielded = function(){
 game_core.prototype.checkFrozen = function(){
 	for (var i = 0; i < 4; i++) {
 		for (var j = 0; j < 4; j++) {
-			if (this.board.board_state.frost[i][j] !== 0) {
+			if (this.board.state.frost[i][j] !== 0) {
 				return true;
 			}
 		}
@@ -263,10 +263,10 @@ game_core.prototype.checkFrozen = function(){
 /*  -----------------------------  AI Evaluation functions  -----------------------------  */
 
 game_core.prototype.evaluate_square = function(x, y) {
-	var square = this.board.board_state.results[x][y];
+	var square = this.board.state.results[x][y];
 	square = square * 10;
 
-	if (this.board.board_state.shields[x][y] > 0) {
+	if (this.board.state.shields[x][y] > 0) {
 		square = square * this.shield_mod;
 	}
 
@@ -279,14 +279,14 @@ game_core.prototype.evaluate_square = function(x, y) {
 	if ( (this.players.self.host === true && square < 0) || (this.players.self.host === false && square > 0) ) {
 		square = this.enemy_mod * square;
 	} else if (square === 0){
-		if (this.board.board_state.frost[x][y] > 0) { //frozen
-			if (this.board.board_state.frost[x][y] % 2 === 0) { //self
+		if (this.board.state.frost[x][y] > 0) { //frozen
+			if (this.board.state.frost[x][y] % 2 === 0) { //self
 				square = this.players.self.host === true ? this.freeze_mod : (- this.freeze_mod);
 			} else {
 				square = this.players.self.host === true ? (- this.freeze_mod) : this.freeze_mod;
 			}
-		} else if (this.board.board_state.rock[x][y] > 0) { // blocked
-			if (this.board.board_state.rock[x][y] % 2 === 0) { //self
+		} else if (this.board.state.rock[x][y] > 0) { // blocked
+			if (this.board.state.rock[x][y] % 2 === 0) { //self
 				square = this.players.self.host === true ? this.rock_mod : (- this.rock_mod);
 			} else {
 				square = this.players.self.host === true ? (- this.rock_mod) : this.rock_mod;
@@ -334,51 +334,51 @@ game_core.prototype.choose_square = function(moves){
 			var temp_count = 0;
 			var temp_flag = 0;
 
-			if (((this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.damagingA > 0) && this.board.board_state.results[i][j] !== 0 ) ||
-				((this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingS > 0) && ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) ) ||
-				((this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.damagingE > 0) && ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) ) ||
-				(this.players.self.player_state.freezing > 0 && this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) ||
-				(this.players.self.player_state.thawing > 0 && this.board.board_state.frost[i][j] > 0) ||
-				(this.players.self.player_state.blocking > 0 && this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) ||
-				(this.players.self.player_state.shielding > 0 && this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) ||
-				(this.players.self.player_state.deshielding > 0 && this.board.board_state.shields[i][j] > 0) ||
-				(this.players.self.player_state.pieces_to_play > 0 && this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) )  {
+			if (((this.players.self.state.destroyingA > 0 || this.players.self.state.damagingA > 0) && this.board.state.results[i][j] !== 0 ) ||
+				((this.players.self.state.destroyingS > 0 || this.players.self.state.damagingS > 0) && ((this.players.self.host === true && this.board.state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.state.results[i][j] === -1 ) ) ) ||
+				((this.players.self.state.destroyingE > 0 || this.players.self.state.damagingE > 0) && ((this.players.self.host === true && this.board.state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.state.results[i][j] === 1 ) ) ) ||
+				(this.players.self.state.freezing > 0 && this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0 ) ||
+				(this.players.self.state.thawing > 0 && this.board.state.frost[i][j] > 0) ||
+				(this.players.self.state.blocking > 0 && this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0 ) ||
+				(this.players.self.state.shielding > 0 && this.board.state.shields[i][j] === 0 && this.board.state.results[i][j] !== 0) ||
+				(this.players.self.state.deshielding > 0 && this.board.state.shields[i][j] > 0) ||
+				(this.players.self.state.pieces_to_play > 0 && this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0 ) )  {
 
-				var temp_state = this.board.board_state;
+				var temp_state = this.board.state;
 
-				if (this.players.self.player_state.freezing > 0 ) { // placing frost
-					if ( this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ){
+				if (this.players.self.state.freezing > 0 ) { // placing frost
+					if ( this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0 ){
 						temp_state.frost[i][j] = 4; //1/-1
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.thawing > 0) { // placing frost
-					if (this.board.board_state.frost[i][j] > 0) {
+				} else if (this.players.self.state.thawing > 0) { // placing frost
+					if (this.board.state.frost[i][j] > 0) {
 						temp_count = temp_state.frost[i][j];
 						temp_state.frost[i][j] = 0; //1/-1
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.blocking > 0 ) { // Placing rock
-					if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0 ) {
+				} else if (this.players.self.state.blocking > 0 ) { // Placing rock
+					if (this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0 ) {
 						temp_state.rock[i][j] = 6;
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.shielding > 0 ) { // Placing shield
-					if (this.board.board_state.shields[i][j] === 0 && this.board.board_state.results[i][j] !== 0) {
+				} else if (this.players.self.state.shielding > 0 ) { // Placing shield
+					if (this.board.state.shields[i][j] === 0 && this.board.state.results[i][j] !== 0) {
 						temp_state.shields[i][j] = 1;
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.deshielding > 0 ) { // Deshielding
-					if (this.board.board_state.shields[i][j] > 0) {
+				} else if (this.players.self.state.deshielding > 0 ) { // Deshielding
+					if (this.board.state.shields[i][j] > 0) {
 						temp_state.shields[i][j] = 0;
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.destroyingA > 0){
-					if (this.board.board_state.results[i][j] !== 0 ) {
+				} else if (this.players.self.state.destroyingA > 0){
+					if (this.board.state.results[i][j] !== 0 ) {
 						temp_count = temp_state.shields[i][j];
 						temp_flag = temp_state.results[i][j];
 						temp_state.results[i][j] = 0;
@@ -386,24 +386,24 @@ game_core.prototype.choose_square = function(moves){
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.destroyingS > 0){
-					if ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) {
+				} else if (this.players.self.state.destroyingS > 0){
+					if ((this.players.self.host === true && this.board.state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.state.results[i][j] === -1 ) ) {
 						temp_count = temp_state.shields[i][j];
 						temp_state.results[i][j] = 0;
 						temp_state.shields[i][j] = 0;
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.destroyingE > 0){
-					if ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) {
+				} else if (this.players.self.state.destroyingE > 0){
+					if ((this.players.self.host === true && this.board.state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.state.results[i][j] === 1 ) ) {
 						temp_count = temp_state.shields[i][j];
 						temp_state.results[i][j] = 0;
 						temp_state.shields[i][j] = 0;
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.damagingA > 0){
-					if (this.board.board_state.results[i][j] !== 0 ) {
+				} else if (this.players.self.state.damagingA > 0){
+					if (this.board.state.results[i][j] !== 0 ) {
 						temp_count = temp_state.shields[i][j];
 						temp_flag = temp_state.results[i][j];
 						if (temp_state.shields[i][j] === 1){
@@ -415,8 +415,8 @@ game_core.prototype.choose_square = function(moves){
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.damagingS > 0){
-					if ((this.players.self.host === true && this.board.board_state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === -1 ) ) {
+				} else if (this.players.self.state.damagingS > 0){
+					if ((this.players.self.host === true && this.board.state.results[i][j] === 1 ) || (this.players.self.host === false && this.board.state.results[i][j] === -1 ) ) {
 						temp_count = temp_state.shields[i][j];
 						if (temp_state.shields[i][j] === 1){
 							temp_state.shields[i][j] = 0;
@@ -427,8 +427,8 @@ game_core.prototype.choose_square = function(moves){
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.damagingE > 0) {
-					if ((this.players.self.host === true && this.board.board_state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.board_state.results[i][j] === 1 ) ) {
+				} else if (this.players.self.state.damagingE > 0) {
+					if ((this.players.self.host === true && this.board.state.results[i][j] === -1 ) || (this.players.self.host === false && this.board.state.results[i][j] === 1 ) ) {
 						temp_count = temp_state.shields[i][j];
 						if (temp_state.shields[i][j] === 1){
 							temp_state.shields[i][j] = 0;
@@ -439,8 +439,8 @@ game_core.prototype.choose_square = function(moves){
 					} else {
 						continue;
 					}
-				} else if (this.players.self.player_state.pieces_to_play > 0) { // Placing a piece
-					if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
+				} else if (this.players.self.state.pieces_to_play > 0) { // Placing a piece
+					if (this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0 && this.board.state.rock[i][j] === 0) {
 						temp_state.results[i][j] = this.players.self.host === true ? 1 : -1; //1/-1
 					} else {
 						continue;
@@ -461,35 +461,35 @@ game_core.prototype.choose_square = function(moves){
 				}
 
 				// Reverse things
-				if (this.players.self.player_state.freezing > 0) { // placing frost
+				if (this.players.self.state.freezing > 0) { // placing frost
 					temp_state.frost[i][j] = 0; 
-				} else if (this.players.self.player_state.thawing > 0) { // placing frost
+				} else if (this.players.self.state.thawing > 0) { // placing frost
 					temp_state.frost[i][j] = temp_count; //1/-1
-				} else if (this.players.self.player_state.blocking > 0) { // Placing rock
+				} else if (this.players.self.state.blocking > 0) { // Placing rock
 					temp_state.rock[i][j] = 0;
-				} else if (this.players.self.player_state.shielding > 0) { // Placing rock
+				} else if (this.players.self.state.shielding > 0) { // Placing rock
 					temp_state.shields[i][j] = 0;
-				} else if (this.players.self.player_state.deshielding > 0) { // Placing rock
+				} else if (this.players.self.state.deshielding > 0) { // Placing rock
 					temp_state.shields[i][j] = 1;
-				} else if (this.players.self.player_state.destroyingA > 0) {
+				} else if (this.players.self.state.destroyingA > 0) {
 					temp_state.results[i][j] = temp_flag;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.destroyingS > 0) {
+				} else if (this.players.self.state.destroyingS > 0) {
 					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.destroyingE > 0) {
+				} else if (this.players.self.state.destroyingE > 0) {
 					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.damagingA > 0) {
+				} else if (this.players.self.state.damagingA > 0) {
 					temp_state.results[i][j] = temp_flag;
 					temp_state.shields[i][j] = temp_count;
-				} else if (this.players.self.player_state.damagingS > 0) {
+				} else if (this.players.self.state.damagingS > 0) {
 					temp_state.shields[i][j] = temp_count;
 					temp_state.results[i][j] = this.players.self.host === true ? 1 : -1;
-				} else if (this.players.self.player_state.damagingE > 0) {
+				} else if (this.players.self.state.damagingE > 0) {
 					temp_state.shields[i][j] = temp_count;
 					temp_state.results[i][j] = this.players.self.host === true ? -1 : 1;
-				} else if (this.players.self.player_state.pieces_to_play > 0) { // Placing a piece
+				} else if (this.players.self.state.pieces_to_play > 0) { // Placing a piece
 					temp_state.results[i][j] = 0;
 				}
 			}
@@ -501,8 +501,8 @@ game_core.prototype.choose_square = function(moves){
 
 game_core.prototype.resolve_card = function(card, player, enemy) {
 	// Check for discard
-	if (player.player_state.discarding > 0) {
-		player.player_state.discarding--;
+	if (player.state.discarding > 0) {
+		player.state.discarding--;
 		return;
 	}
 
@@ -536,72 +536,72 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 		var effect = cardEffects[i].split(' ');
 
 		if (effect[0] && effect[0].match(endTurn)) { // End turn
-			player.player_state.cards_to_play = 0;
-			player.player_state.pieces_to_play = 0;
+			player.state.cards_to_play = 0;
+			player.state.pieces_to_play = 0;
 		} else if (effect[0] && effect[0].match(deal)) { // Dealing damage
 			if (effect[1] && effect[1].match(one)){ // Damage one
 				if (effect[4] && effect[4].match(targetSelf)){
-					player.player_state.damagingS = 1;
+					player.state.damagingS = 1;
 				} else if (effect[4] && effect[4].match(targetEnemy)){
-					player.player_state.damagingE = 1;
+					player.state.damagingE = 1;
 				} else {
-					player.player_state.damagingA = 1;
+					player.state.damagingA = 1;
 				}
 			} else if (effect[1] && effect[1].match(every)) { // Damage all
 				for (var k = 0; k < 4; k++) {
 					for (var l = 0; l < 4; l++) {
-						if (this.board.board_state.shields[k][l] === 1) {
-							this.board.board_state.shields[k][l] = 0;
-						} else if (this.board.board_state.results[k][l] !== 0) {
-							this.board.board_state.results[k][l] = 0;
+						if (this.board.state.shields[k][l] === 1) {
+							this.board.state.shields[k][l] = 0;
+						} else if (this.board.state.results[k][l] !== 0) {
+							this.board.state.results[k][l] = 0;
 						}
 					}
 				}
 			} else { // else damage many
 				if (effect[4] && effect[4].match(targetSelf)) {
-					player.player_state.damagingS = effect[1];
+					player.state.damagingS = effect[1];
 				} else if (effect[4] && effect[4].match(targetEnemy)){
-					player.player_state.damagingE = effect[1];
+					player.state.damagingE = effect[1];
 				} else {
-					player.player_state.damagingA = effect[1];
+					player.state.damagingA = effect[1];
 				}
 			}
 		} else if (effect[0] && effect[0].match(destroy)) { // Destroying piece or shield
 			if (effect[2] && effect[2].match(shield)){ //if shield
 				if (effect[1] && effect[1].match(one)){
-					player.player_state.deshielding = 1;
+					player.state.deshielding = 1;
 				} else if (effect[1] && effect[1].match(every)) { // Deshield all
 					for (var k = 0; k < 4; k++) {
 						for (var l = 0; l < 4; l++) {
-							this.board.board_state.shields[k][l] = 0;
+							this.board.state.shields[k][l] = 0;
 						}
 					}
 				} else { //else deshield many
-					player.player_state.deshielding = effect[1];
+					player.state.deshielding = effect[1];
 				}
 			} else { //
 				if (effect[1] && effect[1].match(one)){
 					if (effect[4] && effect[4].match(targetSelf)) {
-						player.player_state.destroyingS = 1;
+						player.state.destroyingS = 1;
 					}  else if (effect[4] && effect[4].match(targetEnemy)){
-						player.player_state.destroyingE = 1;
+						player.state.destroyingE = 1;
 					} else {
-						player.player_state.destroyingA = 1;
+						player.state.destroyingA = 1;
 					}
 				} else if (effect[1] && effect[1].match(every)) { // Destroy all
 					for (var k = 0; k < 4; k++){ 
 						for (var l = 0; l < 4; l++){
-							this.board.board_state.results[k][l] = 0;
-							this.board.board_state.shields[k][l] = 0;
+							this.board.state.results[k][l] = 0;
+							this.board.state.shields[k][l] = 0;
 						}
 					}
 				} else { //else many
 					if (effect[4] && effect[4].match(targetSelf)) {
-						player.player_state.destroyingS = effect[1];
+						player.state.destroyingS = effect[1];
 					} else if (effect[4] && effect[4].match(targetEnemy)){
-						player.player_state.destroyingE = effect[1];
+						player.state.destroyingE = effect[1];
 					} else {
-						player.player_state.destroyingA = effect[1];
+						player.state.destroyingA = effect[1];
 					}
 				}
 			}
@@ -610,59 +610,59 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 		} else if (effect[0] && effect[0].match(freeze)){ // Freeze
 
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.freezing = 1;
+				player.state.freezing = 1;
 			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
 				for (var i = 0; i < 4; i++) {
 					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.rock[i][j] === 0) {
-							this.board.board_state.frost[i][j] = 4;
+						if (this.board.state.results[i][j] === 0 && this.board.state.rock[i][j] === 0) {
+							this.board.state.frost[i][j] = 4;
 						}
 					}
 				}
 			} else { //else many
-				player.player_state.freezing = effect[1];
+				player.state.freezing = effect[1];
 			}
 		} else if (effect[0] && effect[0].match(thaw)){ // Thaw
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.thawing = 1;
+				player.state.thawing = 1;
 			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
 				for (var i = 0; i < 4; i++) {
 					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.frost[i][j] >= 1) {
-							this.board.board_state.frost[i][j] = 0;
+						if (this.board.state.frost[i][j] >= 1) {
+							this.board.state.frost[i][j] = 0;
 						}
 					}
 				}
 			} else { //else many
-				player.player_state.thawing = effect[1];
+				player.state.thawing = effect[1];
 			}
 		} else if (effect[0] && effect[0].match(block)){ // Block/Rock
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.blocking = 1;
+				player.state.blocking = 1;
 			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
 				for (var i = 0; i < 4; i++) {
 					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.results[i][j] === 0 && this.board.board_state.frost[i][j] === 0) {
-							this.board.board_state.rock[i][j] = 6;
+						if (this.board.state.results[i][j] === 0 && this.board.state.frost[i][j] === 0) {
+							this.board.state.rock[i][j] = 6;
 						}
 					}
 				}
 			} else { //else many
-				player.player_state.blocking = effect[1];
+				player.state.blocking = effect[1];
 			}
 		} else if (effect[0] && effect[0].match(shield)){ // Shielding
 			if (effect[1] && effect[1].match(one)){ // Resolves 'a'
-				player.player_state.shielding = 1;
+				player.state.shielding = 1;
 			} else if (effect[1] && effect[1].match(every)){ // Resolves 'all'
 				for (var i = 0; i < 4; i++) {
 					for (var j = 0; j < 4; j++) {
-						if (this.board.board_state.shields[i][j] === 0) {
-							this.board.board_state.shields[i][j] = 1;
+						if (this.board.state.shields[i][j] === 0) {
+							this.board.state.shields[i][j] = 1;
 						}
 					}
 				}
 			} else { //else many
-				player.player_state.shielding = effect[1];
+				player.state.shielding = effect[1];
 			}
 		} else if (effect[0] && effect[0].match(discard)){ //Discarding
 			//dont
@@ -677,7 +677,7 @@ game_core.prototype.resolve_card = function(card, player, enemy) {
 						var piece_counter = 0;
 						for (var i = 0; i < 4; i++) {
 							for (var j = 0; j < 4; j++) {
-								piece_counter = piece_counter + this.board.board_state.results[i][j];
+								piece_counter = piece_counter + this.board.state.results[i][j];
 							}
 						}
 						/*
@@ -701,13 +701,13 @@ game_core.prototype.evaluate_game_state = function() {
 	//temp_move only resolves to one depth
 
 	// seperate choose square into two functions - one that tests and reverses and one that just makes the move without reversing
-	/*while (this.players.self.player_state.cards_to_play !== 0 && this.players.self.player_state.damagingA && this.players.self.player_state.damagingE && this.players.self.player_state.damagingS && this.players.self.player_state.destroyingA && this.players.self.player_state.destroyingE && this.players.self.player_state.destroyingS && this.players.self.player_state.discarding && this.players.self.player_state.shielding && this.players.self.player_state.deshielding && this.players.self.player_state.freezing && this.players.self.player_state.thawing && this.players.self.player_state.blocking) {
+	/*while (this.players.self.state.cards_to_play !== 0 && this.players.self.state.damagingA && this.players.self.state.damagingE && this.players.self.state.damagingS && this.players.self.state.destroyingA && this.players.self.state.destroyingE && this.players.self.state.destroyingS && this.players.self.state.discarding && this.players.self.state.shielding && this.players.self.state.deshielding && this.players.self.state.freezing && this.players.self.state.thawing && this.players.self.state.blocking) {
 		temp_move = this.choose_square();
 	}*/
 	
 	temp_move = this.choose_square();
 
-	//console.log(this.players.self.player_state);
+	//console.log(this.players.self.state);
 	board_score = temp_move === undefined ? 0 : Number(temp_move.distance);
 
 	if (this.players.self.host === false) {
@@ -723,21 +723,21 @@ game_core.prototype.evaluate_game_state = function() {
 };
 
 game_core.prototype.choose_card = function(best) {
-	temp_player_state = {
-		cards_to_play   : this.players.self.player_state.cards_to_play,
-		pieces_to_play  : this.players.self.player_state.pieces_to_play,
-		damagingA       : this.players.self.player_state.damagingA,
-		damagingE       : this.players.self.player_state.damagingE,
-		damagingS       : this.players.self.player_state.damagingS,
-		destroyingA     : this.players.self.player_state.destroyingA,
-		destroyingE     : this.players.self.player_state.destroyingE,
-		destroyingS     : this.players.self.player_state.destroyingS,
-		discarding      : this.players.self.player_state.discarding,
-		shielding       : this.players.self.player_state.shielding,
-		deshielding     : this.players.self.player_state.deshielding,
-		freezing        : this.players.self.player_state.freezing,
-		thawing         : this.players.self.player_state.thawing,
-		blocking        : this.players.self.player_state.blocking
+	temp_state = {
+		cards_to_play   : this.players.self.state.cards_to_play,
+		pieces_to_play  : this.players.self.state.pieces_to_play,
+		damagingA       : this.players.self.state.damagingA,
+		damagingE       : this.players.self.state.damagingE,
+		damagingS       : this.players.self.state.damagingS,
+		destroyingA     : this.players.self.state.destroyingA,
+		destroyingE     : this.players.self.state.destroyingE,
+		destroyingS     : this.players.self.state.destroyingS,
+		discarding      : this.players.self.state.discarding,
+		shielding       : this.players.self.state.shielding,
+		deshielding     : this.players.self.state.deshielding,
+		freezing        : this.players.self.state.freezing,
+		thawing         : this.players.self.state.thawing,
+		blocking        : this.players.self.state.blocking
 	}
 
 	var starting_value = Number(this.evaluate_game_state());
@@ -751,7 +751,7 @@ game_core.prototype.choose_card = function(best) {
 	for (var i = 0; i < this.players.self.hand.length; i++){
 		//console.log('Trying out ' + this.players.self.hand[i].cardName);
 		this.resolve_card(this.players.self.hand[i], this.players.self, this.players.other);
-		//console.log(this.players.self.player_state);
+		//console.log(this.players.self.state);
 		temp_score = Number(this.evaluate_game_state());
 
 		if ((best === true && temp_score >= card_selection.score) || (best === false && temp_score <= card_selection.score)) {
@@ -761,21 +761,21 @@ game_core.prototype.choose_card = function(best) {
 			}
 		}
 
-		this.players.self.player_state = {
-			cards_to_play   : temp_player_state.cards_to_play,
-			pieces_to_play  : temp_player_state.pieces_to_play,
-			damagingA       : temp_player_state.damagingA,
-			damagingE       : temp_player_state.damagingE,
-			damagingS       : temp_player_state.damagingS,
-			destroyingA     : temp_player_state.destroyingA,
-			destroyingE     : temp_player_state.destroyingE,
-			destroyingS     : temp_player_state.destroyingS,
-			discarding      : temp_player_state.discarding,
-			shielding       : temp_player_state.shielding,
-			deshielding     : temp_player_state.deshielding,
-			freezing        : temp_player_state.freezing,
-			thawing         : temp_player_state.thawing,
-			blocking        : temp_player_state.blocking
+		this.players.self.state = {
+			cards_to_play   : temp_state.cards_to_play,
+			pieces_to_play  : temp_state.pieces_to_play,
+			damagingA       : temp_state.damagingA,
+			damagingE       : temp_state.damagingE,
+			damagingS       : temp_state.damagingS,
+			destroyingA     : temp_state.destroyingA,
+			destroyingE     : temp_state.destroyingE,
+			destroyingS     : temp_state.destroyingS,
+			discarding      : temp_state.discarding,
+			shielding       : temp_state.shielding,
+			deshielding     : temp_state.deshielding,
+			freezing        : temp_state.freezing,
+			thawing         : temp_state.thawing,
+			blocking        : temp_state.blocking
 		}
 	}
 
@@ -830,7 +830,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.state = 'not-connected';
 	this.id = '';
 
-	this.player_state = {
+	this.state = {
 		cards_to_play   : 0,
 		pieces_to_play  : 0,
 		damagingA       : 0,
@@ -888,11 +888,11 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	data = JSON.parse(data);
 	// Store server's last state
 	this.turn = data.tu;
-	this.board.board_state = data.bo;
-	player_host.player_state = data.hp;
+	this.board.state = data.bo;
+	player_host.state = data.hp;
 	player_host.hand = create_card_array(data.hh);
 	player_host.deck = create_card_array(data.hd);            
-	player_client.player_state = data.cp;
+	player_client.state = data.cp;
 	player_client.hand = create_card_array(data.ch);
 	player_client.deck = create_card_array(data.cd);         
 	this.server_time = data.t;   // sever time
@@ -905,16 +905,16 @@ game_core.prototype.client_update = function() {
 
 	var input = '';
 
-	//console.log(this.players.self.player_state.cards_to_play > 0);
-	if ( this.players.self.player_state.cards_to_play > 0 || this.players.self.player_state.discarding > 0) {
-		var card_choice = this.players.self.player_state.discarding > 0 ? this.choose_card(false) : this.choose_card(true);
+	//console.log(this.players.self.state.cards_to_play > 0);
+	if ( this.players.self.state.cards_to_play > 0 || this.players.self.state.discarding > 0) {
+		var card_choice = this.players.self.state.discarding > 0 ? this.choose_card(false) : this.choose_card(true);
 
 		if (card_choice === undefined) { 
 			input = 'ca-skip';
 		} else if (this.players.self.hand[card_choice]){
 			input = 'ca-' + this.players.self.hand[card_choice].cardName;
 		}
-	} else if ( this.players.self.player_state.pieces_to_play > 0 || this.players.self.player_state.destroyingA > 0 || this.players.self.player_state.destroyingE > 0 || this.players.self.player_state.destroyingS > 0 || this.players.self.player_state.damagingA > 0 || this.players.self.player_state.damagingE > 0 || this.players.self.player_state.damagingS > 0 || this.players.self.player_state.freezing > 0 || this.players.self.player_state.thawing > 0 || this.players.self.player_state.blocking > 0 || this.players.self.player_state.shielding > 0 || this.players.self.player_state.deshielding > 0) {
+	} else if ( this.players.self.state.pieces_to_play > 0 || this.players.self.state.destroyingA > 0 || this.players.self.state.destroyingE > 0 || this.players.self.state.destroyingS > 0 || this.players.self.state.damagingA > 0 || this.players.self.state.damagingE > 0 || this.players.self.state.damagingS > 0 || this.players.self.state.freezing > 0 || this.players.self.state.thawing > 0 || this.players.self.state.blocking > 0 || this.players.self.state.shielding > 0 || this.players.self.state.deshielding > 0) {
 		//console.log('resolving effect');
 		var moves = undefined;
 		moves = this.choose_square(moves);

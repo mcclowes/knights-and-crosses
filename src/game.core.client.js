@@ -1,4 +1,3 @@
-
 /*  ----------------------------- Key variables  -----------------------------   */
 
 var frame_time = 60/1000,
@@ -6,10 +5,18 @@ var frame_time = 60/1000,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
+// Initialize audio
+var clickSound = new Audio('src/assets/sound/class_tab_click.ogg');
+var endTurnSound = new Audio('src/assets/sound/bar_button_A_press.ogg');
 
 var cards = []; // Load cards (with jQuery)
-$.getJSON("src/json/cards.json", function(json) {
-    cards = json;
+$.ajax({
+    url: "src/json/cards.json",
+    async: false,
+    dataType: 'json',
+    success: function(json) {
+        cards = json;
+    }
 });
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
@@ -159,14 +166,23 @@ window.onload = function(){
 		  		var input = '';
 
 		  		if (shapes[i] === game.board) {
-		  			if (game.players.self.player_state.pieces_to_play > 0 || game.players.self.player_state.destroyingA > 0 || game.players.self.player_state.destroyingE > 0 || game.players.self.player_state.destroyingS > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.damagingE > 0 || game.players.self.player_state.damagingS > 0 || game.players.self.player_state.thawing > 0 || game.players.self.player_state.blocking > 0 || game.players.self.player_state.shielding > 0 || game.players.self.player_state.deshielding > 0) {
+		  			if (game.players.self.state.pieces_to_play > 0 || game.players.self.state.destroyingA > 0 || game.players.self.state.destroyingE > 0 || game.players.self.state.destroyingS > 0 || game.players.self.state.damagingA > 0 || game.players.self.state.damagingE > 0 || game.players.self.state.damagingS > 0 || game.players.self.state.thawing > 0 || game.players.self.state.blocking > 0 || game.players.self.state.shielding > 0 || game.players.self.state.deshielding > 0) {
 		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
+		  				// Play click sound for board clicks
+		  				clickSound.currentTime = 0;
+		  				clickSound.play();
 		  			}
 		  		} else if (shapes[i] === game.end_turn_button) {
-		  			input = 'en'
+		  			input = 'en';
+		  			// Play end turn sound
+		  			endTurnSound.currentTime = 0;
+		  			endTurnSound.play();
 		  		} else {
-		  			if (game.players.self.player_state.cards_to_play > 0 || game.players.self.player_state.discarding > 0) {
+		  			if (game.players.self.state.cards_to_play > 0 || game.players.self.state.discarding > 0) {
 		  				input = 'ca-' + shapes[i].cardName;
+		  				// Play click sound for card clicks
+		  				clickSound.currentTime = 0;
+		  				clickSound.play();
 		  			}
 		  		}
 				// Process input
@@ -229,7 +245,7 @@ var game_board = function() {
 	this.x = canvasWidth / 2 - this.w / 2;
 	this.y = canvasWidth / 2 - this.h / 2;
 
-	this.board_state = {
+	this.state = {
 		results : [],
 		frost 	: [],
 		rock 	: [],
@@ -237,16 +253,16 @@ var game_board = function() {
 	}
 	// initialise game board arrays
 	for (var i = 0; i < 4; i++){
-		this.board_state.results[i] = [];
-		this.board_state.frost[i] = [];
-		this.board_state.rock[i] = [];
-		this.board_state.shields[i] = [];
+		this.state.results[i] = [];
+		this.state.frost[i] = [];
+		this.state.rock[i] = [];
+		this.state.shields[i] = [];
 
 		for (var j = 0; j < 4; j++){
-			this.board_state.results[i][j] = 0;
-			this.board_state.frost[i][j] = 0;
-			this.board_state.rock[i][j] = 0;
-			this.board_state.shields[i][j] = 0;
+			this.state.results[i][j] = 0;
+			this.state.frost[i][j] = 0;
+			this.state.rock[i][j] = 0;
+			this.state.shields[i][j] = 0;
 		}
 	}
 
@@ -283,73 +299,73 @@ game_board.prototype.draw = function(){
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
 			// Set 
-			if (this.board_state.results[i][j] == 1) {
+			if (this.state.results[i][j] == 1) {
 				//needs to check for player
-				if (this.board_state.shields[i][j] == 1) {
-					if ((game.players.self.player_state.deshielding > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+				if (this.state.shields[i][j] == 1) {
+					if ((game.players.self.state.deshielding > 0 || game.players.self.state.damagingA > 0 || game.players.self.state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 						game.ctx.shadowColor = "red";
 					} else {
 						game.ctx.shadowColor = "black";
 					}
 					game.ctx.drawImage(this.p1ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
-					if ((game.players.self.player_state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
+					if ((game.players.self.state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
 						game.ctx.shadowColor = "green";
-					} else if (( game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					} else if (( game.players.self.state.damagingA > 0 || game.players.self.state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 						game.ctx.shadowColor = "red";
 					} else {
 						game.ctx.shadowColor = "black";
 					}
 					game.ctx.drawImage(this.p1PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
-			} else if (this.board_state.results[i][j] == -1) {
-				if (this.board_state.shields[i][j] == 1) {
-					if ((game.players.self.player_state.deshielding > 0 || game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+			} else if (this.state.results[i][j] == -1) {
+				if (this.state.shields[i][j] == 1) {
+					if ((game.players.self.state.deshielding > 0 || game.players.self.state.damagingA > 0 || game.players.self.state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 						game.ctx.shadowColor = "red";
 					} else {
 						game.ctx.shadowColor = "black";
 					}
 					game.ctx.drawImage(this.p2ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
-					if ((game.players.self.player_state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
+					if ((game.players.self.state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
 						game.ctx.shadowColor = "green";
-					} else if (( game.players.self.player_state.damagingA > 0 || game.players.self.player_state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+					} else if (( game.players.self.state.damagingA > 0 || game.players.self.state.destroyingA > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 						game.ctx.shadowColor = "red";
 					} else {
 						game.ctx.shadowColor = "black";
 					}
 					game.ctx.drawImage(this.p2PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
-			} else if (this.board_state.frost[i][j] == 4 || this.board_state.frost[i][j] == 3) {
-				if ((game.players.self.player_state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+			} else if (this.state.frost[i][j] == 4 || this.state.frost[i][j] == 3) {
+				if ((game.players.self.state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
 				game.ctx.drawImage(this.frostImage2, i*100 + this.x, j*100 + this.y, 100, 100);
-			} else if (this.board_state.frost[i][j] == 2 || this.board_state.frost[i][j] == 1) {
-				if ((game.players.self.player_state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+			} else if (this.state.frost[i][j] == 2 || this.state.frost[i][j] == 1) {
+				if ((game.players.self.state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
 				game.ctx.drawImage(this.frostImage1, i*100 + this.x, j*100 + this.y, 100, 100);
-			} else if (this.board_state.rock[i][j] == 6 || this.board_state.rock[i][j] == 5) {
-				if ((game.players.self.player_state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+			} else if (this.state.rock[i][j] == 6 || this.state.rock[i][j] == 5) {
+				if ((game.players.self.state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
 				game.ctx.drawImage(this.blockedImage3, i*100 + this.x, j*100 + this.y, 100, 100);
-			} else if (this.board_state.rock[i][j] == 4 || this.board_state.rock[i][j] == 3) {
-				if ((game.players.self.player_state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+			} else if (this.state.rock[i][j] == 4 || this.state.rock[i][j] == 3) {
+				if ((game.players.self.state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
 				game.ctx.drawImage(this.blockedImage2, i*100 + this.x, j*100 + this.y, 100, 100);
-			} else if (this.board_state.rock[i][j] == 2 || this.board_state.rock[i][j] == 1) {
-				if ((game.players.self.player_state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+			} else if (this.state.rock[i][j] == 2 || this.state.rock[i][j] == 1) {
+				if ((game.players.self.state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
@@ -370,8 +386,8 @@ game_board.prototype.contains = function(mx, my) {
 game_board.prototype.reduce_state = function(){
 	for (var i = 0; i < 4; i++){
 		for (var j = 0; j < 4; j++){
-			if (this.board_state.frost[i][j] > 0) { this.board_state.frost[i][j]--};
-			if (this.board_state.rock[i][j] > 0) { this.board_state.rock[i][j]--};
+			if (this.state.frost[i][j] > 0) { this.state.frost[i][j]--};
+			if (this.state.rock[i][j] > 0) { this.state.rock[i][j]--};
 		}
 	}
 };
@@ -389,32 +405,32 @@ game_board.prototype.check_win = function(){
 
 game_board.prototype.checkRows = function(){
 	for (var i = 0; i < 4; i++){
-		var sum = this.board_state.results[i][0] + this.board_state.results[i][1] + this.board_state.results[i][2] + this.board_state.results[i][3];
+		var sum = this.state.results[i][0] + this.state.results[i][1] + this.state.results[i][2] + this.state.results[i][3];
 		if (sum === 4 || sum === -4){
-			return this.board_state.results[i][0];
+			return this.state.results[i][0];
 		}
 	}
 };
 
 game_board.prototype.checkCols = function(){
 	for (var i = 0; i < 4; i++){
-		var sum = this.board_state.results[0][i] + this.board_state.results[1][i] + this.board_state.results[2][i] + this.board_state.results[3][i];
+		var sum = this.state.results[0][i] + this.state.results[1][i] + this.state.results[2][i] + this.state.results[3][i];
 		if (sum === 4 || sum === -4){
-			return this.board_state.results[0][i];
+			return this.state.results[0][i];
 		}
 	}
 };
 
 game_board.prototype.checkDiagonals = function(){
 	// Right-wards diagonal
-	var sum = this.board_state.results[0][0] + this.board_state.results[1][1] + this.board_state.results[2][2] + this.board_state.results[3][3];
+	var sum = this.state.results[0][0] + this.state.results[1][1] + this.state.results[2][2] + this.state.results[3][3];
 	if (sum === 4 || sum === -4){
-		return this.board_state.results[1][1];
+		return this.state.results[1][1];
 	}
 	// Left-wards diagonal
-	sum = this.board_state.results[0][3] + this.board_state.results[1][2] + this.board_state.results[2][1] + this.board_state.results[3][0];
+	sum = this.state.results[0][3] + this.state.results[1][2] + this.state.results[2][1] + this.state.results[3][0];
 	if (sum === 4 || sum === -4){
-		return this.board_state.results[1][1];
+		return this.state.results[1][1];
 	}
 };
 
@@ -473,9 +489,9 @@ game_card.prototype.draw = function(self){ //draw card
 	}
 
 	game.ctx.shadowBlur = 20;
-	if ((self === true) && (game.players.self.player_state.discarding > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+	if ((self === true) && (game.players.self.state.discarding > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 		game.ctx.shadowColor = "red";
-	} else if ((self === true) && (game.players.self.player_state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
+	} else if ((self === true) && (game.players.self.state.cards_to_play > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 		game.ctx.shadowColor = "green";
 	} else {
 		game.ctx.shadowColor = "black";
@@ -532,7 +548,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.mmr = 1;
 	this.game_count = 0;
 
-	this.player_state = {
+	this.state = {
 		cards_to_play 	: 0,
 		pieces_to_play 	: 0,
 		damagingA 		: 0,
@@ -550,13 +566,20 @@ var game_player = function( game_instance, player_instance ) {
 	}
 
 	//Player arrays
-	this.deck = [],
+	this.deck = [];
 	this.hand = [];
 
-	var deck_temp = []
-	$.getJSON("src/json/deck_p1.json", function(json) {
-	    deck_temp = json;
+	// Load deck synchronously
+	var deck_temp = [];
+	$.ajax({
+		url: "src/json/deck_p1.json",
+		async: false,
+		dataType: 'json',
+		success: function(json) {
+			deck_temp = json;
+		}
 	});
+	
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 
@@ -569,11 +592,17 @@ game_player.prototype.draw = function(){
 	game.ctx.textAlign = "start"; 
 	game.ctx.fillStyle = "black";
 	game.ctx.fillText(this.state, 10, 10);
-	//Draw player_state variables
+	
+	// Draw player name
+	if (this.name) {
+		game.ctx.fillText(this.name, 10, 30);
+	}
+	
+	//Draw state variables
 	var key_counter = 0;
-	for (var key in this.player_state) {
-		if (this.player_state[key] > 0) {
-			game.ctx.fillText(key + ": " + this.player_state[key], 10, 20 + 10 * key_counter);
+	for (var key in this.state) {
+		if (this.state[key] > 0) {
+			game.ctx.fillText(key + ": " + this.state[key], 10, 40 + 10 * key_counter);
 			key_counter++;
 		}
 	}
@@ -592,7 +621,7 @@ game_player.prototype.draw = function(){
 	// Re-draw card if mouse is over
 	if (this.mouseX !== undefined && this.mouseY !== undefined){
 		for (var i = this.hand.length - 1; i >= 0; i--) { // Check all clickable objects
-		  	if (this.hand[i].contains(this.mouseX, this.mouseY)) {
+			if (this.hand[i].contains(this.mouseX, this.mouseY)) {
 				this.hand[i].draw(true);
 				return;
 			}
@@ -628,11 +657,11 @@ game_core.prototype.client_onserverupdate_recieved = function(data){
 	data = JSON.parse(data);
 	// Store server's last state
 	this.turn = data.tu;
-	this.board.board_state = data.bo;
-	player_host.player_state = data.hp;
+	this.board.state = data.bo;
+	player_host.state = data.hp;
 	player_host.hand = create_card_array(data.hh);
 	player_host.deck = create_card_array(data.hd);            
-	player_client.player_state = data.cp;
+	player_client.state = data.cp;
 	player_client.hand = create_card_array(data.ch);
 	player_client.deck = create_card_array(data.cd);         
 	this.server_time = data.t;   // time
@@ -716,6 +745,21 @@ game_core.prototype.client_onconnected = function(data) {
 	this.players.self.id = data.id;
 	this.players.self.state = 'connected';
 	this.players.self.online = true;
+	
+	// Set player name from localStorage or server data
+	const savedName = localStorage.getItem('playerName');
+	if (savedName) {
+		this.players.self.name = savedName;
+		this.socket.emit('setname', savedName);
+	} else {
+		this.players.self.name = data.name;
+	}
+	
+	// Hide name input if it's still visible
+	const nameInput = document.getElementById('name-input');
+	if (nameInput) {
+		nameInput.style.display = 'none';
+	}
 };
 
 // Handle server ping
@@ -754,6 +798,13 @@ game_core.prototype.client_onnetmessage = function(data) {
 						this.socket.send( 'w' );
 					}
 					break;
+				case 'n' : //name update
+					if (this.players.self.id === commanddata) {
+						this.players.self.name = commanddata;
+					} else {
+						this.players.other.name = commanddata;
+					}
+					break;
 			}
 		break;
 	}			
@@ -789,4 +840,27 @@ game_core.prototype.client_draw_info = function() {
 		this.ctx.fillText('You are hosting', 10 , 465);
 	}
 	this.ctx.fillStyle = 'rgba(255,255,255,1)'; //reset
+};
+
+// Function to set player name
+game_core.prototype.setPlayerName = function(name) {
+	this.players.self.name = name;
+	localStorage.setItem('playerName', name);
+	this.socket.emit('setname', name);
+};
+
+// Function to set player name from UI
+window.setPlayerName = function() {
+	const nameInput = document.getElementById('player-name');
+	const name = nameInput.value.trim();
+	if (name) {
+		if (game && game.socket) {
+			game.setPlayerName(name);
+			document.getElementById('name-input').style.display = 'none';
+		} else {
+			// If game isn't initialized yet, store the name and wait for connection
+			localStorage.setItem('playerName', name);
+			document.getElementById('name-input').style.display = 'none';
+		}
+	}
 };

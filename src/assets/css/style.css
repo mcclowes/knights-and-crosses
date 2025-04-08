@@ -299,3 +299,38 @@ button {
 li {
   cursor: url("../img/mouse_small.png"), auto;
 }
+#name-input {
+  font-family: 'helvetica', sans-serif;
+}
+
+#name-input input {
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+#name-input input:focus {
+  border-color: #4CAF50;
+}
+
+#name-input button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+#name-input button:hover {
+  background-color: #45a049;
+}
+
+#name-input h2 {
+  margin: 0 0 15px 0;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}

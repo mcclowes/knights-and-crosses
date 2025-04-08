@@ -1,117 +1,130 @@
-var address 		= 'http://localhost', 			// Set IP
-	port 			= '3013', 						// Set Port
-	fs 				= require('fs'),
-	game_core 		= require('./game.core.ai.js'),
-	clientio  		= require('socket.io-client'),
-	ai_count 		= 1, 							// Set no. AI instances
-	ai_solutions 	= [];
+import fs from 'fs';
+import dns from 'dns';
+import os from 'os';
+import { promisify } from 'util';
+import { io as clientio } from 'socket.io-client';
+import GameCore from './game.core.ai.js';
 
-try {
-    require('dns').lookup(require('os').hostname(), function (err, add, fam) {
-    	address = add;
-    })
-} catch(err) {
-	console.log(err);
-}
+const lookup = promisify(dns.lookup);
 
-// Create an ai instance
-const create_ai_instance = (i) => {
-	var client = clientio.connect(address + ':' + port);
-	// Make AI game
-	var game = {};
-	game = new game_core(
-		ai_solutions[i].player_card_value,
-		ai_solutions[i].enemy_card_value,
-		ai_solutions[i].center_mod,
-		ai_solutions[i].enemy_mod,
-		ai_solutions[i].shield_mod,
-		ai_solutions[i].freeze_mod,
-		ai_solutions[i].rock_mod
-	);
-	
-	if (game.mmr === undefined) { game.mmr = 1; }
-	if (game.game_count === undefined) { game.game_count = 0; }
-
-	game.socket = client;
-	game.socket.on('connect', function(){
-		game.players.self.state = 'connecting';
-	}.bind(game));
-
-	game.socket.on('disconnect', game.client_ondisconnect.bind(game)); 					// Disconnected - e.g. network, server failed, etc.
-	game.socket.on('onserverupdate', game.client_onserverupdate_recieved.bind(game)); 	// Tick of the server simulation - main update
-	game.socket.on('onconnected', game.client_onconnected.bind(game)); 					// Connect to server - show state, store id
-	game.socket.on('error', game.client_ondisconnect.bind(game)); 						// Error -> not connected for now
-	game.socket.on('message', game.client_onnetmessage.bind(game)); 					// Parse message from server, send to handlers
-	game.update( new Date().getTime() );
-}
-
-const init_games = () => {
-	//Initialise games
-	for (var i = 0; i < ai_solutions.length; i++) {
-		//Create ai instance
-		(function(x) {
-			create_ai_instance(x);
-		})(i);
-	}
+// Configuration
+const config = {
+    address: 'http://localhost',
+    port: '3013',
+    aiCount: 1
 };
 
-// Seed and initialise AI randomly
-const seed_random_ai = () => {
-	// Randomly seed the AI
-	for (var i = 0; i < ai_count; i++) {
-		ai_solutions.push({
-			player_card_value : Math.floor((Math.random() * 100) + 1), // 10),	player_card_value = 1, // Default initialised AI variables
-			enemy_card_value : Math.floor((Math.random() * 100) + 1), // 10), 	enemy_card_value = 1,
-			center_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.5), 	center_mod = 1.5,
-			enemy_mod : Math.floor((Math.random() * 20) + 1) / 10, // 1.5), 	enemy_mod = 1.5,
-			shield_mod : Math.floor((Math.random() * 20) + 11) / 10, // 1.3), 	shield_mod = 1.3,
-			freeze_mod : Math.floor((Math.random() * 20) + 1) / 10, // 2), 	freeze_mod = 0.2,
-			rock_mod : Math.floor((Math.random() * 20) + 1) / 10 // 4	rock_mod = 0.4;
-		}); 
-	}
+// State
+const aiSolutions = [];
 
-	return init_games();
+// Get hostname IP address
+const getHostIP = async () => {
+    try {
+        const { address } = await lookup(os.hostname());
+        return address;
+    } catch (err) {
+        console.error('Failed to get host IP:', err);
+        return config.address;
+    }
 };
 
-// Seed and initialise AI from input values
-const seed_set_ai = (arg1, arg2, arg3, arg4, arg5, arg6, arg7) => {
-	for (var i = 0; i < ai_count; i++) {
-		ai_solutions.push({
-			player_card_value : arg1,
-			enemy_card_value : arg2,
-			center_mod : arg3,
-			enemy_mod : arg4,
-			shield_mod : arg5,
-			freeze_mod : arg6,
-			rock_mod : arg7,
-		}); 
-	}
+// Create an AI instance
+const createAIInstance = (index) => {
+    const client = clientio.connect(`${config.address}:${config.port}`);
+    const game = new GameCore(
+        aiSolutions[index].playerCardValue,
+        aiSolutions[index].enemyCardValue,
+        aiSolutions[index].centerMod,
+        aiSolutions[index].enemyMod,
+        aiSolutions[index].shieldMod,
+        aiSolutions[index].freezeMod,
+        aiSolutions[index].rockMod
+    );
+    
+    // Initialize game properties
+    game.mmr = game.mmr ?? 1;
+    game.gameCount = game.gameCount ?? 0;
+    game.socket = client;
 
-	return init_games();
+    // Set up socket event handlers
+    game.socket.on('connect', () => {
+        game.players.self.state = 'connecting';
+    });
+
+    game.socket.on('disconnect', game.client_ondisconnect.bind(game));
+    game.socket.on('onserverupdate', game.client_onserverupdate_recieved.bind(game));
+    game.socket.on('onconnected', game.client_onconnected.bind(game));
+    game.socket.on('error', game.client_ondisconnect.bind(game));
+    game.socket.on('message', game.client_onnetmessage.bind(game));
+
+    game.update(new Date().getTime());
 };
 
-// Seed and initialise AI from JSON input
-const seed_ai = () => {
-	var data = JSON.parse(fs.readFileSync('./json/ai.json'));
-	for (var i = 0; i < data.length; i++) {
-		(function(solution){
-			ai_solutions.push({
-				player_card_value : solution.player_card_value,
-				enemy_card_value : solution.enemy_card_value,
-				center_mod : solution.center_mod,
-				enemy_mod : solution.enemy_mod,
-				shield_mod : solution.shield_mod,
-				freeze_mod : solution.freeze_mod,
-				rock_mod : solution.rock_mod
-			});
-		})(data[i]);
-	}
-
-	return init_games();
+// Initialize all games
+const initGames = () => {
+    for (let i = 0; i < aiSolutions.length; i++) {
+        createAIInstance(i);
+    }
 };
 
-//seed_random_ai();
+// Seed AI with random values
+const seedRandomAI = () => {
+    for (let i = 0; i < config.aiCount; i++) {
+        aiSolutions.push({
+            playerCardValue: Math.floor(Math.random() * 100) + 1,
+            enemyCardValue: Math.floor(Math.random() * 100) + 1,
+            centerMod: Math.floor(Math.random() * 20 + 11) / 10,
+            enemyMod: Math.floor(Math.random() * 20 + 1) / 10,
+            shieldMod: Math.floor(Math.random() * 20 + 11) / 10,
+            freezeMod: Math.floor(Math.random() * 20 + 1) / 10,
+            rockMod: Math.floor(Math.random() * 20 + 1) / 10
+        });
+    }
+    return initGames();
+};
 
-seed_set_ai(80, 50, 1.2, 2.2, 1.5, 0.6, 0.8);
+// Seed AI with specific values
+const seedSetAI = (playerCardValue, enemyCardValue, centerMod, enemyMod, shieldMod, freezeMod, rockMod) => {
+    for (let i = 0; i < config.aiCount; i++) {
+        aiSolutions.push({
+            playerCardValue,
+            enemyCardValue,
+            centerMod,
+            enemyMod,
+            shieldMod,
+            freezeMod,
+            rockMod
+        });
+    }
+    return initGames();
+};
 
-//seed_ai(); 
+// Seed AI from JSON file
+const seedAI = () => {
+    const data = JSON.parse(fs.readFileSync('./json/ai.json', 'utf8'));
+    for (const solution of data) {
+        aiSolutions.push({
+            playerCardValue: solution.player_card_value,
+            enemyCardValue: solution.enemy_card_value,
+            centerMod: solution.center_mod,
+            enemyMod: solution.enemy_mod,
+            shieldMod: solution.shield_mod,
+            freezeMod: solution.freeze_mod,
+            rockMod: solution.rock_mod
+        });
+    }
+    return initGames();
+};
+
+// Initialize the application
+const init = async () => {
+    config.address = await getHostIP();
+    // Uncomment one of these to choose initialization method:
+    // seedRandomAI();
+    seedSetAI(80, 50, 1.2, 2.2, 1.5, 0.6, 0.8);
+    // seedAI();
+};
+
+init().catch(console.error);
+
+export { seedRandomAI, seedSetAI, seedAI }; 

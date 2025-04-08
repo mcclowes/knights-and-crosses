@@ -1,201 +1,147 @@
+import { Server } from 'socket.io';
 import { v4 as UUID } from 'uuid';
-import './game.core.server.js';
+import express from 'express';
+import http from 'http';
+import dns from 'dns';
+import os from 'os';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { GameService } from './server/services/GameService.js';
+import { MessageHandler } from './server/handlers/MessageHandler.js';
+import { Logger } from './server/utils/logger.js';
 
-const game_server = { games: {}, game_count: 0 };
-const verbose = true;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-/*  ----------------------------- Server Functions  -----------------------------   */
+class GameServer {
+	constructor() {
+		this.port = process.env.PORT || 3014;
+		this.address = '127.0.0.1'; // Explicitly use IPv4
+		this.verbose = false;
+		this.logger = new Logger(this.verbose);
+		
+		this.app = express();
+		this.server = http.createServer(this.app);
+		this.io = new Server(this.server);
+		
+		this.gameService = new GameService();
+		this.messageHandler = new MessageHandler(this.gameService);
+		
+		// Add error handler for the server
+		this.server.on('error', this.handleServerError.bind(this));
+	}
 
-global.window = global.document = global;
+	async start() {
+		try {
+			await this.setupServer();
+			this.setupSocketHandlers();
+		} catch (error) {
+			this.logger.error('Failed to start server:', error);
+			process.exit(1);
+		}
+	}
 
-//Displays logs
-game_server.log = function() {
-	if(verbose) console.log.apply(this,arguments);
-};
-
-game_server.fake_latency = 0;
-game_server.local_time = 0;
-game_server._dt = new Date().getTime();
-game_server._dte = new Date().getTime();
-
-setInterval(function(){
-	game_server._dt = new Date().getTime() - game_server._dte;
-	game_server._dte = new Date().getTime();
-	game_server.local_time += game_server._dt/1000.0;
-}, 4);
-
-/*  ----------------------------- Message Handling  -----------------------------   */
-
-// Forward message to message handler
-game_server.onMessage = function(client,message) {
-	game_server._onMessage(client, message);
-};
-
-// Handle message
-game_server._onMessage = function(client, message) {
-	var message_parts = message.split('.'); //Cut the message up into sub components
-	var message_type = message_parts[0]; //The first is always the type of message
-	var other_client = (client.game.player_host.userid == client.userid) ? client.game.player_client : client.game.player_host;
-
-	if (message_type == 'i') { //Input handler will forward this
-		this.onInput(client, message_parts);
-	} else if (message_type == 'p') {
-		client.send('s.p.' + message_parts[1]);
-	} else if (message_type == 'r') {    //A client is asking for lag simulation
-		this.fake_latency = parseFloat(message_parts[1]);
-	} else if (message_type == 'm') {    //take update mmr
-		if (client.game.player_host.userid == client.userid) {
-			client.game.player_client.mmr = message_parts[1];
+	handleServerError(error) {
+		if (error.code === 'EADDRINUSE') {
+			this.logger.error(`Port ${this.port} is already in use. Please try a different port or stop the existing process.`);
+			this.logger.info('To find and stop the process using this port, run:');
+			this.logger.info(`lsof -i :${this.port}`);
+			this.logger.info('Or try using a different port by setting the PORT environment variable:');
+			this.logger.info(`PORT=${this.port + 1} node app.js`);
+			process.exit(1);
 		} else {
-			client.game.player_host.mmr = message_parts[1];
+			this.logger.error('Server error:', error);
 		}
-	} else if (message_type == 'w') {
-		this.winGame(client.game.id);
-	}
-}; //game_server.onMessage
-
-// Hande input
-game_server.onInput = function(client, parts) {
-	var input_commands = parts[1].split('-');
-	var input_time = parts[2].replace('-','.');
-	var input_seq = parts[3];
-
-	if(client && client.game && client.game.gamecore) {
-		client.game.gamecore.handle_server_input(client, input_commands, input_time, input_seq);
-	}
-}; //game_server.onInput
-
-/*  ----------------------------- Managing games  -----------------------------   */
-
-//Define some required functions
-game_server.createGame = function(player) {
-	//Create a new game instance
-	var thegame = {
-		id: UUID(),                  //generate a new id for the game
-		player_host: player,         //so we know who initiated the game
-		player_client: null,         //nobody else joined yet, since its new
-		player_count: 1              //for simple checking of state
-	};
-		
-	this.games[ thegame.id ] = thegame; // Add game to game array
-	this.game_count++; // Count
-
-	thegame.gamecore = new game_core( thegame );
-	thegame.gamecore.update( new Date().getTime() ); // Being server update loop
-
-	// Ping player as host
-	player.send('s.h.'+ String(thegame.gamecore.local_time).replace('.','-'));
-	console.log('Server host at  ' + thegame.gamecore.local_time);
-	player.game = thegame;
-	player.hosting = true;
-	
-	this.log('Player ' + player.userid + ' created a game with id ' + player.game.id);
-		
-	return thegame; //return the game
-}; //game_server.createGame
-
-// End game in progress
-game_server.endGame = function(gameid, userid) { //userid is leaving
-	var thegame = this.games[gameid];
-
-	if (thegame) {
-		thegame.gamecore.stop_update(); //stop game updates (otherwise sockets crash)
-
-		if (thegame.player_count > 1) { 					//if the game has two players, one is leaving
-			if(userid == thegame.player_host.userid) { 		//the host left, oh snap. Lets try join another game
-	            if(thegame.player_client) {
-	                thegame.player_client.send('s.e'); 		//tell them the game is over
-	                this.findGame(thegame.player_client); 	//now look for/create a new game.
-	            }
-	        } else { //the other (non host) player left
-	            if(thegame.player_host) {
-	                thegame.player_host.send('s.e'); 		//tell the client the game is ended
-	                thegame.player_host.hosting = false; 	//i am no longer hosting, this game is going down
-	                this.findGame(thegame.player_host);  	//now look for/create a new game.
-	            }
-	        }
-	    }
-
-		delete this.games[gameid];
-		this.game_count--;
-		this.log('Game removed. There are ' + this.game_count + ' games' );
-	} else {
-		this.log('Game not found.');
-	}
-}; //game_server.endGame
-
-// If a player won...
-game_server.winGame = function(gameid) { //userid is leaving
-	var thegame = this.games[gameid];
-
-	if (thegame) {
-		thegame.gamecore.stop_update(); 		//stop game updates (otherwise sockets crash)
-        thegame.player_client.send('s.e'); 		//tell them the game is over
-        this.findGame(thegame.player_client); 	//now look for/create a new game.
-        thegame.player_host.send('s.e'); 		//tell the client the game is ended
-        thegame.player_host.hosting = false; 	//i am no longer hosting, this game is going down
-        this.findGame(thegame.player_host);  	//now look for/create a new game.
-
-		delete this.games[gameid];
-		this.game_count--;
-		this.log('Game removed. There are ' + this.game_count + ' games' );
-	} else {
-		this.log('Game not found.');
-	}
-};
-
-game_server.startGame = function(game) {
-	console.log('Starting game');
-	game.player_client.send('s.j.' + game.player_host.userid);
-	game.player_client.game = game;
-
-	// Ready game
-	game.player_client.send('s.r.'+ String(game.gamecore.local_time).replace('.','-'));
-	game.player_host.send('s.r.'+ String(game.gamecore.local_time).replace('.','-'));
-	game.gamecore.players.self.player_state.cards_to_play = 1;
-	game.gamecore.players.self.player_state.pieces_to_play = 1;
-
-	//make players draw cards
-	for (var i = 0; i < 3; i++) {
-		var server_packet = 'i.dr.' + this.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
-		game_server._onMessage(game.player_client, server_packet);
-		game_server._onMessage(game.player_host, server_packet);
 	}
 
-	game.active = true; // Flag for update loop
-}; //game_server.startGame
+	setupServer() {
+		return new Promise((resolve, reject) => {
+			try {
+				// Try to get the hostname, but fallback to IPv4 localhost
+				dns.lookup(os.hostname(), { family: 4 }, (err, add) => {
+					if (err) {
+						this.logger.warn('DNS lookup failed, using IPv4 localhost:', err);
+						add = '127.0.0.1';
+					}
 
-game_server.findGame = function(player) {
-	this.log('looking for a game. We have : ' + this.game_count);
-	if (this.game_count) { // Check there exists a game
-		var joined_a_game = false;
-		
-		// Find an empty game
-		for (var gameid in this.games) {
-			if(!this.games.hasOwnProperty(gameid)) continue;
-			var game_instance = this.games[gameid];
+					// Serve static files from the root directory
+					this.app.use(express.static(join(__dirname, '..')));
 
-			//If the game is a player short
-			if (game_instance.player_count < 2) {
-				joined_a_game = true;
+					this.server.listen(this.port, add, () => {
+						this.address = add;
+						this.logger.log('Listening on ' + add + ':' + this.port);
+						this.setupRoutes();
+						resolve();
+					});
+				});
+			} catch (err) {
+				this.logger.warn('Failed to get hostname, using IPv4 localhost:', err);
+				// Serve static files from the root directory
+				this.app.use(express.static(join(__dirname, '..')));
 
-				//Add player
-				game_instance.player_client = player;
-				game_instance.gamecore.players.other.instance = player;
-				game_instance.player_count++;
-
-				this.startGame(game_instance);
+				this.server.listen(this.port, '127.0.0.1', () => {
+					this.address = '127.0.0.1';
+					this.logger.log('Listening on 127.0.0.1:' + this.port);
+					this.setupRoutes();
+					resolve();
+				});
 			}
-		}
-
-		// No open games
-		if(!joined_a_game) {
-			this.createGame(player); // Create new
-		}
-
-	} else { // No games
-		this.createGame(player); // Start first game
+		});
 	}
-}; //game_server.findGame
 
-export default game_server;
+	setupRoutes() {
+		this.app.get('/', (req, res) => {
+			this.logger.log('Loading %s', join(__dirname, 'index.html'));
+			res.sendFile('index.html', { root: __dirname });
+		});
+
+		this.app.get('/*', (req, res) => {
+			const file = req.params[0];
+			if (this.verbose) this.logger.log('File requested: ' + file);
+			res.sendFile(join(__dirname, file));
+		});
+	}
+
+	setupSocketHandlers() {
+		this.io.on('connection', (client) => {
+			client.userid = UUID();
+			client.playername = 'Player ' + client.userid.slice(0, 4);
+			client.emit('onconnected', { id: client.userid, name: client.playername });
+			this.logger.log('Player ' + client.playername + ' (' + client.userid + ') connected');
+
+			this.gameService.findGame(client);
+
+			client.on('message', (message) => {
+				this.messageHandler.handleMessage(client, message);
+			});
+
+			client.on('setname', (name) => {
+				client.playername = name;
+				this.logger.log('Player ' + client.userid + ' renamed to ' + name);
+				if (client.game) {
+					client.game.player_host.send('s.n.' + client.playername);
+					if (client.game.player_client) {
+						client.game.player_client.send('s.n.' + client.playername);
+					}
+				}
+			});
+
+			client.on('disconnect', () => {
+				this.logger.log('Client ' + client.playername + ' (' + client.userid + ') disconnected');
+				if (client.game?.id) {
+					this.gameService.endGame(client.game.id, client.userid);
+				}
+			});
+		});
+	}
+}
+
+// // Create and start the game server instance
+// const gameServer = new GameServer();
+// gameServer.start().catch(error => {
+// 	console.error('Failed to start server:', error);
+// 	process.exit(1);
+// });
+
+export { GameServer };
+export default GameServer;
