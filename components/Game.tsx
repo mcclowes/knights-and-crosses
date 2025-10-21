@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
+import $ from 'jquery';
+import { io } from 'socket.io-client';
+import * as dat from 'dat.gui';
 
 // Extend the Window interface to include game-related properties
 declare global {
@@ -10,6 +13,10 @@ declare global {
       socket?: unknown;
     };
     game_core?: unknown;
+    $?: typeof $;
+    jQuery?: typeof $;
+    io?: typeof io;
+    dat?: typeof dat;
   }
 }
 
@@ -23,6 +30,16 @@ export default function Game() {
     const savedName = localStorage.getItem('playerName');
     if (savedName) {
       setPlayerName(savedName);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Attach libraries to window object for legacy game code
+    if (typeof window !== 'undefined') {
+      window.$ = $;
+      window.jQuery = $;
+      window.io = io;
+      window.dat = dat;
     }
   }, []);
 
@@ -60,24 +77,6 @@ export default function Game() {
       <Head>
         <title>Sigil Crosses</title>
       </Head>
-
-      {/* Load jQuery first */}
-      <Script
-        src="/lib/jquery-2.1.4.min.js"
-        strategy="afterInteractive"
-      />
-
-      {/* Load Socket.io client from CDN */}
-      <Script
-        src="https://cdn.socket.io/4.7.4/socket.io.min.js"
-        strategy="afterInteractive"
-      />
-
-      {/* Load dat.gui */}
-      <Script
-        src="/lib/dat.gui.min.js"
-        strategy="afterInteractive"
-      />
 
       {/* Load game client code */}
       <Script
