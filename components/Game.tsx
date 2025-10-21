@@ -2,11 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
 
+// Extend the Window interface to include game-related properties
+declare global {
+  interface Window {
+    setPlayerName?: () => void;
+    game?: {
+      socket?: unknown;
+    };
+    game_core?: unknown;
+  }
+}
+
 export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(true);
-  const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
   useEffect(() => {
     // Check for saved player name
@@ -21,11 +31,11 @@ export default function Game() {
       localStorage.setItem('playerName', playerName);
       setShowNameInput(false);
       // Call the global setPlayerName function once the game is initialized
-      if (typeof window !== 'undefined' && (window as any).setPlayerName) {
+      if (typeof window !== 'undefined' && window.setPlayerName) {
         // Wait for game to be initialized before calling setPlayerName
         const checkGameInitialized = () => {
-          if ((window as any).game && (window as any).game.socket) {
-            (window as any).setPlayerName();
+          if (window.game && window.game.socket) {
+            window.setPlayerName();
           } else {
             // Retry after a short delay if game isn't ready yet
             setTimeout(checkGameInitialized, 100);
@@ -37,9 +47,8 @@ export default function Game() {
   };
 
   const handleScriptsLoad = () => {
-    setScriptsLoaded(true);
     // Ensure game_core is available before initializing
-    if (typeof window !== 'undefined' && (window as any).game_core) {
+    if (typeof window !== 'undefined' && window.game_core) {
       console.log('Game core constructor is available');
     } else {
       console.error('Game core constructor not found');
@@ -55,19 +64,19 @@ export default function Game() {
       {/* Load jQuery first */}
       <Script
         src="/lib/jquery-2.1.4.min.js"
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
       />
 
-      {/* Load Socket.io client */}
+      {/* Load Socket.io client from CDN */}
       <Script
-        src="/socket.io/socket.io.js"
-        strategy="beforeInteractive"
+        src="https://cdn.socket.io/4.7.4/socket.io.min.js"
+        strategy="afterInteractive"
       />
 
       {/* Load dat.gui */}
       <Script
         src="/lib/dat.gui.min.js"
-        strategy="beforeInteractive"
+        strategy="afterInteractive"
       />
 
       {/* Load game client code */}
