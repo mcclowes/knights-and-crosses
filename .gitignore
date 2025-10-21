@@ -6,6 +6,12 @@ yarn.lock
 # Build output
 dist/
 build/
+.next/
+out/
+next-env.d.ts
+
+# Generated files
+public/game.core.client.js
 
 # Environment variables
 .env

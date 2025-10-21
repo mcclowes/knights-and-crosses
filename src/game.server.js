@@ -14,26 +14,36 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 class GameServer {
-	constructor() {
+	constructor(io = null, httpServer = null) {
 		this.port = process.env.PORT || 3014;
 		this.address = '127.0.0.1'; // Explicitly use IPv4
-		this.verbose = false;
+		this.verbose = true; // Enable verbose logging for debugging
 		this.logger = new Logger(this.verbose);
-		
-		this.app = express();
-		this.server = http.createServer(this.app);
-		this.io = new Server(this.server);
-		
-		this.gameService = new GameService();
+
+		// Use provided server/io or create new ones
+		if (io && httpServer) {
+			this.io = io;
+			this.server = httpServer;
+			this.app = null; // No need for Express routes when using Next.js
+		} else {
+			this.app = express();
+			this.server = http.createServer(this.app);
+			this.io = new Server(this.server);
+		}
+
+		this.gameService = new GameService(this.logger);
 		this.messageHandler = new MessageHandler(this.gameService);
-		
+
 		// Add error handler for the server
 		this.server.on('error', this.handleServerError.bind(this));
 	}
 
 	async start() {
 		try {
-			await this.setupServer();
+			// Only setup server if not using Next.js
+			if (this.app) {
+				await this.setupServer();
+			}
 			this.setupSocketHandlers();
 		} catch (error) {
 			this.logger.error('Failed to start server:', error);
