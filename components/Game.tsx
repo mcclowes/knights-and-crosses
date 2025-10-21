@@ -10,6 +10,8 @@ declare global {
       socket?: unknown;
     };
     game_core?: unknown;
+    $?: unknown;
+    io?: unknown;
   }
 }
 
@@ -17,6 +19,8 @@ export default function Game() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [playerName, setPlayerName] = useState('');
   const [showNameInput, setShowNameInput] = useState(true);
+  const [jQueryLoaded, setJQueryLoaded] = useState(false);
+  const [socketIOLoaded, setSocketIOLoaded] = useState(false);
 
   useEffect(() => {
     // Check for saved player name
@@ -46,7 +50,17 @@ export default function Game() {
     }
   };
 
-  const handleScriptsLoad = () => {
+  const handleJQueryLoad = () => {
+    console.log('jQuery loaded successfully');
+    setJQueryLoaded(true);
+  };
+
+  const handleSocketIOLoad = () => {
+    console.log('Socket.IO loaded successfully');
+    setSocketIOLoaded(true);
+  };
+
+  const handleGameCoreLoad = () => {
     // Ensure game_core is available before initializing
     if (typeof window !== 'undefined' && window.game_core) {
       console.log('Game core constructor is available');
@@ -64,27 +78,33 @@ export default function Game() {
       {/* Load jQuery first */}
       <Script
         src="/lib/jquery-2.1.4.min.js"
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
+        onLoad={handleJQueryLoad}
       />
 
       {/* Load Socket.io client from CDN */}
       <Script
         src="https://cdn.socket.io/4.7.4/socket.io.min.js"
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
+        onLoad={handleSocketIOLoad}
       />
 
       {/* Load dat.gui */}
-      <Script
-        src="/lib/dat.gui.min.js"
-        strategy="afterInteractive"
-      />
+      {jQueryLoaded && (
+        <Script
+          src="/lib/dat.gui.min.js"
+          strategy="afterInteractive"
+        />
+      )}
 
-      {/* Load game client code */}
-      <Script
-        src="/game.core.client.js"
-        strategy="afterInteractive"
-        onLoad={handleScriptsLoad}
-      />
+      {/* Load game client code only after jQuery and Socket.IO are loaded */}
+      {jQueryLoaded && socketIOLoaded && (
+        <Script
+          src="/game.core.client.js"
+          strategy="afterInteractive"
+          onLoad={handleGameCoreLoad}
+        />
+      )}
 
       {showNameInput && (
         <div
