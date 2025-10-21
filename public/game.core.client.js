@@ -5,13 +5,16 @@ var frame_time = 60/1000,
 	canvasWidth = 720,
 	canvasHeight = 800;
 
+// Global game instance
+var game;
+
 // Initialize audio
-var clickSound = new Audio('src/assets/sound/class_tab_click.ogg');
-var endTurnSound = new Audio('src/assets/sound/bar_button_A_press.ogg');
+var clickSound = new Audio('/assets/sound/class_tab_click.ogg');
+var endTurnSound = new Audio('/assets/sound/bar_button_A_press.ogg');
 
 var cards = []; // Load cards (with jQuery)
 $.ajax({
-    url: "src/json/cards.json",
+    url: "json/cards.json",
     async: false,
     dataType: 'json',
     success: function(json) {
@@ -129,77 +132,6 @@ var layout_text = function(canvas, x, y, w, h, text, font_size, spl) {
 }
 
 
-/* --------------------- Handle Load and touch ----------------------- */
-
-window.onload = function(){
-	game = new game_core(); // Create game
-	game.viewport = document.getElementById('viewport');
-	game.viewport.width = game.world.width; //Adjust canvas size
-	game.viewport.height = game.world.height;
-	game.ctx = game.viewport.getContext('2d');//Fetch canvas
-
-	// Handle mouse events
-	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
-	// Handle mouse hovering/moving
-	game.ctx.canvas.addEventListener('mousemove', onMouseUpdate, false);
-	game.ctx.canvas.addEventListener('mouseenter', onMouseUpdate, false);
-
-	function onMouseUpdate(e) {
-	    game.players.self.mouseX = e.pageX;
-	    game.players.self.mouseY = e.pageY;
-	}
-
-	game.ctx.canvas.addEventListener('click', function(e) { 
-		if (game.players.self.host === true && game.turn === -1) { // not players turn
-			return;
-		} else if (game.players.self.host === false && game.turn === 1) { // not players turn (can condense)
-			return;
-		}
-
-		var mx = event.clientX,
-			my = event.clientY,
-			shapes = [game.board];
-			shapes = shapes.concat(game.end_turn_button, game.players.self.hand);
-
-		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
-		  	if (shapes[i].contains(mx, my)) {
-		  		var input = '';
-
-		  		if (shapes[i] === game.board) {
-		  			if (game.players.self.state.pieces_to_play > 0 || game.players.self.state.destroyingA > 0 || game.players.self.state.destroyingE > 0 || game.players.self.state.destroyingS > 0 || game.players.self.state.damagingA > 0 || game.players.self.state.damagingE > 0 || game.players.self.state.damagingS > 0 || game.players.self.state.thawing > 0 || game.players.self.state.blocking > 0 || game.players.self.state.shielding > 0 || game.players.self.state.deshielding > 0) {
-		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
-		  				// Play click sound for board clicks
-		  				clickSound.currentTime = 0;
-		  				clickSound.play();
-		  			}
-		  		} else if (shapes[i] === game.end_turn_button) {
-		  			input = 'en';
-		  			// Play end turn sound
-		  			endTurnSound.currentTime = 0;
-		  			endTurnSound.play();
-		  		} else {
-		  			if (game.players.self.state.cards_to_play > 0 || game.players.self.state.discarding > 0) {
-		  				input = 'ca-' + shapes[i].cardName;
-		  				// Play click sound for card clicks
-		  				clickSound.currentTime = 0;
-		  				clickSound.play();
-		  			}
-		  		}
-				// Process input
-				game.input_seq += 1;
-				//Send inputs
-				var server_packet = 'i.' + input + '.' + game.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
-				game.socket.send( server_packet );
-
-				return;
-			}
-		}
-	}, true);
-
-	game.update( new Date().getTime() ); //Start game update loop
-}; //window.onload
-
-
 /* ----------------------------- Game Core -----------------------------  */
 
 var game_core = function(game_instance){
@@ -266,33 +198,46 @@ var game_board = function() {
 		}
 	}
 
-	//Assign images
-	this.boardImage = new Image();
-	this.boardImage.src = "src/assets/img/board.png";
-	this.p1PieceImage = new Image();
-	this.p1PieceImage.src = "src/assets/img/piece_p1.png";
-	this.p2PieceImage = new Image();
-	this.p2PieceImage.src = "src/assets/img/piece_p2.png";
-	this.frostImage1 = new Image();
-	this.frostImage1.src = "src/assets/img/frost1.png";
-	this.frostImage2 = new Image();
-	this.frostImage2.src = "src/assets/img/frost2.png";
-	this.blockedImage1 = new Image();
-	this.blockedImage1.src = "src/assets/img/rock1.png";
-	this.blockedImage2 = new Image();
-	this.blockedImage2.src = "src/assets/img/rock2.png";
-	this.blockedImage3 = new Image();
-	this.blockedImage3.src = "src/assets/img/rock3.png";
-	this.p1ShieldImage = new Image();
-	this.p1ShieldImage.src = "src/assets/img/piece_p1_shielded.png";
-	this.p2ShieldImage = new Image();
-	this.p2ShieldImage.src = "src/assets/img/piece_p2_shielded.png";
+	//Assign images with error handling
+	this.boardImage = this.loadImage("/assets/img/board.png");
+	this.p1PieceImage = this.loadImage("/assets/img/piece_p1.png");
+	this.p2PieceImage = this.loadImage("/assets/img/piece_p2.png");
+	this.frostImage1 = this.loadImage("/assets/img/frost1.png");
+	this.frostImage2 = this.loadImage("/assets/img/frost2.png");
+	this.blockedImage1 = this.loadImage("/assets/img/rock1.png");
+	this.blockedImage2 = this.loadImage("/assets/img/rock2.png");
+	this.blockedImage3 = this.loadImage("/assets/img/rock3.png");
+	this.p1ShieldImage = this.loadImage("/assets/img/piece_p1_shielded.png");
+	this.p2ShieldImage = this.loadImage("/assets/img/piece_p2_shielded.png");
+};
+
+// Helper function to safely load images with error handling
+game_board.prototype.loadImage = function(src) {
+	var img = new Image();
+	img.onload = function() {
+		// Image loaded successfully
+	};
+	img.onerror = function() {
+		console.error("Failed to load image:", src);
+		// Create a 1x1 transparent pixel as fallback
+		img.width = 1;
+		img.height = 1;
+	};
+	img.src = src;
+	return img;
+};
+
+// Helper function to safely draw images
+game_board.prototype.safeDrawImage = function(img, x, y, width, height) {
+	if (img && img.complete && img.naturalWidth > 0) {
+		game.ctx.drawImage(img, x, y, width, height);
+	}
 };
 
 game_board.prototype.draw = function(){
 	game.ctx.fillStyle = 'rgba(200, 180, 140, 0.8)';
 	game.ctx.fillRect(this.x, this.y, 400, 400);
-	game.ctx.drawImage(this.boardImage, this.x, this.y, 400, 400);
+	this.safeDrawImage(this.boardImage, this.x, this.y, 400, 400);
 
 	//for each square, draw the relevant piece
 	game.ctx.shadowBlur = 20;
@@ -307,7 +252,7 @@ game_board.prototype.draw = function(){
 					} else {
 						game.ctx.shadowColor = "black";
 					}
-					game.ctx.drawImage(this.p1ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
+					this.safeDrawImage(this.p1ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
 					if ((game.players.self.state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
 						game.ctx.shadowColor = "green";
@@ -316,7 +261,7 @@ game_board.prototype.draw = function(){
 					} else {
 						game.ctx.shadowColor = "black";
 					}
-					game.ctx.drawImage(this.p1PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
+					this.safeDrawImage(this.p1PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
 			} else if (this.state.results[i][j] == -1) {
 				if (this.state.shields[i][j] == 1) {
@@ -325,7 +270,7 @@ game_board.prototype.draw = function(){
 					} else {
 						game.ctx.shadowColor = "black";
 					}
-					game.ctx.drawImage(this.p2ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
+					this.safeDrawImage(this.p2ShieldImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				} else {
 					if ((game.players.self.state.shielding > 0 ) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) {
 						game.ctx.shadowColor = "green";
@@ -334,7 +279,7 @@ game_board.prototype.draw = function(){
 					} else {
 						game.ctx.shadowColor = "black";
 					}
-					game.ctx.drawImage(this.p2PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
+					this.safeDrawImage(this.p2PieceImage, i*100 + this.x, j*100 + this.y, 100, 100);
 				}
 			} else if (this.state.frost[i][j] == 4 || this.state.frost[i][j] == 3) {
 				if ((game.players.self.state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
@@ -342,35 +287,35 @@ game_board.prototype.draw = function(){
 				} else {
 					game.ctx.shadowColor = "black";
 				}
-				game.ctx.drawImage(this.frostImage2, i*100 + this.x, j*100 + this.y, 100, 100);
+				this.safeDrawImage(this.frostImage2, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.state.frost[i][j] == 2 || this.state.frost[i][j] == 1) {
 				if ((game.players.self.state.thawing > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
-				game.ctx.drawImage(this.frostImage1, i*100 + this.x, j*100 + this.y, 100, 100);
+				this.safeDrawImage(this.frostImage1, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.state.rock[i][j] == 6 || this.state.rock[i][j] == 5) {
 				if ((game.players.self.state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
-				game.ctx.drawImage(this.blockedImage3, i*100 + this.x, j*100 + this.y, 100, 100);
+				this.safeDrawImage(this.blockedImage3, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.state.rock[i][j] == 4 || this.state.rock[i][j] == 3) {
 				if ((game.players.self.state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
-				game.ctx.drawImage(this.blockedImage2, i*100 + this.x, j*100 + this.y, 100, 100);
+				this.safeDrawImage(this.blockedImage2, i*100 + this.x, j*100 + this.y, 100, 100);
 			} else if (this.state.rock[i][j] == 2 || this.state.rock[i][j] == 1) {
 				if ((game.players.self.state.deblocking > 0) && (game.players.self.host === true && game.turn === 1 || game.players.self.host === false && game.turn === -1)) { // players turn
 					game.ctx.shadowColor = "red";
 				} else {
 					game.ctx.shadowColor = "black";
 				}
-				game.ctx.drawImage(this.blockedImage1, i*100 + this.x, j*100 + this.y, 100, 100);
+				this.safeDrawImage(this.blockedImage1, i*100 + this.x, j*100 + this.y, 100, 100);
 			} 
 		}
 	}
@@ -471,7 +416,7 @@ var game_card = function( card_name ) {
 	this.cardName = card_name;
 	//this.cardImage = '';
 	this.cardImage = new Image();
-	this.cardImage.src = "src/assets/img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
+	this.cardImage.src = "/assets/img/card_" + this.cardName.toLowerCase().split(" ").join("_") + ".png"; //hmmm
 
 	this.pos = { x:0, y:0 };
 	this.size = { x:140, y:210, hx:0, hy:0 };
@@ -507,10 +452,14 @@ game_card.prototype.draw = function(self){ //draw card
 	game.ctx.clip();
 	
 	if (self === true) {
-		game.ctx.drawImage(this.cardImage, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		if (this.cardImage && this.cardImage.complete && this.cardImage.naturalWidth > 0) {
+			game.ctx.drawImage(this.cardImage, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		}
 	} else {
-		game.cardBack.src = game.players.self.host === true ? "src/assets/img/card_back2.png" : "src/assets/img/card_back1.png";
-		game.ctx.drawImage(game.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		game.cardBack.src = game.players.self.host === true ? "/assets/img/card_back2.png" : "/assets/img/card_back1.png";
+		if (game.cardBack && game.cardBack.complete && game.cardBack.naturalWidth > 0) {
+			game.ctx.drawImage(game.cardBack, this.pos.x, this.pos.y, this.size.x, this.size.y);
+		}
 	}
 
 	game.ctx.restore();
@@ -572,7 +521,7 @@ var game_player = function( game_instance, player_instance ) {
 	// Load deck synchronously
 	var deck_temp = [];
 	$.ajax({
-		url: "src/json/deck_p1.json",
+		url: "json/deck_p1.json",
 		async: false,
 		dataType: 'json',
 		success: function(json) {
@@ -591,7 +540,6 @@ game_player.prototype.draw = function(){
 	game.ctx.clearRect(0, 0, 120, 120); //Clear the screen area
 	game.ctx.textAlign = "start"; 
 	game.ctx.fillStyle = "black";
-	game.ctx.fillText(this.state, 10, 10);
 	
 	// Draw player name
 	if (this.name) {
@@ -810,6 +758,7 @@ game_core.prototype.client_onnetmessage = function(data) {
 	}			
 }; //client_onnetmessage
 
+
 // Handle socket disconnect (non-end game)
 game_core.prototype.client_ondisconnect = function(data) {
 	this.players.self.state = 'not-connected';
@@ -819,17 +768,28 @@ game_core.prototype.client_ondisconnect = function(data) {
 
 // Handle connecting to a server
 game_core.prototype.client_connect_to_server = function() {
+	console.log('Attempting to connect to server...');
 	this.socket = io.connect(); // Server socket
 
 	this.socket.on('connect', function(){
+		console.log('Connected to server!');
 		this.players.self.state = 'connecting';
 	}.bind(this));
 
 	//Bind other socket handlers
-	this.socket.on('disconnect', this.client_ondisconnect.bind(this)); 					// Disconnected - e.g. network, server failed, etc.
+	this.socket.on('disconnect', function() {
+		console.log('Disconnected from server');
+		this.client_ondisconnect();
+	}.bind(this));
 	this.socket.on('onserverupdate', this.client_onserverupdate_recieved.bind(this)); 	// Tick of the server simulation - main update
-	this.socket.on('onconnected', this.client_onconnected.bind(this)); 					// Connect to server - show state, store id
-	this.socket.on('error', this.client_ondisconnect.bind(this)); 						// Error -> not connected for now
+	this.socket.on('onconnected', function(data) {
+		console.log('Server connection confirmed:', data);
+		this.client_onconnected(data);
+	}.bind(this));
+	this.socket.on('error', function(error) {
+		console.error('Socket error:', error);
+		this.client_ondisconnect();
+	}.bind(this));
 	this.socket.on('message', this.client_onnetmessage.bind(this)); 					// Parse message from server, send to handlers
 }; //game_core.client_connect_to_server
 
@@ -864,3 +824,143 @@ window.setPlayerName = function() {
 		}
 	}
 };
+
+/* --------------------- Handle Load and touch ----------------------- */
+
+// Initialize game when DOM is ready
+function initializeGame() {
+	console.log('Initializing game...');
+	
+	// Check if game_core constructor is available
+	if (typeof game_core === 'undefined') {
+		console.error('game_core constructor not found! Make sure the script is loaded properly.');
+		return;
+	}
+	
+	game = new game_core(); // Create game
+	window.game = game; // Expose to global scope
+	game.viewport = document.getElementById('viewport');
+	
+	if (!game.viewport) {
+		console.error('Canvas element not found!');
+		return;
+	}
+	
+	game.viewport.width = game.world.width; //Adjust canvas size
+	game.viewport.height = game.world.height;
+	game.ctx = game.viewport.getContext('2d');//Fetch canvas
+	
+	// Handle mouse events
+	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
+	// Handle mouse hovering/moving
+	game.ctx.canvas.addEventListener('mousemove', onMouseUpdate, false);
+	game.ctx.canvas.addEventListener('mouseenter', onMouseUpdate, false);
+
+	function onMouseUpdate(e) {
+	    game.players.self.mouseX = e.pageX;
+	    game.players.self.mouseY = e.pageY;
+	}
+	
+	// Handle mouse clicking
+	game.ctx.canvas.addEventListener('click', function(e) {
+		game.players.self.mouseX = e.pageX;
+		game.players.self.mouseY = e.pageY;
+		game.players.self.click = true;
+	}, false);
+	
+	// Handle touch events for mobile
+	game.ctx.canvas.addEventListener('touchstart', function(e) {
+		e.preventDefault();
+		var touch = e.touches[0];
+		game.players.self.mouseX = touch.pageX;
+		game.players.self.mouseY = touch.pageY;
+		game.players.self.click = true;
+	}, false);
+	
+	game.ctx.canvas.addEventListener('touchmove', function(e) {
+		e.preventDefault();
+		var touch = e.touches[0];
+		game.players.self.mouseX = touch.pageX;
+		game.players.self.mouseY = touch.pageY;
+	}, false);
+	
+	// Handle game click logic
+	game.ctx.canvas.addEventListener('click', function(e) { 
+		if (game.players.self.host === true && game.turn === -1) { // not players turn
+			return;
+		} else if (game.players.self.host === false && game.turn === 1) { // not players turn (can condense)
+			return;
+		}
+
+		var mx = event.clientX,
+			my = event.clientY,
+			shapes = [game.board];
+			shapes = shapes.concat(game.end_turn_button, game.players.self.hand);
+
+		for (var i = shapes.length - 1; i >= 0; i--) { // Check all clickable objects
+		  	if (shapes[i].contains(mx, my)) {
+		  		var input = '';
+
+		  		if (shapes[i] === game.board) {
+		  			if (game.players.self.state.pieces_to_play > 0 || game.players.self.state.destroyingA > 0 || game.players.self.state.destroyingE > 0 || game.players.self.state.destroyingS > 0 || game.players.self.state.damagingA > 0 || game.players.self.state.damagingE > 0 || game.players.self.state.damagingS > 0 || game.players.self.state.thawing > 0 || game.players.self.state.blocking > 0 || game.players.self.state.shielding > 0 || game.players.self.state.deshielding > 0) {
+		  				input = 'sq-' + (100 + mx - game.board.x).toString()[0] + (100 + my - game.board.y).toString()[0];
+		  				// Play click sound for board clicks
+		  				clickSound.currentTime = 0;
+		  				clickSound.play();
+		  			}
+		  		} else if (shapes[i] === game.end_turn_button) {
+		  			input = 'en';
+		  			// Play end turn sound
+		  			endTurnSound.currentTime = 0;
+		  			endTurnSound.play();
+		  		} else {
+		  			if (game.players.self.state.cards_to_play > 0 || game.players.self.state.discarding > 0) {
+		  				input = 'ca-' + shapes[i].cardName;
+		  				// Play click sound for card clicks
+		  				clickSound.currentTime = 0;
+		  				clickSound.play();
+		  			}
+		  		}
+		// Process input
+		game.input_seq += 1;
+		//Send inputs
+		var server_packet = 'i.' + input + '.' + game.local_time.toFixed(3).replace('.','-') + '.' + game.input_seq;
+		game.socket.send( server_packet );
+
+		return;
+	}
+	}
+	}, true);
+	
+	game.update( new Date().getTime() ); //Start game update loop
+	console.log('Game initialized successfully');
+}
+
+// Try to initialize immediately if DOM is ready, otherwise wait for it
+if (document.readyState === 'loading') {
+	document.addEventListener('DOMContentLoaded', initializeGame);
+} else {
+	initializeGame();
+}
+
+// Also keep the window.onload as fallback
+window.onload = function(){
+	if (!game) {
+		console.log('Fallback: Initializing game on window.onload');
+		initializeGame();
+	}
+}; //window.onload
+
+// Add a retry mechanism for script loading issues
+function retryInitialization() {
+	if (typeof game_core !== 'undefined' && !game) {
+		console.log('Retrying game initialization...');
+		initializeGame();
+	} else if (typeof game_core === 'undefined') {
+		console.log('game_core still not available, retrying in 100ms...');
+		setTimeout(retryInitialization, 100);
+	}
+}
+
+// Start retry mechanism after a short delay
+setTimeout(retryInitialization, 100);

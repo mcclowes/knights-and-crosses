@@ -2,13 +2,15 @@ import { Game } from '../models/Game.js';
 import game_core from '../../game.core.server.js';
 
 export class GameService {
-    constructor() {
+    constructor(logger = null) {
         this.games = {};
         this.game_count = 0;
+        this.logger = logger;
     }
 
     createGame(player) {
-        const game = new Game(player);
+        console.log('Creating game');
+        const game = new Game(player, this.logger);
         this.games[game.id] = game;
         this.game_count++;
 
@@ -26,20 +28,24 @@ export class GameService {
 
     findGame(player) {
         console.log('Looking for a game. We have: ' + this.game_count);
+        console.log('Player connecting:', player.userid, player.playername);
         
         if (this.game_count === 0) {
+            console.log('No games exist, creating new game');
             return this.createGame(player);
         }
 
         // Find an empty game
         for (const game of Object.values(this.games)) {
             if (game.player_count < 2) {
+                console.log('Adding player to existing game:', game.id);
                 game.addClient(player);
                 return game;
             }
         }
 
         // No open games found, create new one
+        console.log('No open games found, creating new game');
         return this.createGame(player);
     }
 
@@ -90,15 +96,4 @@ export class GameService {
         console.log('Game removed. There are ' + this.game_count + ' games');
     }
 
-    startGame(game) {
-        console.log('Starting game');
-        game.start();
-
-        // Make players draw cards
-        for (let i = 0; i < 3; i++) {
-            const serverPacket = 'i.dr.' + this.local_time.toFixed(3).replace('.', '-') + '.' + game.input_seq;
-            this.messageHandler.handleMessage(game.player_client, serverPacket);
-            this.messageHandler.handleMessage(game.player_host, serverPacket);
-        }
-    }
 } 

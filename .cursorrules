@@ -1,0 +1,6 @@
+# Cursor Rules for Knights and Crosses Project
+
+## File Modification Guidelines
+
+- `/public/game.core.client.js` is a generated file. Don't modify this, edit the one in `/src` instead
+- Do not try and run the project (e.g. `npm run dev`) after making changes. I will have it running in a terminal myself.

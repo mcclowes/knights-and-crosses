@@ -23,11 +23,29 @@ Install dependencies
 npm install
 ```
 
+### Development
+
+For development, run:
+```
+npm run dev
+```
+
+This will:
+1. Copy the game client assets from `src/` to `public/`
+2. Start the development server
+
+### Production
+
 To mount the core game server, in the root directory run:
 
 ```
 npm run start
 ```
+
+This will:
+1. Copy the game client assets from `src/` to `public/`
+2. Build the Next.js application
+3. Start the production server
 
 This server will print its IP address to console. Visiting this address in the browser will allow human players to play the game. The server automatically handles matchmaking.
 

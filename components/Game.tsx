@@ -22,13 +22,28 @@ export default function Game() {
       setShowNameInput(false);
       // Call the global setPlayerName function once the game is initialized
       if (typeof window !== 'undefined' && (window as any).setPlayerName) {
-        (window as any).setPlayerName();
+        // Wait for game to be initialized before calling setPlayerName
+        const checkGameInitialized = () => {
+          if ((window as any).game && (window as any).game.socket) {
+            (window as any).setPlayerName();
+          } else {
+            // Retry after a short delay if game isn't ready yet
+            setTimeout(checkGameInitialized, 100);
+          }
+        };
+        checkGameInitialized();
       }
     }
   };
 
   const handleScriptsLoad = () => {
     setScriptsLoaded(true);
+    // Ensure game_core is available before initializing
+    if (typeof window !== 'undefined' && (window as any).game_core) {
+      console.log('Game core constructor is available');
+    } else {
+      console.error('Game core constructor not found');
+    }
   };
 
   return (

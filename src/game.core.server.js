@@ -52,6 +52,7 @@ class GameCore {
 		this.local_time = 0.016;   
 		this._dt = new Date().getTime();  
 		this._dte = new Date().getTime();  
+		this.input_seq = 0;
 
 		//Client specific initialisation
 		this.server_time = 0;
@@ -272,7 +273,7 @@ class GameCore {
 		if (input) {
 			//var c = input.length;
 			try { var input_parts = input.split('.'); } catch(err) { var input_parts = input;} // handle input accordingly
-			const target = [];
+			let target = [];
 
 			if (input_parts[0] == 'en' && player_client !== undefined && player_other !== undefined && ((player_client === this.players.self && this.turn === 1) || (player_client === this.players.other && this.turn === -1))) { //end turn
 				this.turn = this.turn == 1 ? -1 : 1;

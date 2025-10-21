@@ -2,8 +2,8 @@ export const FRAME_TIME = 60 / 1000;
 export const BOARD_SIZE = 4;
 export const WIN_CONDITION = 4;
 
-export const CARD_DATA_PATH = 'src/json/card_data.json';
-export const CARDS_PATH = 'src/json/cards.json';
+export const CARD_DATA_PATH = 'json/card_data.json';
+export const CARDS_PATH = 'json/cards.json';
 
 export const AI_PARAMETERS = {
     PLAYER_CARD_VALUE: 0,

@@ -17,7 +17,7 @@ class GameServer {
 	constructor(io = null, httpServer = null) {
 		this.port = process.env.PORT || 3014;
 		this.address = '127.0.0.1'; // Explicitly use IPv4
-		this.verbose = false;
+		this.verbose = true; // Enable verbose logging for debugging
 		this.logger = new Logger(this.verbose);
 
 		// Use provided server/io or create new ones
@@ -31,7 +31,7 @@ class GameServer {
 			this.io = new Server(this.server);
 		}
 
-		this.gameService = new GameService();
+		this.gameService = new GameService(this.logger);
 		this.messageHandler = new MessageHandler(this.gameService);
 
 		// Add error handler for the server

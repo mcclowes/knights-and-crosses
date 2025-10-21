@@ -5,13 +5,14 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "dev": "node server.js",
-    "build": "next build",
+    "dev": "npm run copy-assets && node server.js",
+    "build": "npm run copy-assets && next build",
     "start": "NODE_ENV=production node server.js",
     "start:old": "node app.js",
     "create-ai": "node src/ai_manager.js",
     "test": "jest",
-    "lint": "eslint . --ext .ts,.js,.tsx"
+    "lint": "eslint . --ext .ts,.js,.tsx",
+    "copy-assets": "cp src/game.core.client.js public/game.core.client.js"
   },
   "repository": {
     "type": "git",
