@@ -1,0 +1,336 @@
+.card.fire_blast {
+  background-image: url("/assets/img/card_fire_blast.png");
+}
+.card.armour_up {
+  background-image: url("/assets/img/card_armour_up.png");
+}
+.card.ice_blast {
+  background-image: url("/assets/img/card_ice_blast.png");
+}
+.card.frost {
+  background-image: url("/assets/img/card_frost.png");
+}
+.card.sabotage {
+  background-image: url("/assets/img/card_sabotage.png");
+}
+.card.summer {
+  background-image: url("/assets/img/card_summer.png");
+}
+.card.sacrifice {
+  background-image: url("/assets/img/card_sacrifice.png");
+}
+.card.boulder {
+  background-image: url("/assets/img/card_boulder.png");
+}
+.card.flurry {
+  background-image: url("/assets/img/card_flurry.png");
+}
+.card.floods {
+  background-image: url("/assets/img/card_floods.png");
+}
+.card.taxes {
+  background-image: url("/assets/img/card_taxes.png");
+}
+.card.reckless {
+  background-image: url("/assets/img/card_reckless.png");
+}
+.card.barrage {
+  background-image: url("/assets/img/card_barrage.png");
+}
+.card.bezerker {
+  background-image: url("/assets/img/card_bezerker.png");
+}
+.card.hidden {
+  background-image: url("/assets/img/card_back.png");
+}
+.card.hidden div {
+  visibility: hidden;
+}
+.p1-hand .card.hidden {
+  background-image: url("/assets/img/card_back1.png");
+}
+.p2-hand .card.hidden {
+  background-image: url("/assets/img/card_back2.png");
+}
+body {
+  font-family: 'helvetica';
+  background-color: #dedede;
+  background-image: url("/assets/img/board_back.png");
+  background-size: 100%;
+}
+body h1 {
+  color: #fff;
+  -webkit-text-stroke-width: 2px;
+  -webkit-text-stroke-color: #000;
+}
+#button_wrapper {
+  margin-bottom: 10px;
+}
+.menu {
+  position: absolute;
+  right: 0;
+  top: 35%;
+  padding: 30px;
+}
+.wrapper {
+  margin-top: 15%;
+  width: 400px;
+  height: 400px;
+  font-size: 82px;
+  overflow: hidden;
+  background-image: url("/assets/img/board.png");
+  background-size: 100%;
+  border-radius: 5px;
+  box-shadow: 2px 2px 10px 10px rgba(0, 0, 0, 0.2);
+}
+/* flipping */
+.flip-container {
+  perspective: 1000;
+  transform-style: preserve-3d;
+  height: 100px;
+  display: table;
+  -webkit-transform-style: preserve-3d;
+  -webkit-perspective: 1000px;
+}
+.flip-container .flip {
+  transform: rotateY(180deg);
+  -webkit-transform: rotateY(180deg);
+}
+.flip-container .flipper {
+  transition: 0.6s;
+  -webkit-transition: -webkit-transform 0.6s;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  position: relative;
+}
+.flip-container .box {
+  height: 100%;
+  width: 185px;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  display: table-cell;
+}
+.flip-container .box > div {
+  position: absolute;
+  top: 50%;
+  left: 35%;
+  transform: translateY(-50%);
+  -webkit-transform: translateY(-50%);
+}
+.flip-container .box:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+  background-size: 100%;
+}
+.flip-container .opened > div {
+  font-weight: bold;
+  color: red;
+}
+.flip-container .opened-p1.flip {
+  background-image: url("/assets/img/piece_p1.png");
+  background-size: 100%;
+}
+.flip-container .opened-p1.flip.shielded {
+  background-image: url("/assets/img/piece_p1_shielded.png");
+  background-size: 100%;
+}
+.flip-container .opened-p2.flip {
+  background-image: url("/assets/img/piece_p2.png");
+  background-size: 100%;
+}
+.flip-container .opened-p2.flip.shielded {
+  background-image: url("/assets/img/piece_p2_shielded.png");
+  background-size: 100%;
+}
+.flip-container .frost1 {
+  background-image: url("/assets/img/frost1.png");
+  background-size: 100%;
+}
+.flip-container .frost2 {
+  background-image: url("/assets/img/frost2.png");
+  background-size: 100%;
+}
+.flip-container .rock1 {
+  background-image: url("/assets/img/rock1.png");
+  background-size: 100%;
+}
+.flip-container .rock2 {
+  background-image: url("/assets/img/rock2.png");
+  background-size: 100%;
+}
+.flip-container .rock3 {
+  background-image: url("/assets/img/rock3.png");
+  background-size: 100%;
+}
+.wrapper.p1-turn .box:not(.opened):not(.frost1):not(.frost2):not(.rock1):not(.rock2):not(.rock3):hover {
+  background-image: url("/assets/img/piece_p1.png");
+  background-size: 100%;
+  opacity: 0.5;
+}
+.wrapper.p2-turn .box:not(.opened):not(.frost1):not(.frost2):not(.rock1):not(.rock2):not(.rock3):hover {
+  background-image: url("/assets/img/piece_p2.png");
+  background-size: 100%;
+  opacity: 0.5;
+}
+.hand.p1-hand {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+.hand.p2-hand {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.card {
+  position: relative;
+  width: 150px;
+  height: 223px;
+  text-align: center;
+  float: left;
+  background-color: grey;
+  background-size: 100%;
+  border-radius: 9px;
+  margin: 5px;
+  margin-right: -50px;
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.2);
+  transition: 0.2s;
+  font-size: 0.8em;
+}
+.card .cardName,
+.card .cardEffects {
+  color: #545252;
+  background-image: url("/assets/img/textBG.png");
+  background-repeat: no-repeat;
+  background-size: 100%;
+  background-size: 100% 100%;
+  width: 80%;
+  margin: auto;
+  padding: 3px;
+  opacity: 0.8;
+}
+.card .cardName {
+  margin-top: 5px;
+}
+.card .cardEffects {
+  margin-top: 115px;
+  min-height: 60px;
+}
+.card.playable {
+  box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.2), 0px 0px 10px #32CD32;
+}
+.card.drawn:hover {
+  z-index: 100;
+  transform: scale(1.1, 1.1);
+}
+.debug_box {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  text-align: left;
+}
+#endTurnButton {
+  box-shadow: 0px 0px 10px #32CD32;
+}
+button {
+  padding: 10px;
+  border: none;
+  border-radius: 3px;
+  font-weight: bold;
+}
+.card.drawn.spaced {
+  margin-right: 10px !important;
+}
+.cardSelector {
+  padding: 5px;
+  margin: 2px;
+  border-radius: 2px;
+  background-color: white;
+  color: black;
+}
+.cardSelector:hover {
+  transform: scale(1.1, 1.1);
+}
+.cardSelector.2::before {
+  content: '2';
+}
+.cardPool {
+  width: 66%;
+  float: left;
+}
+.cardList {
+  width: 30%;
+  height: 100%;
+  float: left;
+  background-color: grey;
+}
+.card .cardAvgValue,
+.card .cardMinValue,
+.card .cardMaxValue {
+  display: none;
+  position: absolute;
+  top: 0px;
+  left: -10px;
+  background: white;
+  background-image: url("/assets/img/textBG.png");
+  min-width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  box-shadow: 2px 2px 10px 10px rgba(0, 0, 0, 0.2);
+  padding-top: 5px;
+}
+.card .cardMinValue {
+  top: 45px;
+}
+.card .cardMaxValue {
+  top: 90px;
+}
+html,
+.box.opened.flipper.flip {
+  cursor: url("/assets/img/mouse_small.png"), auto;
+}
+.card {
+  cursor: url("/assets/img/mouse_small.png"), auto;
+}
+button {
+  cursor: url("/assets/img/mouse_small.png"), auto;
+}
+.box:not(.frost1):not(.frost2),
+.wrapper,
+.flip-container,
+li {
+  cursor: url("/assets/img/mouse_small.png"), auto;
+}
+#name-input {
+  font-family: 'helvetica', sans-serif;
+}
+
+#name-input input {
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+#name-input input:focus {
+  border-color: #4CAF50;
+}
+
+#name-input button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+#name-input button:hover {
+  background-color: #45a049;
+}
+
+#name-input h2 {
+  margin: 0 0 15px 0;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
