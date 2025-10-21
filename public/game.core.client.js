@@ -769,7 +769,7 @@ game_core.prototype.client_ondisconnect = function(data) {
 // Handle connecting to a server
 game_core.prototype.client_connect_to_server = function() {
 	console.log('Attempting to connect to server...');
-	this.socket = io.connect(); // Server socket
+	this.socket = io({ path: '/api/socket' }); // Server socket with custom path for Vercel
 
 	this.socket.on('connect', function(){
 		console.log('Connected to server!');
