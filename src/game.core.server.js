@@ -1,10 +1,15 @@
 /*  ----------------------------- Key variables  -----------------------------   */
 
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const FRAME_TIME = 45;
 const MAX_HAND_SIZE = 10;
-const cards = JSON.parse(fs.readFileSync('src/json/cards.json'));
+const cards = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'cards.json')));
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
@@ -810,7 +815,7 @@ class GamePlayer {
 		this.deck = [],
 		this.hand = [];
 
-		var deck_temp = JSON.parse(fs.readFileSync('src/json/deck_p1.json'));
+		var deck_temp = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'deck_p1.json')));
 		deck_temp = shuffle(deck_temp);
 		this.deck = createCardArray(deck_temp);
 	}

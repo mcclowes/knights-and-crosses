@@ -1,9 +1,14 @@
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import dns from 'dns';
 import os from 'os';
 import { promisify } from 'util';
 import { io as clientio } from 'socket.io-client';
 import GameCore from './game.core.ai.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const lookup = promisify(dns.lookup);
 
@@ -101,7 +106,7 @@ const seedSetAI = (playerCardValue, enemyCardValue, centerMod, enemyMod, shieldM
 
 // Seed AI from JSON file
 const seedAI = () => {
-    const data = JSON.parse(fs.readFileSync('./json/ai.json', 'utf8'));
+    const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'ai.json'), 'utf8'));
     for (const solution of data) {
         aiSolutions.push({
             playerCardValue: solution.player_card_value,
