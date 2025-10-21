@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Script from 'next/script';
-import $ from 'jquery';
-import { io } from 'socket.io-client';
-import * as dat from 'dat.gui';
 
 // Extend the Window interface to include game-related properties
 declare global {
@@ -13,10 +10,10 @@ declare global {
       socket?: unknown;
     };
     game_core?: unknown;
-    $?: typeof $;
-    jQuery?: typeof $;
-    io?: typeof io;
-    dat?: typeof dat;
+    $?: any;
+    jQuery?: any;
+    io?: any;
+    dat?: any;
   }
 }
 
@@ -34,13 +31,28 @@ export default function Game() {
   }, []);
 
   useEffect(() => {
-    // Attach libraries to window object for legacy game code
-    if (typeof window !== 'undefined') {
-      window.$ = $;
-      window.jQuery = $;
-      window.io = io;
-      window.dat = dat;
-    }
+    // Dynamically import and attach libraries to window object for legacy game code
+    // This ensures they only load on the client side, avoiding SSR issues
+    const loadLibraries = async () => {
+      if (typeof window !== 'undefined') {
+        // Load jQuery
+        const jQuery = (await import('jquery')).default;
+        window.$ = jQuery;
+        window.jQuery = jQuery;
+
+        // Load Socket.io client
+        const { io } = await import('socket.io-client');
+        window.io = io;
+
+        // Load dat.gui
+        const dat = await import('dat.gui');
+        window.dat = dat;
+
+        console.log('Client libraries loaded successfully');
+      }
+    };
+
+    loadLibraries();
   }, []);
 
   const handleStartGame = () => {
