@@ -10,6 +10,10 @@ declare global {
       socket?: unknown;
     };
     game_core?: unknown;
+    $?: any;
+    jQuery?: any;
+    io?: any;
+    dat?: any;
   }
 }
 
@@ -24,6 +28,31 @@ export default function Game() {
     if (savedName) {
       setPlayerName(savedName);
     }
+  }, []);
+
+  useEffect(() => {
+    // Dynamically import and attach libraries to window object for legacy game code
+    // This ensures they only load on the client side, avoiding SSR issues
+    const loadLibraries = async () => {
+      if (typeof window !== 'undefined') {
+        // Load jQuery
+        const jQuery = (await import('jquery')).default;
+        window.$ = jQuery;
+        window.jQuery = jQuery;
+
+        // Load Socket.io client
+        const { io } = await import('socket.io-client');
+        window.io = io;
+
+        // Load dat.gui
+        const dat = await import('dat.gui');
+        window.dat = dat;
+
+        console.log('Client libraries loaded successfully');
+      }
+    };
+
+    loadLibraries();
   }, []);
 
   const handleStartGame = () => {
@@ -60,24 +89,6 @@ export default function Game() {
       <Head>
         <title>Sigil Crosses</title>
       </Head>
-
-      {/* Load jQuery first */}
-      <Script
-        src="/lib/jquery-2.1.4.min.js"
-        strategy="afterInteractive"
-      />
-
-      {/* Load Socket.io client from CDN */}
-      <Script
-        src="https://cdn.socket.io/4.7.4/socket.io.min.js"
-        strategy="afterInteractive"
-      />
-
-      {/* Load dat.gui */}
-      <Script
-        src="/lib/dat.gui.min.js"
-        strategy="afterInteractive"
-      />
 
       {/* Load game client code */}
       <Script
