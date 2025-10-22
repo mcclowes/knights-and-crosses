@@ -22,38 +22,43 @@ interface NextApiResponseWithSocket extends NextApiResponse {
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponseWithSocket) {
   try {
-    if (res.socket.server.io) {
-      console.log('Socket.IO already initialized');
+    // Initialize Socket.IO if not already initialized
+    if (!res.socket.server.io) {
+      console.log('Initializing Socket.IO server...');
+
+      // Initialize Socket.IO
+      const io = new SocketIOServer(res.socket.server as any, {
+        path: '/api/socket',
+        addTrailingSlash: false,
+        cors: {
+          origin: '*',
+          methods: ['GET', 'POST'],
+        },
+      });
+
+      res.socket.server.io = io;
+
+      // Initialize the game server with Socket.IO
+      const gameServer = new GameServer(io, res.socket.server);
+
+      try {
+        await gameServer.start();
+        console.log('Socket.IO server initialized successfully');
+      } catch (error) {
+        console.error('Failed to start game server:', error);
+        // Don't throw - the socket.io server is still initialized and can handle connections
+      }
+    }
+
+    // Let Socket.IO handle the request
+    // Socket.IO's engine will process polling/websocket requests
+    const io = res.socket.server.io;
+    if (io && io.engine) {
+      // Pass the request to Socket.IO's engine to handle the transport protocol
+      (io.engine as any).handleRequest(req, res);
+    } else {
       res.end();
-      return;
     }
-
-    console.log('Initializing Socket.IO server...');
-
-    // Initialize Socket.IO
-    const io = new SocketIOServer(res.socket.server as any, {
-      path: '/api/socket',
-      addTrailingSlash: false,
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST'],
-      },
-    });
-
-    res.socket.server.io = io;
-
-    // Initialize the game server with Socket.IO
-    const gameServer = new GameServer(io, res.socket.server);
-
-    try {
-      await gameServer.start();
-      console.log('Socket.IO server initialized successfully');
-    } catch (error) {
-      console.error('Failed to start game server:', error);
-      // Don't throw - the socket.io server is still initialized and can handle connections
-    }
-
-    res.end();
   } catch (error) {
     console.error('Error in socket handler:', error);
     res.status(500).json({ error: 'Failed to initialize socket server' });
