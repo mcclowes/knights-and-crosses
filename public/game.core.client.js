@@ -12,15 +12,24 @@ var game;
 var clickSound = new Audio('/assets/sound/class_tab_click.ogg');
 var endTurnSound = new Audio('/assets/sound/bar_button_A_press.ogg');
 
-var cards = []; // Load cards (with jQuery)
-$.ajax({
-    url: "json/cards.json",
-    async: false,
-    dataType: 'json',
-    success: function(json) {
-        cards = json;
+var cards = []; // Load cards asynchronously
+
+// Load cards data from JSON file
+async function loadCards() {
+    try {
+        const response = await fetch('/json/cards.json');
+        if (!response.ok) {
+            console.error('Failed to load cards.json');
+            return [];
+        }
+        cards = await response.json();
+        console.log('Cards loaded successfully:', cards.length, 'cards');
+        return cards;
+    } catch (error) {
+        console.error('Error loading cards:', error);
+        return [];
     }
-});
+}
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
@@ -518,19 +527,8 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [];
 	this.hand = [];
 
-	// Load deck synchronously
-	var deck_temp = [];
-	$.ajax({
-		url: "json/deck_p1.json",
-		async: false,
-		dataType: 'json',
-		success: function(json) {
-			deck_temp = json;
-		}
-	});
-	
-	deck_temp = shuffle(deck_temp);
-	this.deck = create_card_array(deck_temp);
+	// Deck will be loaded asynchronously during initialization
+	this._deckLoaded = false;
 
 	this.mouseX = null;
 	this.mouseY = null;
@@ -827,28 +825,58 @@ window.setPlayerName = function() {
 
 /* --------------------- Handle Load and touch ----------------------- */
 
+// Load deck data from JSON file
+async function loadDeck(deckFile) {
+	try {
+		const response = await fetch(deckFile);
+		if (!response.ok) {
+			console.error('Failed to load', deckFile);
+			return [];
+		}
+		const deck_temp = await response.json();
+		return shuffle(deck_temp);
+	} catch (error) {
+		console.error('Error loading deck:', error);
+		return [];
+	}
+}
+
 // Initialize game when DOM is ready
-function initializeGame() {
+async function initializeGame() {
 	console.log('Initializing game...');
-	
+
 	// Check if game_core constructor is available
 	if (typeof game_core === 'undefined') {
 		console.error('game_core constructor not found! Make sure the script is loaded properly.');
 		return;
 	}
-	
+
+	// Load cards data first
+	console.log('Loading cards data...');
+	await loadCards();
+
 	game = new game_core(); // Create game
 	window.game = game; // Expose to global scope
 	game.viewport = document.getElementById('viewport');
-	
+
 	if (!game.viewport) {
 		console.error('Canvas element not found!');
 		return;
 	}
-	
+
 	game.viewport.width = game.world.width; //Adjust canvas size
 	game.viewport.height = game.world.height;
 	game.ctx = game.viewport.getContext('2d');//Fetch canvas
+
+	// Load decks for both players
+	console.log('Loading player decks...');
+	const deck_data = await loadDeck('/json/deck_p1.json');
+	game.players.self.deck = create_card_array(deck_data);
+	game.players.self._deckLoaded = true;
+
+	const deck_data_other = await loadDeck('/json/deck_p1.json');
+	game.players.other.deck = create_card_array(deck_data_other);
+	game.players.other._deckLoaded = true;
 	
 	// Handle mouse events
 	game.ctx.canvas.addEventListener('selectstart', function(e) { e.preventDefault(); return false; }, false); // Prevent highlighting text
