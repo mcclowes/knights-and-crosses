@@ -4,8 +4,9 @@
 var frame_time = 60 / 1000;
 
 var fs = require('fs');
-var results_file = 'src/json/card_data.json';
-var cards = JSON.parse(fs.readFileSync('src/json/cards.json'));
+var path = require('path');
+var results_file = path.join(__dirname, 'json', 'card_data.json');
+var cards = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'cards.json')));
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
@@ -851,7 +852,7 @@ var game_player = function( game_instance, player_instance ) {
 	this.deck = [],
 	this.hand = [];
 
-	var deck_temp = JSON.parse(fs.readFileSync('src/json/deck_p1.json'));
+	var deck_temp = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'deck_p1.json')));
 	deck_temp = shuffle(deck_temp);
 	this.deck = create_card_array(deck_temp);
 }; //game_player.constructor
@@ -1054,7 +1055,7 @@ game_core.prototype.client_onnetmessage = function(data) {
 					this.game_count++;
 					if (this.game_count > 30) { this.game_count = 30; }; 
 					//update data file
-					var ai_results = JSON.parse(fs.readFileSync('json/ai.json'));
+					var ai_results = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'ai.json')));
 					for ( var i = 0; i < ai_results.length; i++ ) {
 						//console.log(ai_results[i].player_card_value + ' vs. ' +  this.player_card_value);
 						if (ai_results[i].player_card_value === this.player_card_value &&
@@ -1066,7 +1067,7 @@ game_core.prototype.client_onnetmessage = function(data) {
 							ai_results[i].rock_mod === this.rock_mod ) {
 							console.log("Found it");
 							ai_results[i].mmr = this.mmr;
-							fs.writeFileSync('json/ai.json', JSON.stringify(ai_results));
+							fs.writeFileSync(path.join(__dirname, 'json', 'ai.json'), JSON.stringify(ai_results));
 							break;
 						}
 					}
@@ -1080,7 +1081,7 @@ game_core.prototype.client_onnetmessage = function(data) {
 						rock_mod: this.rock_mod, 
 						mmr: this.mmr
 					});
-					fs.writeFileSync('json/ai.json', JSON.stringify(ai_results));
+					fs.writeFileSync(path.join(__dirname, 'json', 'ai.json'), JSON.stringify(ai_results));
 					if (this.players.self.host === true) {
 						console.log('W SENT');
 						this.socket.send( 'w' );
