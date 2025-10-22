@@ -767,6 +767,17 @@ game_core.prototype.client_ondisconnect = function(data) {
 // Handle connecting to a server
 game_core.prototype.client_connect_to_server = function() {
 	console.log('Attempting to connect to server...');
+
+	// Check if io is available
+	if (typeof io === 'undefined') {
+		console.log('Socket.IO client not yet loaded, waiting...');
+		// Retry connection after a short delay
+		setTimeout(() => {
+			this.client_connect_to_server();
+		}, 100);
+		return;
+	}
+
 	this.socket = io({ path: '/api/socket' }); // Server socket with custom path for Vercel
 
 	this.socket.on('connect', function(){
