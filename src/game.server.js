@@ -19,12 +19,14 @@ class GameServer {
 		this.address = '127.0.0.1'; // Explicitly use IPv4
 		this.verbose = true; // Enable verbose logging for debugging
 		this.logger = new Logger(this.verbose);
+		this.isServerless = false;
 
 		// Use provided server/io or create new ones
 		if (io && httpServer) {
 			this.io = io;
 			this.server = httpServer;
 			this.app = null; // No need for Express routes when using Next.js
+			this.isServerless = true; // Mark as serverless when using provided server
 		} else {
 			this.app = express();
 			this.server = http.createServer(this.app);
@@ -34,8 +36,10 @@ class GameServer {
 		this.gameService = new GameService(this.logger);
 		this.messageHandler = new MessageHandler(this.gameService);
 
-		// Add error handler for the server
-		this.server.on('error', this.handleServerError.bind(this));
+		// Only add error handler for non-serverless environments
+		if (!this.isServerless && this.server && typeof this.server.on === 'function') {
+			this.server.on('error', this.handleServerError.bind(this));
+		}
 	}
 
 	async start() {
