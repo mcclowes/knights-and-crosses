@@ -10,8 +10,8 @@ const {
   TargetType,
   QuantityType,
   ScopeType,
-  Keywords
-} = require('./card-effects');
+  Keywords,
+} = require("./card-effects");
 
 /**
  * Parse a single effect string into a structured effect object
@@ -19,7 +19,7 @@ const {
  * @returns {Object} Parsed effect object
  */
 function parseEffect(effectString) {
-  if (!effectString || typeof effectString !== 'string') {
+  if (!effectString || typeof effectString !== "string") {
     return { type: EffectType.UNKNOWN, raw: effectString };
   }
 
@@ -29,7 +29,7 @@ function parseEffect(effectString) {
     quantity: QuantityType.ONE,
     target: TargetType.ANY,
     scope: ScopeType.PIECES,
-    raw: effectString
+    raw: effectString,
   };
 
   if (tokens.length === 0) {
@@ -77,7 +77,12 @@ function parseEffect(effectString) {
     effect.scope = ScopeType.CARDS;
     parseQuantity(tokens, effect, 1);
     // Check for "your enemy draws" pattern
-    if (tokens[1] && tokens[1].match(Keywords.SELF) && tokens[2] && tokens[2].match(Keywords.ENEMY)) {
+    if (
+      tokens[1] &&
+      tokens[1].match(Keywords.SELF) &&
+      tokens[2] &&
+      tokens[2].match(Keywords.ENEMY)
+    ) {
       effect.target = TargetType.ENEMY;
     } else {
       effect.target = TargetType.SELF;
@@ -128,7 +133,12 @@ function parseEffect(effectString) {
   // If no match, check if starting with "you/your"
   if (action.match(Keywords.SELF)) {
     // "Your enemy draws X cards"
-    if (tokens[1] && tokens[1].match(Keywords.ENEMY) && tokens[2] && tokens[2].match(Keywords.DRAW)) {
+    if (
+      tokens[1] &&
+      tokens[1].match(Keywords.ENEMY) &&
+      tokens[2] &&
+      tokens[2].match(Keywords.DRAW)
+    ) {
       effect.type = EffectType.DRAW;
       effect.target = TargetType.ENEMY;
       effect.scope = ScopeType.CARDS;
@@ -200,25 +210,25 @@ function parseQuantityAndTarget(tokens, effect, startIndex) {
 function parseConditionalEffect(tokens, effect) {
   effect.type = EffectType.CONDITIONAL;
   effect.condition = {
-    type: 'UNKNOWN',
-    comparison: 'LEAST',
-    metric: 'PIECES'
+    type: "UNKNOWN",
+    comparison: "LEAST",
+    metric: "PIECES",
   };
 
   // Pattern: "If you have the least pieces..."
   if (tokens[1] && tokens[1].match(Keywords.SELF)) {
-    effect.condition.type = 'SELF';
+    effect.condition.type = "SELF";
 
     // Look for "least"
     for (let i = 2; i < tokens.length; i++) {
       if (tokens[i].match(Keywords.LEAST)) {
-        effect.condition.comparison = 'LEAST';
+        effect.condition.comparison = "LEAST";
 
         // Check what metric (pieces or shields)
         if (tokens[i + 1] && tokens[i + 1].match(Keywords.PIECE)) {
-          effect.condition.metric = 'PIECES';
+          effect.condition.metric = "PIECES";
         } else if (tokens[i + 1] && tokens[i + 1].match(Keywords.SHIELD_WORD)) {
-          effect.condition.metric = 'SHIELDS';
+          effect.condition.metric = "SHIELDS";
         }
         break;
       }
@@ -238,13 +248,13 @@ function parseCardEffects(effectStrings) {
     return [];
   }
 
-  return effectStrings.map(effectString => parseEffect(effectString));
+  return effectStrings.map((effectString) => parseEffect(effectString));
 }
 
 // Export for CommonJS (Node.js) and browser
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     parseEffect,
-    parseCardEffects
+    parseCardEffects,
   };
 }

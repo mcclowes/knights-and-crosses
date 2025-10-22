@@ -1,20 +1,21 @@
-import Head from 'next/head';
-import Script from 'next/script';
-import Link from 'next/link';
+import Head from "next/head";
+import Script from "next/script";
+import Link from "next/link";
 
 export default function DeckBuilder() {
   return (
     <>
       <Head>
         <title>Sigil Crosses | Deck Builder</title>
-        <link rel="shortcut icon" href="/assets/img/favicon.png" type="image/x-icon" />
+        <link
+          rel="shortcut icon"
+          href="/assets/img/favicon.png"
+          type="image/x-icon"
+        />
       </Head>
 
       {/* Load jQuery first */}
-      <Script
-        src="/lib/jquery-2.1.4.min.js"
-        strategy="beforeInteractive"
-      />
+      <Script src="/lib/jquery-2.1.4.min.js" strategy="beforeInteractive" />
 
       {/* Load jQuery UI */}
       <Script
@@ -23,10 +24,7 @@ export default function DeckBuilder() {
       />
 
       {/* Load deck builder script */}
-      <Script
-        src="/lib/deck_builder.js"
-        strategy="afterInteractive"
-      />
+      <Script src="/lib/deck_builder.js" strategy="afterInteractive" />
 
       <center>
         <h1>Sigil Crosses</h1>
@@ -35,9 +33,7 @@ export default function DeckBuilder() {
           <a href="#" id="save" download="deck.json">
             Save Deck
           </a>
-
           &#9;&#9;&#9;Load Deck <input type="file" id="load" />
-
           <Link href="/">
             <button type="button">Quit</button>
           </Link>

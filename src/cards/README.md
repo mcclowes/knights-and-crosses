@@ -28,7 +28,7 @@ Card Effect String → Parser → Structured Effect → Resolver → Game State 
 ### Basic Usage
 
 ```javascript
-const { resolveCard } = require('./cards');
+const { resolveCard } = require("./cards");
 
 // In your game code
 resolveCard(cardName, player, enemy, board, cards);
@@ -37,7 +37,7 @@ resolveCard(cardName, player, enemy, board, cards);
 ### Advanced Usage
 
 ```javascript
-const { parseEffect, applyEffect } = require('./cards');
+const { parseEffect, applyEffect } = require("./cards");
 
 // Parse an effect string
 const effect = parseEffect("Deal 2 damage to enemy pieces");
@@ -50,6 +50,7 @@ applyEffect(effect, player, enemy, board, cardName);
 ## Supported Effects
 
 ### Action Effects
+
 - **Deal/Damage** - Damage pieces (removes shields first)
 - **Destroy/Remove** - Destroy pieces or shields
 - **Draw** - Draw cards from deck
@@ -63,11 +64,13 @@ applyEffect(effect, player, enemy, board, cardName);
 ### Effect Modifiers
 
 #### Quantifiers
+
 - `a`, `1` - Single target
 - `all`, `every` - All targets (immediate effect)
 - `<number>` - Specific quantity
 
 #### Targets
+
 - `you`, `your` - Current player
 - `enemy`, `opponent` - Enemy player
 - No target specified - Player chooses (any)
@@ -76,20 +79,20 @@ applyEffect(effect, player, enemy, board, cardName);
 
 ```javascript
 // Basic effects
-"Deal 1 damage"                    // Player chooses target piece
-"Draw 2 cards"                     // Draw 2 cards from deck
+"Deal 1 damage"; // Player chooses target piece
+"Draw 2 cards"; // Draw 2 cards from deck
 
 // Targeted effects
-"Deal 2 damage to enemy pieces"    // Damage 2 enemy pieces
-"Destroy 1 your piece"             // Destroy 1 own piece
+"Deal 2 damage to enemy pieces"; // Damage 2 enemy pieces
+"Destroy 1 your piece"; // Destroy 1 own piece
 
 // Area effects
-"Destroy all pieces"               // Clear the board
-"Shield all pieces"                // Shield everything
+"Destroy all pieces"; // Clear the board
+"Shield all pieces"; // Shield everything
 
 // Complex effects
-"End your turn"                    // End turn immediately
-"Freeze 3 empty squares"           // Add frost to 3 squares
+"End your turn"; // End turn immediately
+"Freeze 3 empty squares"; // Add frost to 3 squares
 ```
 
 ## Application Modes
@@ -97,13 +100,17 @@ applyEffect(effect, player, enemy, board, cardName);
 Effects are applied in two ways:
 
 ### 1. Immediate Effects
+
 Applied instantly when the card is played:
+
 - "Destroy all pieces"
 - "Draw 2 cards"
 - "End your turn"
 
 ### 2. State Flag Effects
+
 Set a player state flag requiring further player action:
+
 - "Deal 1 damage" → Sets `player.state.damagingA = 1`
 - Player then clicks a piece to apply damage
 
@@ -112,6 +119,7 @@ The resolver automatically determines the correct mode based on the effect.
 ## Benefits
 
 ### Before (Old System)
+
 - 200+ lines of nested if/else statements
 - Duplicated code in server and AI
 - Difficult to add new card effects
@@ -119,6 +127,7 @@ The resolver automatically determines the correct mode based on the effect.
 - Regex patterns repeated everywhere
 
 ### After (New System)
+
 - ~150 lines per module, well-organized
 - Single source of truth for card logic
 - Easy to extend with new effects
@@ -130,22 +139,25 @@ The resolver automatically determines the correct mode based on the effect.
 To add a new card effect:
 
 1. **Add effect type** in `card-effects.js`:
+
 ```javascript
 const EffectType = {
   // ... existing types
-  NEW_EFFECT: 'NEW_EFFECT'
+  NEW_EFFECT: "NEW_EFFECT",
 };
 ```
 
 2. **Add keywords** for parsing:
+
 ```javascript
 const Keywords = {
   // ... existing keywords
-  NEW_KEYWORD: /^new$/i
+  NEW_KEYWORD: /^new$/i,
 };
 ```
 
 3. **Add parsing logic** in `card-parser.js`:
+
 ```javascript
 if (action.match(Keywords.NEW_KEYWORD)) {
   effect.type = EffectType.NEW_EFFECT;
@@ -155,6 +167,7 @@ if (action.match(Keywords.NEW_KEYWORD)) {
 ```
 
 4. **Add resolution logic** in `card-resolver.js`:
+
 ```javascript
 case EffectType.NEW_EFFECT:
   applyNewEffect(effect, player, board);
