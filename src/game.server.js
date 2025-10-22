@@ -10,6 +10,7 @@ import { GameService } from './server/services/GameService.js';
 import { MessageHandler } from './server/handlers/MessageHandler.js';
 import { Logger } from './server/utils/logger.js';
 import { RedisGameStorage } from './server/storage/RedisGameStorage.js';
+import { SOCKET_PATH, isKvConfigured } from './server/utils/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,21 +24,28 @@ class GameServer {
 		this.isServerless = false;
 
 		// Use provided server/io or create new ones
-		if (io && httpServer) {
-			this.io = io;
-			this.server = httpServer;
-			this.app = null; // No need for Express routes when using Next.js
-			this.isServerless = true; // Mark as serverless when using provided server
-		} else {
-			this.app = express();
-			this.server = http.createServer(this.app);
-			this.io = new Server(this.server);
-		}
+                if (io && httpServer) {
+                        this.io = io;
+                        this.server = httpServer;
+                        this.app = null; // No need for Express routes when using Next.js
+                        this.isServerless = true; // Mark as serverless when using provided server
+                } else {
+                        this.app = express();
+                        this.server = http.createServer(this.app);
+                        this.io = new Server(this.server, { path: SOCKET_PATH });
+                }
 
-		// Initialize Redis storage for serverless environments
-		const storage = this.isServerless ? new RedisGameStorage() : null;
-		this.gameService = new GameService(this.logger, storage);
-		this.messageHandler = new MessageHandler(this.gameService);
+                // Initialize Redis storage for serverless environments when KV is available
+                const storage = this.isServerless && isKvConfigured() ? new RedisGameStorage() : null;
+                if (this.isServerless && storage) {
+                        this.logger.info('Vercel KV detected; enabling Redis-backed matchmaking metadata.');
+                } else if (this.isServerless && !storage) {
+                        this.logger.warn(
+                                'Vercel KV environment variables not detected; running without Redis storage.'
+                        );
+                }
+                this.gameService = new GameService(this.logger, storage);
+                this.messageHandler = new MessageHandler(this.gameService);
 
 		// Only add error handler for non-serverless environments
 		if (!this.isServerless && this.server && typeof this.server.on === 'function') {

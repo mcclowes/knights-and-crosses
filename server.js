@@ -3,6 +3,7 @@ import { parse } from 'url';
 import next from 'next';
 import { Server } from 'socket.io';
 import { GameServer } from './src/game.server.js';
+import { SOCKET_PATH } from './src/server/utils/config.js';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -19,7 +20,7 @@ app.prepare().then(() => {
   });
 
   // Initialize Socket.io with the HTTP server
-  const io = new Server(httpServer);
+  const io = new Server(httpServer, { path: SOCKET_PATH });
 
   // Initialize the game server with Socket.io and HTTP server
   const gameServer = new GameServer(io, httpServer);
