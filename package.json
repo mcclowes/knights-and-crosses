@@ -8,7 +8,6 @@
     "dev": "npm run copy-assets && node server.js",
     "build": "npm run copy-assets && next build",
     "start": "NODE_ENV=production node server.js",
-    "start:old": "node app.js",
     "create-ai": "node src/ai_manager.js",
     "test": "jest",
     "lint": "eslint . --ext .ts,.js,.tsx",
