@@ -13,8 +13,8 @@
  * ```
  */
 
-const { resolveCard, applyEffect } = require("./card-resolver");
-const { parseEffect, parseCardEffects } = require("./card-parser");
+const { resolveCard, applyEffect } = require("./card-resolver.cjs");
+const { parseEffect, parseCardEffects } = require("./card-parser.cjs");
 const {
   EffectType,
   TargetType,
@@ -23,7 +23,7 @@ const {
   ApplicationMode,
   Keywords,
   EffectMetadata,
-} = require("./card-effects");
+} = require("./card-effects.cjs");
 
 module.exports = {
   // Main resolver
