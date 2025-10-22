@@ -10,10 +10,10 @@ const {
   TargetType,
   QuantityType,
   ApplicationMode,
-  EffectMetadata
-} = require('./card-effects');
+  EffectMetadata,
+} = require("./card-effects");
 
-const { parseCardEffects } = require('./card-parser');
+const { parseCardEffects } = require("./card-parser");
 
 // Constants
 const MAX_HAND_SIZE = 10;
@@ -47,7 +47,7 @@ function resolveCard(cardName, player, enemy, board, cards) {
   const parsedEffects = parseCardEffects(cardData.effects);
 
   // Apply each effect
-  parsedEffects.forEach(effect => {
+  parsedEffects.forEach((effect) => {
     applyEffect(effect, player, enemy, board, cardName);
   });
 
@@ -288,13 +288,13 @@ function applyConditionalEffect(effect, player, board, cardName) {
   }
 
   // Currently only supports "If you have the least X, return to hand"
-  if (effect.condition.comparison === 'LEAST') {
-    if (effect.condition.metric === 'PIECES') {
+  if (effect.condition.comparison === "LEAST") {
+    if (effect.condition.metric === "PIECES") {
       const hasLeastPieces = checkHasLeastPieces(player, board);
       if (hasLeastPieces) {
         returnCardToHand(player, cardName);
       }
-    } else if (effect.condition.metric === 'SHIELDS') {
+    } else if (effect.condition.metric === "SHIELDS") {
       // Shield checking logic would go here
       returnCardToHand(player, cardName);
     }
@@ -349,7 +349,10 @@ function removeAllShields(board) {
 function freezeAllSquares(board) {
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 4; col++) {
-      if (board.state.results[row][col] === 0 && board.state.rock[row][col] === 0) {
+      if (
+        board.state.results[row][col] === 0 &&
+        board.state.rock[row][col] === 0
+      ) {
         board.state.frost[row][col] = FROST_DURATION;
       }
     }
@@ -375,7 +378,10 @@ function thawAllSquares(board) {
 function blockAllSquares(board) {
   for (let row = 0; row < 4; row++) {
     for (let col = 0; col < 4; col++) {
-      if (board.state.results[row][col] === 0 && board.state.frost[row][col] === 0) {
+      if (
+        board.state.results[row][col] === 0 &&
+        board.state.frost[row][col] === 0
+      ) {
         board.state.rock[row][col] = ROCK_DURATION;
       }
     }
@@ -420,8 +426,10 @@ function checkHasLeastPieces(player, board) {
   // Positive count means player 1 has more, negative means player 2 has more
   // This needs to be adjusted based on which player is self
   // For now, return if piece counter indicates this player has less
-  return (player.host === true && pieceCounter > 0) ||
-         (player.host === false && pieceCounter < 0);
+  return (
+    (player.host === true && pieceCounter > 0) ||
+    (player.host === false && pieceCounter < 0)
+  );
 }
 
 /**
@@ -434,9 +442,9 @@ function returnCardToHand(player, cardName) {
 }
 
 // Export for CommonJS (Node.js) and browser
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     resolveCard,
-    applyEffect
+    applyEffect,
   };
 }

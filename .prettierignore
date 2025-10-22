@@ -1,0 +1,9 @@
+node_modules
+public/lib
+public/json
+src/json
+public/assets/css
+src/game.core.ai.js
+src/game.core.client.js
+src/game.core.server.js
+src/game.server.js

@@ -13,8 +13,8 @@
  * ```
  */
 
-const { resolveCard, applyEffect } = require('./card-resolver');
-const { parseEffect, parseCardEffects } = require('./card-parser');
+const { resolveCard, applyEffect } = require("./card-resolver");
+const { parseEffect, parseCardEffects } = require("./card-parser");
 const {
   EffectType,
   TargetType,
@@ -22,8 +22,8 @@ const {
   ScopeType,
   ApplicationMode,
   Keywords,
-  EffectMetadata
-} = require('./card-effects');
+  EffectMetadata,
+} = require("./card-effects");
 
 module.exports = {
   // Main resolver
@@ -41,5 +41,5 @@ module.exports = {
   ScopeType,
   ApplicationMode,
   Keywords,
-  EffectMetadata
+  EffectMetadata,
 };

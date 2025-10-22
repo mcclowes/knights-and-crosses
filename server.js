@@ -1,11 +1,11 @@
-import { createServer } from 'http';
-import { parse } from 'url';
-import next from 'next';
-import { Server } from 'socket.io';
-import { GameServer } from './src/game.server.js';
+import { createServer } from "http";
+import { parse } from "url";
+import next from "next";
+import { Server } from "socket.io";
+import { GameServer } from "./src/game.server.js";
 
-const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const dev = process.env.NODE_ENV !== "production";
+const hostname = "localhost";
 const port = process.env.PORT || 3000;
 
 // Create Next.js app
@@ -23,13 +23,13 @@ app.prepare().then(() => {
 
   // Initialize the game server with Socket.io and HTTP server
   const gameServer = new GameServer(io, httpServer);
-  gameServer.start().catch(error => {
-    console.error('Failed to start game server:', error);
+  gameServer.start().catch((error) => {
+    console.error("Failed to start game server:", error);
     process.exit(1);
   });
 
   httpServer
-    .once('error', (err) => {
+    .once("error", (err) => {
       console.error(err);
       process.exit(1);
     })
