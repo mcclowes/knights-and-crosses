@@ -1,39 +1,90 @@
 import { kv } from '@vercel/kv';
 
 /**
- * Redis-backed storage for game metadata
- * Stores lightweight game info for matchmaking and recovery
- * Game logic remains in-memory for performance
+ * Redis-backed storage for complete game state
+ * Stores full game state for cross-instance matchmaking and recovery
+ * Enables serverless deployments and multi-instance game coordination
+ * Game logic runs in-memory for performance, synced to KV on state changes
  */
 export class RedisGameStorage {
     constructor() {
         this.GAME_KEY_PREFIX = 'game:';
         this.GAMES_LIST_KEY = 'games:active';
-        this.GAME_TTL = 3600; // 1 hour TTL for games
+        // Infinite TTL for games - they're explicitly deleted when ended
+        // This prevents long games from expiring mid-play
+        this.GAME_TTL = null; // null = no expiration
+        this.GAME_TTL_SECONDS = 7200; // 2 hours fallback if TTL needed
     }
 
     /**
-     * Save game metadata to Redis
+     * Serialize full game state for storage
+     */
+    serializeGameState(game) {
+        const gameState = {};
+
+        if (game.gamecore) {
+            gameState.turn = game.gamecore.turn;
+            gameState.board = game.gamecore.board.state;
+            gameState.local_time = game.gamecore.local_time;
+            gameState.server_time = game.gamecore.server_time;
+
+            // Serialize player states
+            if (game.gamecore.players.self) {
+                gameState.player_host = {
+                    state: game.gamecore.players.self.state,
+                    hand: game.gamecore.players.self.hand.map(card => ({ cardName: card.cardName })),
+                    deck: game.gamecore.players.self.deck.map(card => ({ cardName: card.cardName })),
+                    mmr: game.gamecore.players.self.mmr
+                };
+            }
+
+            if (game.gamecore.players.other) {
+                gameState.player_client = {
+                    state: game.gamecore.players.other.state,
+                    hand: game.gamecore.players.other.hand.map(card => ({ cardName: card.cardName })),
+                    deck: game.gamecore.players.other.deck.map(card => ({ cardName: card.cardName })),
+                    mmr: game.gamecore.players.other.mmr
+                };
+            }
+        }
+
+        return gameState;
+    }
+
+    /**
+     * Save complete game state to Redis
      */
     async saveGame(game) {
         const gameKey = this.GAME_KEY_PREFIX + game.id;
-        const metadata = {
+
+        // Build complete game data including metadata and full state
+        const gameData = {
+            // Metadata
             id: game.id,
             hostId: game.player_host?.userid || null,
             clientId: game.player_client?.userid || null,
             playerCount: game.player_count,
             active: game.active,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            lastUpdated: Date.now(),
+
+            // Full game state (for cross-instance recovery)
+            gameState: this.serializeGameState(game)
         };
 
         try {
-            // Save game metadata with TTL
-            await kv.set(gameKey, JSON.stringify(metadata), { ex: this.GAME_TTL });
+            // Save complete game data
+            // Use infinite TTL (no expiration) - games are explicitly deleted when ended
+            if (this.GAME_TTL === null) {
+                await kv.set(gameKey, JSON.stringify(gameData));
+            } else {
+                await kv.set(gameKey, JSON.stringify(gameData), { ex: this.GAME_TTL_SECONDS });
+            }
 
             // Add to active games list
             await kv.sadd(this.GAMES_LIST_KEY, game.id);
 
-            console.log(`Saved game ${game.id} to Redis`);
+            console.log(`Saved game ${game.id} with full state to Redis`);
             return true;
         } catch (error) {
             console.error('Error saving game to Redis:', error);
@@ -128,21 +179,50 @@ export class RedisGameStorage {
     }
 
     /**
-     * Update game player count
+     * Update game player count and refresh timestamp
      */
     async updateGamePlayerCount(gameId, playerCount) {
         try {
             const game = await this.getGame(gameId);
             if (game) {
                 game.playerCount = playerCount;
+                game.lastUpdated = Date.now();
                 const gameKey = this.GAME_KEY_PREFIX + gameId;
-                await kv.set(gameKey, JSON.stringify(game), { ex: this.GAME_TTL });
+
+                // Use infinite TTL or configured TTL
+                if (this.GAME_TTL === null) {
+                    await kv.set(gameKey, JSON.stringify(game));
+                } else {
+                    await kv.set(gameKey, JSON.stringify(game), { ex: this.GAME_TTL_SECONDS });
+                }
                 return true;
             }
             return false;
         } catch (error) {
             console.error('Error updating game player count:', error);
             return false;
+        }
+    }
+
+    /**
+     * Get full game data including state (for cross-instance loading)
+     */
+    async getFullGameData(gameId) {
+        try {
+            const gameKey = this.GAME_KEY_PREFIX + gameId;
+            const data = await kv.get(gameKey);
+
+            if (!data) {
+                return null;
+            }
+
+            const gameData = typeof data === 'string' ? JSON.parse(data) : data;
+
+            // Return both metadata and gameState
+            return gameData;
+        } catch (error) {
+            console.error('Error getting full game data from Redis:', error);
+            return null;
         }
     }
 

@@ -39,7 +39,7 @@ export class MessageHandler {
     }
 
     handlePing(client, parts) {
-        client.send('s.p.' + parts[1]);
+        client.emit('message', 's.p.' + parts[1]);
     }
 
     handleLatency(client, parts) {

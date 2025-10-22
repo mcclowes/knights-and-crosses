@@ -325,7 +325,7 @@ class GameCore {
 				if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
 					console.log('The game was won');
 					this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
-					
+
 					//Update mmrs, via elo
 					console.log('Existing MMRs >> ' + this.players.self.mmr + ' vs. ' + this.players.other.mmr);
 
@@ -333,14 +333,24 @@ class GameCore {
 					var other_prob = 1 / (1 + Math.pow(10, (-this.players.other.mmr - this.players.self.mmr )/400));
 					host_prob = this.win === 1 ? (1 - host_prob) : (- host_prob);
 					other_prob = this.win === 1 ? (- other_prob) : (1 - other_prob);
-					player_client.instance.send('s.m.' + Number(host_prob).toFixed(3));
-					player_other.instance.send('s.m.' + Number(other_prob).toFixed(3));
+					player_client.instance.emit('message', 's.m.' + Number(host_prob).toFixed(3));
+					player_other.instance.emit('message', 's.m.' + Number(other_prob).toFixed(3));
+
+					// Sync final game state to storage
+					if (this.instance && this.instance.syncToStorage) {
+						this.instance.syncToStorage();
+					}
 				} else {
 					this.board.reduce_state(); // Remove frost, and rocks
 					// Draw card
 					if (player_other.deck.length > 0 && player_other.hand.length < MAX_HAND_SIZE) {
 						player_other.hand.push(player_other.deck[0]);
 						player_other.deck.splice(0, 1);
+					}
+
+					// Sync state after turn end (significant event)
+					if (this.instance && this.instance.syncToStorage) {
+						this.instance.syncToStorage();
 					}
 				}
 			} else if (input_parts[0] == 'ca') { // Clicked card
@@ -352,6 +362,11 @@ class GameCore {
 						player_client.hand.splice(i, 1);
 						player_client.state.cards_to_play = player_client.state.cards_to_play - 1;
 						this.resolve_card(target, player_client, player_other);
+
+						// Sync state after card played (significant event)
+						if (this.instance && this.instance.syncToStorage) {
+							this.instance.syncToStorage();
+						}
 						break;
 					}
 				}
@@ -459,6 +474,11 @@ class GameCore {
 						freezing 		: 0,
 						thawing 		: 0,
 						blocking 		: 0
+					}
+
+					// Sync state after piece placed (significant event)
+					if (this.instance && this.instance.syncToStorage) {
+						this.instance.syncToStorage();
 					}
 				}
 			}

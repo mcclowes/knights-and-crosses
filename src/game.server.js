@@ -145,9 +145,9 @@ class GameServer {
 				client.playername = name;
 				this.logger.log('Player ' + client.userid + ' renamed to ' + name);
 				if (client.game) {
-					client.game.player_host.send('s.n.' + client.playername);
+					client.game.player_host.emit('message', 's.n.' + client.playername);
 					if (client.game.player_client) {
-						client.game.player_client.send('s.n.' + client.playername);
+						client.game.player_client.emit('message', 's.n.' + client.playername);
 					}
 				}
 			});
