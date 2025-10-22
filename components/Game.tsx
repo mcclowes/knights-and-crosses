@@ -87,7 +87,7 @@ export default function Game() {
   return (
     <>
       <Head>
-        <title>Sigil Crosses</title>
+        <title>Knights & Crosses</title>
       </Head>
 
       {/* Load game client code */}
