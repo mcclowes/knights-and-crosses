@@ -20,33 +20,42 @@ interface NextApiResponseWithSocket extends NextApiResponse {
  * Socket.IO API route for Vercel deployment
  * This route initializes Socket.IO on the serverless Next.js HTTP server
  */
-export default function handler(req: NextApiRequest, res: NextApiResponseWithSocket) {
-  if (res.socket.server.io) {
-    console.log('Socket.IO already initialized');
+export default async function handler(req: NextApiRequest, res: NextApiResponseWithSocket) {
+  try {
+    if (res.socket.server.io) {
+      console.log('Socket.IO already initialized');
+      res.end();
+      return;
+    }
+
+    console.log('Initializing Socket.IO server...');
+
+    // Initialize Socket.IO
+    const io = new SocketIOServer(res.socket.server as any, {
+      path: '/api/socket',
+      addTrailingSlash: false,
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+      },
+    });
+
+    res.socket.server.io = io;
+
+    // Initialize the game server with Socket.IO
+    const gameServer = new GameServer(io, res.socket.server);
+
+    try {
+      await gameServer.start();
+      console.log('Socket.IO server initialized successfully');
+    } catch (error) {
+      console.error('Failed to start game server:', error);
+      // Don't throw - the socket.io server is still initialized and can handle connections
+    }
+
     res.end();
-    return;
+  } catch (error) {
+    console.error('Error in socket handler:', error);
+    res.status(500).json({ error: 'Failed to initialize socket server' });
   }
-
-  console.log('Initializing Socket.IO server...');
-
-  // Initialize Socket.IO
-  const io = new SocketIOServer(res.socket.server as any, {
-    path: '/api/socket',
-    addTrailingSlash: false,
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST'],
-    },
-  });
-
-  res.socket.server.io = io;
-
-  // Initialize the game server with Socket.IO
-  const gameServer = new GameServer(io, res.socket.server);
-  gameServer.start().catch(error => {
-    console.error('Failed to start game server:', error);
-  });
-
-  console.log('Socket.IO server initialized successfully');
-  res.end();
 }
