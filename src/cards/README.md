@@ -10,10 +10,10 @@ This system replaces the 200+ line `resolve_card()` functions that were duplicat
 
 ### Files
 
-- **card-effects.js** - Defines effect types, targets, and keywords
-- **card-parser.js** - Parses effect strings into structured objects
-- **card-resolver.js** - Applies parsed effects to game state
-- **index.js** - Main entry point with all exports
+- **card-effects.cjs** - Defines effect types, targets, and keywords
+- **card-parser.cjs** - Parses effect strings into structured objects
+- **card-resolver.cjs** - Applies parsed effects to game state
+- **index.cjs** - Main entry point with all exports
 
 ### Effect Flow
 
@@ -28,7 +28,7 @@ Card Effect String → Parser → Structured Effect → Resolver → Game State 
 ### Basic Usage
 
 ```javascript
-const { resolveCard } = require("./cards");
+const { resolveCard } = require("./cards/card-resolver.cjs");
 
 // In your game code
 resolveCard(cardName, player, enemy, board, cards);
@@ -37,7 +37,7 @@ resolveCard(cardName, player, enemy, board, cards);
 ### Advanced Usage
 
 ```javascript
-const { parseEffect, applyEffect } = require("./cards");
+const { parseEffect, applyEffect } = require("./cards/index.cjs");
 
 // Parse an effect string
 const effect = parseEffect("Deal 2 damage to enemy pieces");
@@ -138,7 +138,7 @@ The resolver automatically determines the correct mode based on the effect.
 
 To add a new card effect:
 
-1. **Add effect type** in `card-effects.js`:
+1. **Add effect type** in `card-effects.cjs`:
 
 ```javascript
 const EffectType = {
@@ -156,7 +156,7 @@ const Keywords = {
 };
 ```
 
-3. **Add parsing logic** in `card-parser.js`:
+3. **Add parsing logic** in `card-parser.cjs`:
 
 ```javascript
 if (action.match(Keywords.NEW_KEYWORD)) {
@@ -166,7 +166,7 @@ if (action.match(Keywords.NEW_KEYWORD)) {
 }
 ```
 
-4. **Add resolution logic** in `card-resolver.js`:
+4. **Add resolution logic** in `card-resolver.cjs`:
 
 ```javascript
 case EffectType.NEW_EFFECT:

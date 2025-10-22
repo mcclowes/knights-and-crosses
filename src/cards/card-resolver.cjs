@@ -11,9 +11,9 @@ const {
   QuantityType,
   ApplicationMode,
   EffectMetadata,
-} = require("./card-effects");
+} = require("./card-effects.cjs");
 
-const { parseCardEffects } = require("./card-parser");
+const { parseCardEffects } = require("./card-parser.cjs");
 
 // Constants
 const MAX_HAND_SIZE = 10;

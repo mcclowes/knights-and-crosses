@@ -11,7 +11,7 @@ const {
   QuantityType,
   ScopeType,
   Keywords,
-} = require("./card-effects");
+} = require("./card-effects.cjs");
 
 /**
  * Parse a single effect string into a structured effect object

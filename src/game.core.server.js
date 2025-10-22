@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 // Import the new card effect system
-const { resolveCard: resolveCardNew } = require('./cards/card-resolver.js');
+const { resolveCard: resolveCardNew } = require('./cards/card-resolver.cjs');
 
 const FRAME_TIME = 45;
 const MAX_HAND_SIZE = 10;

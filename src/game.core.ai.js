@@ -9,7 +9,7 @@ var results_file = path.join(__dirname, 'json', 'card_data.json');
 var cards = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'cards.json')));
 
 // Import the new card effect system
-var { resolveCard: resolveCardNew } = require('./cards/card-resolver.js');
+var { resolveCard: resolveCardNew } = require('./cards/card-resolver.cjs');
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
