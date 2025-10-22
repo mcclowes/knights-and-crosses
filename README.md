@@ -49,6 +49,61 @@ This will:
 
 This server will print its IP address to console. Visiting this address in the browser will allow human players to play the game. The server automatically handles matchmaking.
 
+### Vercel Deployment
+
+The application is optimized for deployment on Vercel with persistent game state storage using Vercel KV (Redis).
+
+#### Setup Vercel KV
+
+1. **Install Vercel CLI** (if not already installed):
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Link your project to Vercel**:
+   ```bash
+   vercel link
+   ```
+
+3. **Add Vercel KV integration**:
+   - Go to your project dashboard on [Vercel](https://vercel.com)
+   - Navigate to the "Storage" tab
+   - Click "Create Database" and select "KV"
+   - Choose a database name and region
+   - Click "Create"
+
+4. **Connect KV to your project**:
+   - The KV environment variables will be automatically added to your project
+   - Required variables: `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_URL`
+
+5. **Deploy**:
+   ```bash
+   vercel --prod
+   ```
+
+#### Local Development with Vercel KV
+
+To test KV functionality locally:
+
+1. Pull environment variables from Vercel:
+   ```bash
+   vercel env pull .env.local
+   ```
+
+2. Run development server:
+   ```bash
+   npm run dev
+   ```
+
+**Note**: The application works without Redis in local development mode (stores games in memory). Redis is automatically enabled when deployed to Vercel for persistent state management across serverless function instances.
+
+#### How It Works
+
+- **Local/Custom Server**: Games are stored in memory (no Redis required)
+- **Vercel Serverless**: Game metadata is persisted to Redis for discovery and recovery
+- Game logic remains in-memory for performance
+- Redis TTL (1 hour) automatically cleans up stale games
+
 AI instances can also be created:
 
 ```

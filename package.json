@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/mcclowesknights-and-crosses#readme",
   "dependencies": {
+    "@vercel/kv": "^3.0.0",
     "dat.gui": "^0.7.9",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
