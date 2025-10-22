@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 import { GameService } from './server/services/GameService.js';
 import { MessageHandler } from './server/handlers/MessageHandler.js';
 import { Logger } from './server/utils/logger.js';
+import { RedisGameStorage } from './server/storage/RedisGameStorage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -33,7 +34,9 @@ class GameServer {
 			this.io = new Server(this.server);
 		}
 
-		this.gameService = new GameService(this.logger);
+		// Initialize Redis storage for serverless environments
+		const storage = this.isServerless ? new RedisGameStorage() : null;
+		this.gameService = new GameService(this.logger, storage);
 		this.messageHandler = new MessageHandler(this.gameService);
 
 		// Only add error handler for non-serverless environments
@@ -44,6 +47,9 @@ class GameServer {
 
 	async start() {
 		try {
+			// Initialize game service (sync with Redis if available)
+			await this.gameService.initialize();
+
 			// Only setup server if not using Next.js
 			if (this.app) {
 				await this.setupServer();
@@ -51,7 +57,10 @@ class GameServer {
 			this.setupSocketHandlers();
 		} catch (error) {
 			this.logger.error('Failed to start server:', error);
-			process.exit(1);
+			if (!this.isServerless) {
+				process.exit(1);
+			}
+			throw error; // Re-throw for serverless environments
 		}
 	}
 
@@ -123,7 +132,10 @@ class GameServer {
 			client.emit('onconnected', { id: client.userid, name: client.playername });
 			this.logger.log('Player ' + client.playername + ' (' + client.userid + ') connected');
 
-			this.gameService.findGame(client);
+			// Find game async (no need to await here - fire and forget)
+			this.gameService.findGame(client).catch((error) => {
+				this.logger.error('Error finding game:', error);
+			});
 
 			client.on('message', (message) => {
 				this.messageHandler.handleMessage(client, message);
@@ -143,7 +155,9 @@ class GameServer {
 			client.on('disconnect', () => {
 				this.logger.log('Client ' + client.playername + ' (' + client.userid + ') disconnected');
 				if (client.game?.id) {
-					this.gameService.endGame(client.game.id, client.userid);
+					this.gameService.endGame(client.game.id, client.userid).catch((error) => {
+						this.logger.error('Error ending game:', error);
+					});
 				}
 			});
 		});

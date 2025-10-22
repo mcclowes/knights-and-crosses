@@ -58,6 +58,8 @@ export class MessageHandler {
     }
 
     handleWin(client) {
-        this.gameServer.winGame(client.game.id);
+        this.gameServer.winGame(client.game.id).catch((error) => {
+            console.error('Error handling win:', error);
+        });
     }
 } 
