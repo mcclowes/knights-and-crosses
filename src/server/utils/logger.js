@@ -1,29 +1,29 @@
 export class Logger {
-    constructor(verbose = false) {
-        this.verbose = verbose;
-    }
+  constructor(verbose = false) {
+    this.verbose = verbose;
+  }
 
-    log(...args) {
-        if (this.verbose) {
-            console.log(...args);
-        }
+  log(...args) {
+    if (this.verbose) {
+      console.log(...args);
     }
+  }
 
-    warn(...args) {
-        console.warn(...args);
-    }
+  warn(...args) {
+    console.warn(...args);
+  }
 
-    error(...args) {
-        console.error(...args);
-    }
+  error(...args) {
+    console.error(...args);
+  }
 
-    info(...args) {
-        console.info(...args);
-    }
+  info(...args) {
+    console.info(...args);
+  }
 
-    debug(...args) {
-        if (this.verbose) {
-            console.debug(...args);
-        }
+  debug(...args) {
+    if (this.verbose) {
+      console.debug(...args);
     }
-} 
+  }
+}

@@ -8,7 +8,7 @@ In the increasingly profitable competitive multiplayer games industry, ensuring 
 
 This code is part of a project aiming to highlight the potential for improving gameplay balance within multiplayer competitive games by automating the highlighting of potential balance issues. More specifically, the project explores how imbalances can be highlighted with data gathered by playing Artificial Intelligence agents against one another iteratively.
 
-The project tests the proposed approach on the game implemented here - a two-player card game typical of the competitive multiplayer genre, developed for the purposes of this research. 
+The project tests the proposed approach on the game implemented here - a two-player card game typical of the competitive multiplayer genre, developed for the purposes of this research.
 
 A Genetic Algorithm-improved Artificial Intelligence was developed to play this game. Through pitching pools of the AI against one another and recording metricised data about that gameplay, the information needed to analyse in-game cards was gath- ered. This data was used to draw conclusions about the games mechanics, enabling accurate manual game design changes.
 
@@ -19,6 +19,7 @@ The success of the balancing process suggests that the proposed new approach to 
 ## Running the code
 
 Install dependencies
+
 ```
 npm install
 ```
@@ -26,11 +27,13 @@ npm install
 ### Development
 
 For development, run:
+
 ```
 npm run dev
 ```
 
 This will:
+
 1. Copy the game client assets from `src/` to `public/`
 2. Start the development server
 
@@ -43,11 +46,70 @@ npm run start
 ```
 
 This will:
+
 1. Copy the game client assets from `src/` to `public/`
 2. Build the Next.js application
 3. Start the production server
 
 This server will print its IP address to console. Visiting this address in the browser will allow human players to play the game. The server automatically handles matchmaking.
+
+### Vercel Deployment
+
+The application is optimized for deployment on Vercel with persistent game state storage using Vercel KV (Redis).
+
+#### Setup Vercel KV
+
+1. **Install Vercel CLI** (if not already installed):
+
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Link your project to Vercel**:
+
+   ```bash
+   vercel link
+   ```
+
+3. **Add Vercel KV integration**:
+   - Go to your project dashboard on [Vercel](https://vercel.com)
+   - Navigate to the "Storage" tab
+   - Click "Create Database" and select "KV"
+   - Choose a database name and region
+   - Click "Create"
+
+4. **Connect KV to your project**:
+   - The KV environment variables will be automatically added to your project
+   - Required variables: `KV_REST_API_URL`, `KV_REST_API_TOKEN`, `KV_URL`
+
+5. **Deploy**:
+   ```bash
+   vercel --prod
+   ```
+
+#### Local Development with Vercel KV
+
+To test KV functionality locally:
+
+1. Pull environment variables from Vercel:
+
+   ```bash
+   vercel env pull .env.local
+   ```
+
+2. Run development server:
+   ```bash
+   npm run dev
+   ```
+
+**Note**: The application works without Redis in local development mode (stores games in memory). Redis is automatically enabled when deployed to Vercel for persistent state management across serverless function instances.
+
+#### How It Works
+
+- **Local/Custom Server**: Games are stored in memory (no Redis required)
+- **Vercel Serverless**: Game metadata is persisted to Redis for discovery and recovery
+- Game logic remains in-memory for performance
+- Redis TTL (1 hour) automatically cleans up stale games
 
 AI instances can also be created:
 
@@ -119,59 +181,73 @@ In the centre of the image a 4x4 game board is visible, where the Tic Tac Toe ga
 
 Currently 14 cards are included in the decks.
 
-*Armour Up*:
+_Armour Up_:
+
 - Basic
 - Shield a piece, Draw a card
 
-*Barrage*:
+_Barrage_:
+
 - Basic
 - Damage all pieces, Discard 2 cards
 
-*Bezerker*:
+_Bezerker_:
 -Rare
+
 - Discard a card, Deal 1 damage, If you have the least pieces, return this - card to your hand
 
-*Boulder*:
+_Boulder_:
+
 - Rare
 - Discard a card, Block a square
 
-*Fire Blast*:
+_Fire Blast_:
+
 - Basic
 - Deal 1 damage
 
-*Floods*:
+_Floods_:
+
 - Rare
 - Destroy all pieces, End your turn
 
-*Flurry*:
+_Flurry_:
+
 - Rare
 - Deal 2 damage to your pieces, Deal 2 damage to enemy pieces
 
-*Frost*:
+_Frost_:
+
 - Basic
 - Freeze all squares
 
-*Ice Blast*:
+_Ice Blast_:
+
 - Basic
 - Freeze a square
 
-*Reckless*:
+_Reckless_:
+
 - Rare
 - Your opponent draws 2 cards, Destroy a piece
 
-*Sabotage*:
+_Sabotage_:
+
 - Elite
 - Remove 5 shields
 
-*Sacrifice*:
+_Sacrifice_:
+
 - Rare
 - Destroy a piece of yours, Draw 3 cards
 
-*Summer*:
+_Summer_:
+
 - Basic
 - Thaw 1 square, Draw a card
 
-*Taxes*:
+_Taxes_:
+
 - Rare
 - Discard 2 cards, Shield 3 pieces
 

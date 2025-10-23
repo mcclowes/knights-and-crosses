@@ -7,6 +7,7 @@ This document describes the migration of Knights and Crosses from a traditional 
 ### Project Structure
 
 #### New Directories
+
 - `pages/` - Next.js pages (React components)
   - `index.tsx` - Main game page
   - `deck-builder.tsx` - Deck builder tool
@@ -24,6 +25,7 @@ This document describes the migration of Knights and Crosses from a traditional 
   - `game.core.client.js` - Game client code
 
 #### Modified Files
+
 - `server.js` - Custom Next.js server with Socket.io integration
 - `src/game.server.js` - Updated to work with Next.js custom server
 - `package.json` - Updated scripts for Next.js
@@ -57,6 +59,7 @@ This document describes the migration of Knights and Crosses from a traditional 
 ## Running the Application
 
 ### Development
+
 ```bash
 npm run dev
 ```
@@ -64,6 +67,7 @@ npm run dev
 Then open http://localhost:3000 in your browser.
 
 ### Production
+
 ```bash
 npm run build
 npm start
@@ -78,6 +82,7 @@ npm start
 ## Legacy Code
 
 The following legacy JavaScript code remains unchanged:
+
 - `src/game.core.client.js` - Game client logic
 - `src/game.core.server.js` - Server-side game logic
 - `src/game.core.ai.js` - AI logic
@@ -111,16 +116,21 @@ These files are loaded as scripts and work alongside the new Next.js architectur
 ## Troubleshooting
 
 ### Port Already in Use
+
 If you see `EADDRINUSE` error:
+
 ```bash
 PORT=3001 npm run dev
 ```
 
 ### Socket.io Connection Issues
+
 Make sure the server is running before opening the game in your browser. The Socket.io client will automatically connect to the same host/port as the Next.js server.
 
 ### Build Errors
+
 If you encounter build errors, try:
+
 ```bash
 rm -rf .next node_modules
 npm install
