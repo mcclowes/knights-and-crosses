@@ -82,9 +82,10 @@ const createCard = (data) => {
 /* ----------------------------- Game Core -----------------------------  */
 
 class GameCore {
-	constructor(gameInstance) {
+	constructor(gameInstance, storage = null) {
 		this.instance = gameInstance; //Store the instance, if any
 		this.server = this.instance !== undefined; //Store a flag if server
+		this.storage = storage; // KV storage for serverless persistence
 
 		this.board = new GameBoard();
 		this.turn = 1;
@@ -94,11 +95,11 @@ class GameCore {
 			self: new GamePlayer(this, this.instance.player_host),
 			other: new GamePlayer(this, this.instance.player_client)
 		};
-		
+
 		//A local timer for precision
-		this.local_time = 0.016;   
-		this._dt = new Date().getTime();  
-		this._dte = new Date().getTime();  
+		this.local_time = 0.016;
+		this._dt = new Date().getTime();
+		this._dte = new Date().getTime();
 		this.input_seq = 0;
 
 		//Client specific initialisation
@@ -362,7 +363,7 @@ class GameCore {
 				if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
 					console.log('The game was won');
 					this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
-					
+
 					//Update mmrs, via elo
 					console.log('Existing MMRs >> ' + this.players.self.mmr + ' vs. ' + this.players.other.mmr);
 
@@ -370,6 +371,11 @@ class GameCore {
 					var other_prob = 1 / (1 + Math.pow(10, (-this.players.other.mmr - this.players.self.mmr )/400));
 					host_prob = this.win === 1 ? (1 - host_prob) : (- host_prob);
 					other_prob = this.win === 1 ? (- other_prob) : (1 - other_prob);
+
+					// Store MMR changes for player stats tracking
+					this.players.self.mmrChange = host_prob * 32; // K-factor of 32
+					this.players.other.mmrChange = other_prob * 32;
+
 					player_client.instance.send('s.m.' + Number(host_prob).toFixed(3));
 					player_other.instance.send('s.m.' + Number(other_prob).toFixed(3));
 				} else {
@@ -402,7 +408,27 @@ class GameCore {
 				} else if (player_client.deck.length > 0 && player_client.hand.length > MAX_HAND_SIZE) { // Overdraw
 					player_client.deck.splice(0, 1);
 				}
-			} 
+			}
+
+			// Persist state to KV after mutation (critical for serverless)
+			this.persistState();
+		}
+	}
+
+	/**
+	 * Persist game state to KV storage
+	 * Called after every game state mutation for serverless persistence
+	 */
+	async persistState() {
+		if (!this.storage || !this.instance) {
+			return;
+		}
+
+		try {
+			const gameState = this.serializeState();
+			await this.storage.saveGameState(this.instance.id, gameState);
+		} catch (error) {
+			console.error('[GameCore] Error persisting state to KV:', error);
 		}
 	}
 
@@ -506,6 +532,83 @@ class GameCore {
 	resolve_card(card, player, enemy) {
 		// Use the new card effect system
 		resolveCardNew(card, player, enemy, this.board, cards);
+	}
+
+	/**
+	 * Serialize complete game state for storage in KV
+	 * Returns a plain object that can be JSON.stringify'd
+	 */
+	serializeState() {
+		return {
+			// Board state
+			board: {
+				results: this.board.state.results,
+				frost: this.board.state.frost,
+				rock: this.board.state.rock,
+				shields: this.board.state.shields
+			},
+			// Game meta
+			turn: this.turn,
+			local_time: this.local_time,
+			server_time: this.server_time,
+			input_seq: this.input_seq,
+			// Player self (host)
+			player_self: {
+				userid: this.players.self.instance?.userid,
+				playername: this.players.self.instance?.playername,
+				mmr: this.players.self.mmr,
+				state: this.players.self.state,
+				hand: this.players.self.hand.map(card => ({ cardName: card.cardName })),
+				deck: this.players.self.deck.map(card => ({ cardName: card.cardName })),
+				discard: this.players.self.discard || []
+			},
+			// Player other (client)
+			player_other: {
+				userid: this.players.other.instance?.userid,
+				playername: this.players.other.instance?.playername,
+				mmr: this.players.other.mmr,
+				state: this.players.other.state,
+				hand: this.players.other.hand.map(card => ({ cardName: card.cardName })),
+				deck: this.players.other.deck.map(card => ({ cardName: card.cardName })),
+				discard: this.players.other.discard || []
+			},
+			// Timestamp for staleness detection
+			savedAt: Date.now()
+		};
+	}
+
+	/**
+	 * Restore game state from serialized data
+	 * Used when loading a game from KV storage
+	 */
+	deserializeState(state) {
+		// Restore board state
+		this.board.state.results = state.board.results;
+		this.board.state.frost = state.board.frost;
+		this.board.state.rock = state.board.rock;
+		this.board.state.shields = state.board.shields;
+
+		// Restore game meta
+		this.turn = state.turn;
+		this.local_time = state.local_time;
+		this.server_time = state.server_time;
+		this.input_seq = state.input_seq;
+
+		// Restore player self state
+		this.players.self.mmr = state.player_self.mmr;
+		this.players.self.state = state.player_self.state;
+		this.players.self.hand = createCardArray(state.player_self.hand);
+		this.players.self.deck = createCardArray(state.player_self.deck);
+		this.players.self.discard = state.player_self.discard || [];
+
+		// Restore player other state
+		this.players.other.mmr = state.player_other.mmr;
+		this.players.other.state = state.player_other.state;
+		this.players.other.hand = createCardArray(state.player_other.hand);
+		this.players.other.deck = createCardArray(state.player_other.deck);
+		this.players.other.discard = state.player_other.discard || [];
+
+		console.log(`[GameCore] State restored from snapshot taken at ${new Date(state.savedAt).toISOString()}`);
 	}
 }
 
