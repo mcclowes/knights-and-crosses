@@ -61,6 +61,7 @@ export default async function handler(
 
     try {
       // Initialize Socket.IO with proper configuration for serverless
+      console.log("[Socket.IO] Creating Socket.IO server instance...");
       const io = new SocketIOServer(res.socket.server as any, {
         path: "/api/socket",
         addTrailingSlash: false,
@@ -81,9 +82,13 @@ export default async function handler(
       console.log("[Socket.IO] Server instance created and attached");
 
       // Initialize the game server with Socket.IO
-      // Use non-blocking initialization to not delay the response
+      console.log("[Socket.IO] Creating GameServer instance...");
       const gameServer = new GameServer(io, res.socket.server);
+      console.log("[Socket.IO] GameServer instance created");
+
+      // Use non-blocking initialization to not delay the response
       setImmediate(() => {
+        console.log("[Socket.IO] Starting game server asynchronously...");
         gameServer
           .start()
           .then(() => {
@@ -91,18 +96,32 @@ export default async function handler(
           })
           .catch((error) => {
             console.error("[Socket.IO] Game server start error:", error);
+            console.error("[Socket.IO] Error details:", {
+              message: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : "No stack",
+              name: error instanceof Error ? error.name : typeof error,
+            });
           });
       });
     } catch (error) {
       console.error("[Socket.IO] Initialization failed:", error);
-      console.error(
-        "[Socket.IO] Error stack:",
-        error instanceof Error ? error.stack : "No stack trace",
-      );
+      console.error("[Socket.IO] Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : "No stack",
+        name: error instanceof Error ? error.name : typeof error,
+        code: (error as any)?.code,
+      });
       if (!res.headersSent) {
         return res.status(500).json({
           error: "Failed to initialize Socket.IO",
           message: error instanceof Error ? error.message : String(error),
+          details:
+            error instanceof Error
+              ? {
+                  name: error.name,
+                  stack: error.stack?.split("\n").slice(0, 5).join("\n"),
+                }
+              : {},
         });
       }
       return;

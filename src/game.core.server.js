@@ -10,11 +10,48 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 // Import the new card effect system
-const { resolveCard: resolveCardNew } = require('./cards/card-resolver.cjs');
+let resolveCardNew;
+try {
+	const cardResolver = require('./cards/card-resolver.cjs');
+	resolveCardNew = cardResolver.resolveCard;
+} catch (error) {
+	console.error('[GameCore] Failed to load card resolver:', error);
+	// Provide a fallback
+	resolveCardNew = () => {
+		console.warn('[GameCore] Card resolver not available, using fallback');
+		return null;
+	};
+}
 
 const FRAME_TIME = 45;
 const MAX_HAND_SIZE = 10;
-const cards = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'cards.json')));
+
+// Load cards with error handling - try multiple paths for different environments
+let cards = [];
+const possibleCardsPaths = [
+	path.join(__dirname, 'json', 'cards.json'), // Development path
+	path.join(__dirname, '..', 'src', 'json', 'cards.json'), // Build path
+	path.join(process.cwd(), 'src', 'json', 'cards.json'), // Vercel path
+	path.join(process.cwd(), 'public', 'json', 'cards.json'), // Public fallback
+];
+
+for (const cardsPath of possibleCardsPaths) {
+	try {
+		console.log('[GameCore] Trying to load cards from:', cardsPath);
+		cards = JSON.parse(fs.readFileSync(cardsPath, 'utf-8'));
+		console.log('[GameCore] Cards loaded successfully from', cardsPath, ':', cards.length, 'cards');
+		break; // Success, exit loop
+	} catch (error) {
+		console.log('[GameCore] Failed to load from', cardsPath);
+	}
+}
+
+if (cards.length === 0) {
+	console.error('[GameCore] Failed to load cards.json from any path');
+	console.error('[GameCore] __dirname:', __dirname);
+	console.error('[GameCore] process.cwd():', process.cwd());
+	console.error('[GameCore] Tried paths:', possibleCardsPaths);
+}
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
@@ -594,12 +631,37 @@ class GamePlayer {
 		}
 
 		//Player arrays
-		this.deck = [],
+		this.deck = [];
 		this.hand = [];
 
-		var deck_temp = JSON.parse(fs.readFileSync(path.join(__dirname, 'json', 'deck_p1.json')));
-		deck_temp = shuffle(deck_temp);
-		this.deck = createCardArray(deck_temp);
+		// Load deck with error handling - try multiple paths for different environments
+		const possibleDeckPaths = [
+			path.join(__dirname, 'json', 'deck_p1.json'), // Development path
+			path.join(__dirname, '..', 'src', 'json', 'deck_p1.json'), // Build path
+			path.join(process.cwd(), 'src', 'json', 'deck_p1.json'), // Vercel path
+			path.join(process.cwd(), 'public', 'json', 'deck_p1.json'), // Public fallback
+		];
+
+		let deck_loaded = false;
+		for (const deckPath of possibleDeckPaths) {
+			try {
+				console.log('[GamePlayer] Trying to load deck from:', deckPath);
+				var deck_temp = JSON.parse(fs.readFileSync(deckPath, 'utf-8'));
+				deck_temp = shuffle(deck_temp);
+				this.deck = createCardArray(deck_temp);
+				console.log('[GamePlayer] Deck loaded successfully from', deckPath, ':', this.deck.length, 'cards');
+				deck_loaded = true;
+				break; // Success, exit loop
+			} catch (error) {
+				console.log('[GamePlayer] Failed to load from', deckPath);
+			}
+		}
+
+		if (!deck_loaded) {
+			console.error('[GamePlayer] Failed to load deck_p1.json from any path');
+			console.error('[GamePlayer] Tried paths:', possibleDeckPaths);
+			this.deck = [];
+		}
 	}
 }
 
