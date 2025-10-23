@@ -68,14 +68,18 @@ export default async function handler(
         cors: {
           origin: "*",
           methods: ["GET", "POST"],
+          credentials: true,
         },
-        // Configure transports - prioritize polling for serverless
-        transports: ["polling", "websocket"],
+        // Configure transports - polling only for Vercel serverless (no WebSocket support)
+        transports: ["polling"],
+        allowUpgrades: false, // Don't allow upgrade to WebSocket on Vercel
         // Increase timeouts for serverless environment
         pingTimeout: 60000,
         pingInterval: 25000,
         // Increase max HTTP buffer size
         maxHttpBufferSize: 1e8,
+        // Allow more permissive connection handling
+        allowEIO3: true,
       });
 
       res.socket.server.io = io;

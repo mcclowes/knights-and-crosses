@@ -767,7 +767,27 @@ game_core.prototype.client_ondisconnect = function(data) {
 // Handle connecting to a server
 game_core.prototype.client_connect_to_server = function() {
 	console.log('Attempting to connect to server...');
-	this.socket = io({ path: '/api/socket' }); // Server socket with custom path for Vercel
+
+	// Check if io is available
+	if (typeof io === 'undefined') {
+		console.log('Socket.IO client not yet loaded, waiting...');
+		// Retry connection after a short delay
+		setTimeout(() => {
+			this.client_connect_to_server();
+		}, 100);
+		return;
+	}
+
+	// Configure Socket.IO for Vercel serverless (polling-only, no WebSocket)
+	this.socket = io({
+		path: '/api/socket',
+		transports: ['polling'], // Only use polling on Vercel (no WebSocket support)
+		upgrade: false, // Don't try to upgrade to WebSocket
+		reconnection: true,
+		reconnectionDelay: 1000,
+		reconnectionDelayMax: 5000,
+		reconnectionAttempts: 5
+	});
 
 	this.socket.on('connect', function(){
 		console.log('Connected to server!');
