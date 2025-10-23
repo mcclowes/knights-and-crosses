@@ -778,7 +778,16 @@ game_core.prototype.client_connect_to_server = function() {
 		return;
 	}
 
-	this.socket = io({ path: '/api/socket' }); // Server socket with custom path for Vercel
+	// Configure Socket.IO for Vercel serverless (polling-only, no WebSocket)
+	this.socket = io({
+		path: '/api/socket',
+		transports: ['polling'], // Only use polling on Vercel (no WebSocket support)
+		upgrade: false, // Don't try to upgrade to WebSocket
+		reconnection: true,
+		reconnectionDelay: 1000,
+		reconnectionDelayMax: 5000,
+		reconnectionAttempts: 5
+	});
 
 	this.socket.on('connect', function(){
 		console.log('Connected to server!');
