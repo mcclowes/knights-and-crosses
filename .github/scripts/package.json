@@ -1,0 +1,13 @@
+{
+  "name": "vercel-log-monitor-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for monitoring Vercel logs and creating GitHub issues",
+  "type": "module",
+  "scripts": {
+    "fetch-logs": "node fetch-vercel-logs.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "node-fetch": "^3.3.2"
+  }
+}
