@@ -23,6 +23,12 @@ export const config = {
   },
 };
 
+// Global singleton to persist Socket.IO instance across requests in the same container
+// This is critical for serverless environments where the same container handles multiple requests
+let globalIO: SocketIOServer | null = null;
+let globalGameServer: GameServer | null = null;
+let isInitializing = false;
+
 /**
  * Socket.IO API route for Vercel deployment
  * This route initializes Socket.IO on the serverless Next.js HTTP server
@@ -55,11 +61,12 @@ export default async function handler(
     });
   }
 
-  // Get the io instance (will be initialized if needed)
-  let io = res.socket.server.io;
+  // Use global singleton or initialize if needed
+  let io = globalIO;
 
   // Initialize Socket.IO if not already initialized
-  if (!io) {
+  if (!io && !isInitializing) {
+    isInitializing = true;
     console.log("[Socket.IO] Initializing server for the first time...");
 
     try {
@@ -87,12 +94,14 @@ export default async function handler(
         connectTimeout: 45000,
       });
 
+      globalIO = io;
       res.socket.server.io = io;
       console.log("[Socket.IO] Server instance created and attached");
 
       // Initialize the game server with Socket.IO
       console.log("[Socket.IO] Creating GameServer instance...");
       const gameServer = new GameServer(io, res.socket.server);
+      globalGameServer = gameServer;
       console.log("[Socket.IO] GameServer instance created");
 
       // Use non-blocking initialization to not delay the response
@@ -102,6 +111,7 @@ export default async function handler(
           .start()
           .then(() => {
             console.log("[Socket.IO] Game server started successfully");
+            isInitializing = false;
           })
           .catch((error) => {
             console.error("[Socket.IO] Game server start error:", error);
@@ -110,6 +120,7 @@ export default async function handler(
               stack: error instanceof Error ? error.stack : "No stack",
               name: error instanceof Error ? error.name : typeof error,
             });
+            isInitializing = false;
           });
       });
     } catch (error) {
@@ -120,6 +131,7 @@ export default async function handler(
         name: error instanceof Error ? error.name : typeof error,
         code: (error as any)?.code,
       });
+      isInitializing = false;
       if (!res.headersSent) {
         return res.status(500).json({
           error: "Failed to initialize Socket.IO",
@@ -135,10 +147,24 @@ export default async function handler(
       }
       return;
     }
+  } else if (isInitializing) {
+    // If initialization is in progress, wait a bit and try again
+    console.log("[Socket.IO] Initialization in progress, waiting...");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (globalIO) {
+      io = globalIO;
+    } else {
+      console.error("[Socket.IO] Initialization timeout");
+      return res.status(503).json({
+        error: "Service temporarily unavailable",
+        message: "Server is initializing, please try again",
+      });
+    }
   } else {
     console.log(
       "[Socket.IO] Server already initialized, reusing existing instance",
     );
+    io = globalIO!;
   }
 
   // CRITICAL: Let Socket.IO's engine handle this request
