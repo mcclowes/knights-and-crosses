@@ -3,17 +3,20 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
+import { pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const require = createRequire(import.meta.url);
 
-// Import the new card effect system
+// Import the new card effect system using dynamic import with file URL
 let resolveCardNew;
 try {
-	const cardResolver = require('./cards/card-resolver.cjs');
+	// Convert to file URL for cross-platform and Vercel compatibility
+	const cardResolverPath = path.join(__dirname, 'cards', 'card-resolver.cjs');
+	const cardResolverURL = pathToFileURL(cardResolverPath).href;
+	const cardResolver = await import(cardResolverURL);
 	resolveCardNew = cardResolver.resolveCard;
+	console.log('[GameCore] Card resolver loaded successfully');
 } catch (error) {
 	console.error('[GameCore] Failed to load card resolver:', error);
 	// Provide a fallback
