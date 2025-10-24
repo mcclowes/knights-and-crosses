@@ -55,14 +55,17 @@ export default async function handler(
     });
   }
 
+  // Get the io instance (will be initialized if needed)
+  let io = res.socket.server.io;
+
   // Initialize Socket.IO if not already initialized
-  if (!res.socket.server.io) {
+  if (!io) {
     console.log("[Socket.IO] Initializing server for the first time...");
 
     try {
       // Initialize Socket.IO with proper configuration for serverless
       console.log("[Socket.IO] Creating Socket.IO server instance...");
-      const io = new SocketIOServer(res.socket.server as any, {
+      io = new SocketIOServer(res.socket.server as any, {
         path: "/api/socket",
         addTrailingSlash: false,
         cors: {
@@ -80,6 +83,8 @@ export default async function handler(
         maxHttpBufferSize: 1e8,
         // Allow more permissive connection handling
         allowEIO3: true,
+        // Serverless-specific settings
+        connectTimeout: 45000,
       });
 
       res.socket.server.io = io;
@@ -136,9 +141,30 @@ export default async function handler(
     );
   }
 
-  // Return success - Socket.IO handles connections via its own mechanisms
-  console.log("[Socket.IO] Returning 200 OK");
-  if (!res.headersSent) {
-    res.status(200).end();
+  // CRITICAL: Let Socket.IO's engine handle this request
+  // Don't just return 200 - we need to pass the request to Socket.IO's engine
+  console.log("[Socket.IO] Delegating request to Socket.IO engine");
+
+  try {
+    // Access Socket.IO's underlying engine.io server
+    const engine = (io as any).engine;
+
+    if (engine && typeof engine.handleRequest === "function") {
+      console.log("[Socket.IO] Calling engine.handleRequest");
+      // Let engine.io handle the request
+      engine.handleRequest(req, res);
+      // Don't call res.end() - engine.io will handle it
+    } else {
+      console.log("[Socket.IO] Engine handleRequest not available, returning 200");
+      // Fallback: return 200 if we can't access engine
+      if (!res.headersSent) {
+        res.status(200).end();
+      }
+    }
+  } catch (error) {
+    console.error("[Socket.IO] Error delegating to engine:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
 }
