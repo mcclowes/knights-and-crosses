@@ -1,0 +1,49 @@
+name: Vercel Log Monitor
+
+on:
+  # Run every 30 minutes to check for new errors
+  schedule:
+    - cron: '*/30 * * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      time_range:
+        description: 'Time range to check (in minutes)'
+        required: false
+        default: '30'
+
+jobs:
+  monitor-logs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd .github/scripts
+          npm install
+
+      - name: Fetch Vercel logs and create issues
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TIME_RANGE_MINUTES: ${{ github.event.inputs.time_range || '30' }}
+        run: |
+          cd .github/scripts
+          node fetch-vercel-logs.js
+
+      - name: Summary
+        if: always()
+        run: echo "Log monitoring completed. Check the logs above for details."
