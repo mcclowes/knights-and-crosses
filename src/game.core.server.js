@@ -3,28 +3,12 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { pathToFileURL } from 'url';
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Import the new card effect system using dynamic import with file URL
-let resolveCardNew;
-try {
-	// Convert to file URL for cross-platform and Vercel compatibility
-	const cardResolverPath = path.join(__dirname, 'cards', 'card-resolver.cjs');
-	const cardResolverURL = pathToFileURL(cardResolverPath).href;
-	const cardResolver = await import(cardResolverURL);
-	resolveCardNew = cardResolver.resolveCard;
-	console.log('[GameCore] Card resolver loaded successfully');
-} catch (error) {
-	console.error('[GameCore] Failed to load card resolver:', error);
-	// Provide a fallback
-	resolveCardNew = () => {
-		console.warn('[GameCore] Card resolver not available, using fallback');
-		return null;
-	};
-}
+// Import the new card effect system with a static import so that bundlers
+// include the resolver file in serverless deployments (e.g. Vercel).
+import { resolveCard as resolveCardNew } from './cards/card-resolver.js';
 
 const FRAME_TIME = 45;
 const MAX_HAND_SIZE = 10;
