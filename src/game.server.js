@@ -34,14 +34,13 @@ class GameServer {
 			this.io = new Server(this.server);
 		}
 
-                // Initialize Redis storage for serverless environments when KV is configured
-                const redisConfigured =
-                        !!process.env.KV_REST_API_URL && !!process.env.KV_REST_API_TOKEN;
+                // Initialize Redis storage for serverless environments when Redis is configured
+                const redisConfigured = !!process.env.KV_URL;
                 const storage = this.isServerless && redisConfigured ? new RedisGameStorage() : null;
 
                 if (this.isServerless && !redisConfigured) {
                         this.logger?.warn?.(
-                                'Redis storage disabled: KV_REST_API_URL and/or KV_REST_API_TOKEN not set.'
+                                'Redis storage disabled: KV_URL not set.'
                         );
                 }
 

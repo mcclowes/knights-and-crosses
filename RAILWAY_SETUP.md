@@ -45,15 +45,22 @@ railway login
 # Initialize project
 railway init
 
-# Set environment variables
-railway variables set NODE_ENV=production
-railway variables set PORT=3000
-railway variables set KV_REST_API_URL=<your_kv_url>
-railway variables set KV_REST_API_TOKEN=<your_kv_token>
-railway variables set KV_URL=<your_redis_url>
-
-# Deploy
+# Deploy to Railway
 railway up
+
+# Set environment variables in Railway Dashboard
+# (Railway will open in browser)
+railway open
+
+# In the Railway dashboard:
+# 1. Go to "Variables" tab
+# 2. Add these variables:
+#    - NODE_ENV = production
+#    - PORT = 3000
+#    - KV_REST_API_URL = <your_kv_url>
+#    - KV_REST_API_TOKEN = <your_kv_token>
+#    - KV_URL = <your_redis_url>
+# 3. Railway will automatically redeploy
 
 # Get your public URL
 railway domain

@@ -1,4 +1,4 @@
-import { kv } from "@vercel/kv";
+import { createClient } from "redis";
 
 /**
  * Redis-backed storage for complete game state
@@ -14,12 +14,56 @@ export class RedisGameStorage {
     this.GAME_TTL = 3600; // 1 hour TTL for game metadata
     this.GAME_STATE_TTL = 3600; // 1 hour TTL for game state
     this.PLAYER_STATS_TTL = 86400 * 30; // 30 days for player stats
+    this.client = null;
+    this.connected = false;
+  }
+
+  /**
+   * Initialize Redis connection
+   * Uses KV_URL environment variable from Vercel marketplace integration
+   */
+  async connect() {
+    if (this.connected && this.client) {
+      return this.client;
+    }
+
+    try {
+      this.client = createClient({
+        url: process.env.KV_URL,
+      });
+
+      this.client.on("error", (err) => {
+        console.error("Redis Client Error:", err);
+        this.connected = false;
+      });
+
+      this.client.on("connect", () => {
+        console.log("Redis client connected successfully");
+        this.connected = true;
+      });
+
+      await this.client.connect();
+      return this.client;
+    } catch (error) {
+      console.error("Failed to connect to Redis:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure Redis is connected before operations
+   */
+  async ensureConnected() {
+    if (!this.connected || !this.client) {
+      await this.connect();
+    }
   }
 
   /**
    * Save game metadata to Redis
    */
   async saveGame(game) {
+    await this.ensureConnected();
     const gameKey = this.GAME_KEY_PREFIX + game.id;
     const metadata = {
       id: game.id,
@@ -32,10 +76,12 @@ export class RedisGameStorage {
 
     try {
       // Save game metadata with TTL
-      await kv.set(gameKey, JSON.stringify(metadata), { ex: this.GAME_TTL });
+      await this.client.set(gameKey, JSON.stringify(metadata), {
+        EX: this.GAME_TTL,
+      });
 
       // Add to active games list
-      await kv.sadd(this.GAMES_LIST_KEY, game.id);
+      await this.client.sAdd(this.GAMES_LIST_KEY, game.id);
 
       console.log(`Saved game ${game.id} to Redis`);
       return true;
@@ -49,9 +95,10 @@ export class RedisGameStorage {
    * Get game metadata from Redis
    */
   async getGame(gameId) {
+    await this.ensureConnected();
     try {
       const gameKey = this.GAME_KEY_PREFIX + gameId;
-      const data = await kv.get(gameKey);
+      const data = await this.client.get(gameKey);
 
       if (!data) {
         return null;
@@ -68,8 +115,9 @@ export class RedisGameStorage {
    * Get all active games
    */
   async getAllGames() {
+    await this.ensureConnected();
     try {
-      const gameIds = await kv.smembers(this.GAMES_LIST_KEY);
+      const gameIds = await this.client.sMembers(this.GAMES_LIST_KEY);
       const games = [];
 
       for (const gameId of gameIds) {
@@ -78,7 +126,7 @@ export class RedisGameStorage {
           games.push(game);
         } else {
           // Clean up stale reference
-          await kv.srem(this.GAMES_LIST_KEY, gameId);
+          await this.client.sRem(this.GAMES_LIST_KEY, gameId);
         }
       }
 
@@ -119,10 +167,11 @@ export class RedisGameStorage {
    * Delete game from Redis
    */
   async deleteGame(gameId) {
+    await this.ensureConnected();
     try {
       const gameKey = this.GAME_KEY_PREFIX + gameId;
-      await kv.del(gameKey);
-      await kv.srem(this.GAMES_LIST_KEY, gameId);
+      await this.client.del(gameKey);
+      await this.client.sRem(this.GAMES_LIST_KEY, gameId);
       console.log(`Deleted game ${gameId} from Redis`);
       return true;
     } catch (error) {
@@ -135,12 +184,15 @@ export class RedisGameStorage {
    * Update game player count
    */
   async updateGamePlayerCount(gameId, playerCount) {
+    await this.ensureConnected();
     try {
       const game = await this.getGame(gameId);
       if (game) {
         game.playerCount = playerCount;
         const gameKey = this.GAME_KEY_PREFIX + gameId;
-        await kv.set(gameKey, JSON.stringify(game), { ex: this.GAME_TTL });
+        await this.client.set(gameKey, JSON.stringify(game), {
+          EX: this.GAME_TTL,
+        });
         return true;
       }
       return false;
@@ -154,9 +206,10 @@ export class RedisGameStorage {
    * Health check - verify Redis connection
    */
   async healthCheck() {
+    await this.ensureConnected();
     try {
-      await kv.set("health:check", "ok", { ex: 10 });
-      const result = await kv.get("health:check");
+      await this.client.set("health:check", "ok", { EX: 10 });
+      const result = await this.client.get("health:check");
       return result === "ok";
     } catch (error) {
       console.error("Redis health check failed:", error);
@@ -169,10 +222,13 @@ export class RedisGameStorage {
    * Includes board, players, hands, decks, and all game state
    */
   async saveGameState(gameId, gameState) {
+    await this.ensureConnected();
     const stateKey = this.GAME_STATE_KEY_PREFIX + gameId;
     try {
       const serializedState = JSON.stringify(gameState);
-      await kv.set(stateKey, serializedState, { ex: this.GAME_STATE_TTL });
+      await this.client.set(stateKey, serializedState, {
+        EX: this.GAME_STATE_TTL,
+      });
       console.log(`Saved full game state for ${gameId} to Redis`);
       return true;
     } catch (error) {
@@ -185,9 +241,10 @@ export class RedisGameStorage {
    * Get complete game state from Redis
    */
   async getGameState(gameId) {
+    await this.ensureConnected();
     try {
       const stateKey = this.GAME_STATE_KEY_PREFIX + gameId;
-      const data = await kv.get(stateKey);
+      const data = await this.client.get(stateKey);
 
       if (!data) {
         return null;
@@ -204,9 +261,10 @@ export class RedisGameStorage {
    * Delete game state from Redis
    */
   async deleteGameState(gameId) {
+    await this.ensureConnected();
     try {
       const stateKey = this.GAME_STATE_KEY_PREFIX + gameId;
-      await kv.del(stateKey);
+      await this.client.del(stateKey);
       console.log(`Deleted game state ${gameId} from Redis`);
       return true;
     } catch (error) {
@@ -219,13 +277,16 @@ export class RedisGameStorage {
    * Save player statistics to Redis
    */
   async savePlayerStats(userId, stats) {
+    await this.ensureConnected();
     const statsKey = this.PLAYER_STATS_KEY_PREFIX + userId;
     try {
       const serializedStats = JSON.stringify({
         ...stats,
         lastUpdated: Date.now(),
       });
-      await kv.set(statsKey, serializedStats, { ex: this.PLAYER_STATS_TTL });
+      await this.client.set(statsKey, serializedStats, {
+        EX: this.PLAYER_STATS_TTL,
+      });
       console.log(`Saved player stats for ${userId} to Redis`);
       return true;
     } catch (error) {
@@ -238,9 +299,10 @@ export class RedisGameStorage {
    * Get player statistics from Redis
    */
   async getPlayerStats(userId) {
+    await this.ensureConnected();
     try {
       const statsKey = this.PLAYER_STATS_KEY_PREFIX + userId;
-      const data = await kv.get(statsKey);
+      const data = await this.client.get(statsKey);
 
       if (!data) {
         // Return default stats if player is new

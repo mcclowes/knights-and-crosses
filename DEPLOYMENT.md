@@ -59,18 +59,25 @@ railway login
 railway init
 ```
 
-4. **Set environment variables:**
-```bash
-railway variables set NODE_ENV=production
-railway variables set PORT=3000
-railway variables set KV_REST_API_URL=<your_kv_url>
-railway variables set KV_REST_API_TOKEN=<your_kv_token>
-railway variables set KV_URL=<your_redis_url>
-```
-
-5. **Deploy:**
+4. **Deploy to Railway:**
 ```bash
 railway up
+```
+
+5. **Set environment variables in Railway Dashboard:**
+```bash
+# Open Railway dashboard in browser
+railway open
+
+# In the dashboard:
+# 1. Click "Variables" tab
+# 2. Add the following variables:
+#    - NODE_ENV = production
+#    - PORT = 3000
+#    - KV_REST_API_URL = <your_kv_url>
+#    - KV_REST_API_TOKEN = <your_kv_token>
+#    - KV_URL = <your_redis_url>
+# 3. Railway will automatically redeploy with new variables
 ```
 
 6. **Get your public URL:**
@@ -117,15 +124,21 @@ railway login
 # Initialize project
 railway init
 
-# Set environment variables from file
-railway variables set NODE_ENV=production
-railway variables set PORT=3000
-railway variables set KV_REST_API_URL=<your_kv_url>
-railway variables set KV_REST_API_TOKEN=<your_kv_token>
-railway variables set KV_URL=<your_redis_url>
-
 # Deploy
 railway up
+
+# Open Railway dashboard to set environment variables
+railway open
+
+# In the dashboard:
+# 1. Go to "Variables" tab
+# 2. Add environment variables:
+#    - NODE_ENV = production
+#    - PORT = 3000
+#    - KV_REST_API_URL = <your_kv_url>
+#    - KV_REST_API_TOKEN = <your_kv_token>
+#    - KV_URL = <your_redis_url>
+# 3. Railway auto-redeploys
 
 # Get your Railway URL
 railway domain
@@ -165,9 +178,10 @@ KV_URL=<your_redis_url>
 
 Update Railway environment variables to allow Vercel frontend:
 
-```bash
-railway variables set CORS_ORIGIN=https://your-app.vercel.app
-```
+1. Open Railway dashboard: `railway open`
+2. Go to "Variables" tab
+3. Add variable: `CORS_ORIGIN` = `https://your-app.vercel.app`
+4. Railway will auto-redeploy
 
 ---
 
