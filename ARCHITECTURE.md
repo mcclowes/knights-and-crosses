@@ -1,995 +1,1091 @@
-# Knights and Crosses - Architecture Documentation
+# Knights and Crosses - Multiplayer Architecture
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [System Architecture](#system-architecture)
-3. [Directory Structure](#directory-structure)
-4. [Core Components](#core-components)
+2. [Architecture Diagrams](#architecture-diagrams)
+3. [System Components](#system-components)
+4. [Multiplayer Infrastructure](#multiplayer-infrastructure)
 5. [Game Flow](#game-flow)
-6. [Data Models](#data-models)
-7. [Communication Protocol](#communication-protocol)
-8. [AI System](#ai-system)
-9. [Card System](#card-system)
-10. [Technology Stack](#technology-stack)
-11. [Deployment](#deployment)
+6. [Technology Stack](#technology-stack)
+7. [Deployment Strategy](#deployment-strategy)
 
 ---
 
 ## Overview
 
-**Knights and Crosses** is a networked competitive multiplayer TCG (Trading Card Game) that combines a 4x4 Tic-Tac-Toe mechanic with card-based gameplay. Two players compete by playing cards that affect the board state and placing pieces to achieve four in a row.
+**Knights and Crosses** is a real-time multiplayer Trading Card Game (TCG) that combines strategic card play with a 4x4 Tic-Tac-Toe board. The architecture is designed to support:
+
+- **Persistent WebSocket connections** for real-time gameplay
+- **Matchmaking system** for pairing players
+- **Game room management** for concurrent matches
+- **State synchronization** between server and clients
+- **Scalable serverless deployment** with Vercel KV (Redis)
 
 ### Key Features
 
-- **Real-time multiplayer** using Socket.IO
-- **Genetic Algorithm-based AI** for game balancing research
-- **Canvas-based rendering** for game visualization
-- **Serverless deployment** support with Vercel KV (Redis)
-- **Automated matchmaking** for players and AI instances
-
-### Game Mechanics
-
-- **Players**: 2 (Host and Client)
-- **Board**: 4x4 grid
-- **Win Condition**: First to place 4 pieces in a row/column/diagonal
-- **Deck**: 20 cards per player
-- **Hand Limit**: 7 cards
-- **Turn Structure**: Draw 1 card → Play 1 card (optional) → Place 1 piece
+- Real-time multiplayer with Socket.IO
+- Automatic matchmaking and game lobbies
+- Persistent game state with Redis
+- AI opponents with genetic algorithm training
+- Canvas-based game rendering
+- Next.js 15 with App Router
 
 ---
 
-## System Architecture
+## Architecture Diagrams
 
-### High-Level Architecture
+### High-Level System Architecture
 
 ```mermaid
 graph TB
     subgraph "Client Layer"
         Browser[Web Browser]
-        Canvas[Canvas Renderer<br/>game.core.client.js]
-        React[React Component<br/>Game.tsx]
+        UI[Next.js App Router Pages]
+        Canvas[Canvas Game Renderer]
+        SocketClient[Socket.IO Client]
     end
 
-    subgraph "Communication Layer"
-        SocketIO[Socket.IO<br/>Real-time WebSocket]
+    subgraph "Edge/CDN Layer"
+        Vercel[Vercel Edge Network]
+        Static[Static Assets CDN]
     end
 
-    subgraph "Server Layer"
-        NextJS[Next.js Server]
-        Express[Express Server]
+    subgraph "Application Server"
+        NextServer[Next.js Server<br/>Custom Server Mode]
+        HTTPHandler[HTTP Request Handler]
+        WSHandler[WebSocket Handler]
+    end
+
+    subgraph "Game Services"
         GameServer[GameServer<br/>Connection Manager]
-        MessageHandler[MessageHandler<br/>Message Router]
+        GameService[GameService<br/>Matchmaking & Lifecycle]
+        MessageHandler[MessageHandler<br/>Game Logic Router]
     end
 
-    subgraph "Business Logic Layer"
-        GameService[GameService<br/>Game Lifecycle]
-        GameCore[GameCore<br/>Game Logic Engine]
-        CardResolver[CardResolver<br/>Card Effects]
+    subgraph "Game Engine"
+        GameCore[GameCore<br/>Server-Side Game Logic]
+        CardResolver[CardResolver<br/>Card Effects Engine]
+        BoardState[BoardState Manager]
     end
 
-    subgraph "Data Layer"
-        Memory[In-Memory Storage<br/>Game State]
-        Redis[Vercel KV Redis<br/>Metadata Persistence]
-        JSON[JSON Files<br/>Cards, AI Data]
+    subgraph "Persistence Layer"
+        MemoryCache[In-Memory Game State<br/>Active Games]
+        Redis[Vercel KV Redis<br/>Game Metadata & Recovery]
+        FileSystem[JSON Files<br/>Cards & AI Data]
     end
 
     subgraph "AI System"
-        AIManager[AI Manager]
-        AICore[AI Core<br/>Decision Engine]
-        GeneticAlgo[Genetic Algorithm]
+        AIManager[AI Manager<br/>Bot Spawner]
+        AICore[AI GameCore<br/>Decision Engine]
+        Evolution[Genetic Algorithm]
     end
 
-    Browser --> React
-    React --> Canvas
-    Canvas <--> SocketIO
-    SocketIO <--> GameServer
-    GameServer --> MessageHandler
+    Browser --> UI
+    UI --> Canvas
+    Browser --> SocketClient
+    SocketClient <-->|WSS| WSHandler
+    UI -->|HTTP/S| HTTPHandler
+
+    Vercel --> NextServer
+    Static --> Browser
+
+    NextServer --> HTTPHandler
+    NextServer --> WSHandler
+
+    WSHandler --> GameServer
     GameServer --> GameService
-    MessageHandler --> GameCore
+    GameServer --> MessageHandler
+
     GameService --> GameCore
+    MessageHandler --> GameCore
     GameCore --> CardResolver
-    GameService --> Memory
-    GameService -.-> Redis
-    CardResolver --> JSON
+    GameCore --> BoardState
+
+    GameService --> MemoryCache
+    GameService -.->|Persist| Redis
+    CardResolver --> FileSystem
+
     AIManager --> AICore
-    AICore <--> SocketIO
-    AICore --> GeneticAlgo
-    AICore --> JSON
+    AICore <-->|Socket.IO| GameServer
+    Evolution --> FileSystem
 
     style Browser fill:#e1f5ff
-    style Redis fill:#ffe1e1
-    style AICore fill:#ffe1ff
+    style Redis fill:#ff6b6b
+    style GameCore fill:#95e1d3
+    style AICore fill:#f38181
 ```
 
-### Component Interaction Flow
+### Multiplayer Connection Flow
 
 ```mermaid
 sequenceDiagram
-    participant Client as Browser Client
-    participant Socket as Socket.IO
-    participant Server as GameServer
-    participant Service as GameService
+    participant P1 as Player 1 Browser
+    participant WS1 as WebSocket
+    participant Server as Game Server
+    participant Service as Game Service
+    participant Redis as Vercel KV
     participant Core as GameCore
-    participant Cards as CardResolver
+    participant P2 as Player 2 Browser
+    participant WS2 as WebSocket
 
-    Client->>Socket: Connect
-    Socket->>Server: New connection
-    Server->>Service: findGame(player)
+    Note over P1,Redis: Player 1 Connects
+    P1->>WS1: Connect to ws://
+    WS1->>Server: connection event
+    Server->>Server: Generate player ID
+    Server->>Service: findGame(player1)
+    Service->>Redis: Check for available games
+    Redis-->>Service: No games found
+    Service->>Service: createGame(player1)
+    Service->>Redis: Save game metadata
+    Service->>Core: Initialize GameCore
+    Core-->>Service: Game ready
+    Service-->>Server: Game created
+    Server->>WS1: onconnected {id, name}
+    Server->>WS1: s.h (you are host)
+    WS1-->>P1: Waiting for opponent...
 
-    alt No available game
-        Service->>Service: createGame(player)
-    end
+    Note over P1,Redis: Player 2 Connects
+    P2->>WS2: Connect to ws://
+    WS2->>Server: connection event
+    Server->>Server: Generate player ID
+    Server->>Service: findGame(player2)
+    Service->>Redis: Check for available games
+    Redis-->>Service: Game found (Player 1's game)
+    Service->>Service: addClient(player2)
+    Service->>Redis: Update game metadata
+    Service->>Core: Add player 2 to game
+    Server->>WS2: onconnected {id, name}
+    Server->>WS1: s.j (player joined)
+    Server->>WS2: s.r (game ready)
+    Server->>WS1: s.r (game ready)
+    Core->>Core: Deal initial cards
+    WS1-->>P1: Game starting!
+    WS2-->>P2: Game starting!
 
-    Service-->>Server: Game found/created
-    Server-->>Socket: onconnected event
-    Socket-->>Client: Connected with ID
-
-    Note over Client,Core: Second player joins
-
-    Client->>Socket: Input message (i)
-    Socket->>Server: Forward message
-    Server->>Core: handleServerInput(commands)
-    Core->>Cards: resolveCard(card, player)
-    Cards-->>Core: Effects applied
+    Note over P1,P2: Gameplay Loop
+    P1->>WS1: i (input: play card)
+    WS1->>Server: message event
+    Server->>Core: handleServerInput()
+    Core->>Core: Apply card effects
     Core->>Core: Update board state
-    Core->>Core: Check win condition
-    Core-->>Socket: Broadcast state update
-    Socket-->>Client: Update UI
+    Core->>Core: Check win conditions
+    Core->>WS1: State update
+    Core->>WS2: State update
+    WS1-->>P1: Render update
+    WS2-->>P2: Render update
+
+    Note over P1,Redis: Game Ends
+    Core->>Core: Win detected
+    Core->>Service: winGame(winner)
+    Service->>Redis: Update player stats
+    Service->>Redis: Delete game
+    Server->>WS1: s.e (game ended)
+    Server->>WS2: s.e (game ended)
+    Service->>Service: findGame(player1)
+    Service->>Service: findGame(player2)
 ```
 
----
-
-## Directory Structure
-
-```
-knights-and-crosses/
-├── pages/                       # Next.js pages (routes)
-│   ├── index.tsx               # Main game page
-│   ├── _app.tsx                # React app wrapper
-│   ├── _document.tsx           # HTML document wrapper
-│   ├── api/
-│   │   └── socket.ts           # Socket.IO API route
-│   ├── ai-viewer.tsx           # AI visualization tool
-│   └── deck-builder.tsx        # Deck building tool
-│
-├── components/                  # React components
-│   └── Game.tsx                # Main game component
-│
-├── src/                        # Core game logic
-│   ├── game.server.js          # GameServer (connection management)
-│   ├── game.core.server.js     # Server-side game engine (606 lines)
-│   ├── game.core.client.js     # Client-side canvas renderer
-│   ├── game.core.ai.js         # AI game engine
-│   ├── ai_manager.js           # AI instance manager
-│   │
-│   ├── ai/                     # AI system (TypeScript)
-│   │   ├── core/
-│   │   │   └── GameCore.ts     # AI decision engine
-│   │   ├── board/
-│   │   │   └── GameBoard.ts    # Board state management
-│   │   ├── player/
-│   │   │   └── GamePlayer.ts   # Player state
-│   │   ├── config/
-│   │   │   └── constants.ts    # AI parameters
-│   │   └── utils/
-│   │       └── helpers.ts      # Utility functions
-│   │
-│   ├── cards/                  # Card effect system
-│   │   ├── card-resolver.cjs   # Effect application
-│   │   ├── card-parser.cjs     # Effect parsing
-│   │   ├── card-effects.cjs    # Effect type definitions
-│   │   └── index.cjs           # Module exports
-│   │
-│   ├── server/                 # Server infrastructure
-│   │   ├── models/
-│   │   │   └── Game.js         # Game entity model
-│   │   ├── services/
-│   │   │   └── GameService.js  # Game lifecycle manager
-│   │   ├── handlers/
-│   │   │   └── MessageHandler.js # Socket message router
-│   │   ├── storage/
-│   │   │   └── RedisGameStorage.js # Vercel KV integration
-│   │   └── utils/
-│   │       └── logger.js       # Winston logger
-│   │
-│   └── json/                   # Data files
-│       ├── cards.json          # Card definitions (14 cards)
-│       ├── card_data.json      # Card balance statistics
-│       ├── ai.json             # AI evolution history (150+ generations)
-│       └── deck_p1.json        # Default deck
-│
-├── public/                     # Static assets
-│   ├── assets/
-│   │   ├── css/
-│   │   └── sound/
-│   ├── json/                   # Public JSON files (copied from src)
-│   └── game.core.client.js     # Client engine (copied from src)
-│
-├── server.js                   # Main server bootstrap
-├── package.json                # Dependencies and scripts
-├── tsconfig.json               # TypeScript config
-└── next.config.js              # Next.js config
-```
-
----
-
-## Core Components
-
-### Class Hierarchy
-
-```mermaid
-classDiagram
-    class GameServer {
-        -http.Server httpServer
-        -SocketIO io
-        -GameService gameService
-        +start()
-        +handleConnection(socket)
-        +handleDisconnect(socket)
-    }
-
-    class GameService {
-        -Map~string,Game~ games
-        -RedisGameStorage storage
-        +findGame(player) Game
-        +createGame(player) Game
-        +endGame(gameId)
-        +winGame(gameId, winner)
-    }
-
-    class Game {
-        -string id
-        -Player player_host
-        -Player player_client
-        -GameCore gamecore
-        -boolean active
-        +addClient(player)
-        +start()
-        +stop()
-    }
-
-    class GameCore {
-        -GameBoard board
-        -GamePlayer self
-        -GamePlayer other
-        -number turn
-        +update()
-        +handleServerInput(commands)
-        +checkWinConditions()
-        +applyEffect(effect, player)
-    }
-
-    class GameBoard {
-        -number[][] results
-        -number[][] frost
-        -number[][] rock
-        -number[][] shields
-        +checkWin() number
-        +reduceBoard()
-        +updateBoard(pos, player)
-    }
-
-    class GamePlayer {
-        -Card[] hand
-        -Card[] deck
-        -Card[] discard
-        -boolean host
-        -number cards_to_play
-        -number pieces_to_play
-        -number discarding
-        +drawCard()
-        +playCard(index)
-        +discardCard(index)
-    }
-
-    class MessageHandler {
-        +handleMessage(game, type, data)
-        +routeInput(game, commands)
-        +routePing(game, timestamp)
-        +routeWin(game, winner)
-    }
-
-    class CardResolver {
-        +resolveCard(card, player, gamecore)
-        +applyEffect(effect, player, gamecore)
-        -applyDamage(target, amount)
-        -applyShield(target, amount)
-        -applyFreeze(target, duration)
-    }
-
-    GameServer --> GameService
-    GameService --> Game
-    GameServer --> MessageHandler
-    Game --> GameCore
-    GameCore --> GameBoard
-    GameCore --> GamePlayer
-    GameCore --> CardResolver
-    MessageHandler --> GameCore
-```
-
-### Component Responsibilities
-
-| Component          | File                                    | Lines | Responsibility                                           |
-| ------------------ | --------------------------------------- | ----- | -------------------------------------------------------- |
-| **GameServer**     | `src/game.server.js`                    | 185+  | Socket.IO connection management, player session handling |
-| **GameService**    | `src/server/services/GameService.js`    | 140+  | Game lifecycle, matchmaking, Redis integration           |
-| **Game**           | `src/server/models/Game.js`             | 80+   | Game entity, player tracking, start/stop logic           |
-| **GameCore**       | `src/game.core.server.js`               | 606   | Game logic, turn management, win conditions              |
-| **MessageHandler** | `src/server/handlers/MessageHandler.js` | 60+   | Socket message routing by type                           |
-| **CardResolver**   | `src/cards/card-resolver.cjs`           | 200+  | Card effect application to game state                    |
-
----
-
-## Game Flow
-
-### Game Lifecycle State Machine
-
-```mermaid
-stateDiagram-v2
-    [*] --> Connecting: Player connects
-    Connecting --> Waiting: Connection established
-    Waiting --> Playing: Second player joins
-    Playing --> GameEnded: Win condition met
-    Playing --> GameEnded: Player disconnect
-    GameEnded --> Waiting: Rematch/New game
-    GameEnded --> [*]: Player leaves
-
-    state Playing {
-        [*] --> DrawPhase
-        DrawPhase --> CardPhase: Card drawn
-        CardPhase --> PlacePhase: Card played/skipped
-        PlacePhase --> CheckWin: Piece placed
-        CheckWin --> NextTurn: No winner
-        CheckWin --> [*]: Winner found
-        NextTurn --> DrawPhase: Switch player
-    }
-```
-
-### Turn Sequence Flow
-
-```mermaid
-sequenceDiagram
-    participant P1 as Player 1
-    participant Core as GameCore
-    participant Board as GameBoard
-    participant Cards as CardResolver
-    participant P2 as Player 2
-
-    Note over P1,P2: Turn Start
-
-    Core->>P1: Draw card
-    P1->>Core: Play card (or pass)
-
-    alt Card played
-        Core->>Cards: resolveCard(card)
-        Cards->>Board: Apply effects
-        Cards->>P1: Update state (shields, damage, etc.)
-        Cards->>P2: Update state (shields, damage, etc.)
-        Cards-->>Core: Effects complete
-    end
-
-    P1->>Core: Place piece at position
-    Core->>Board: updateBoard(position, player1)
-
-    Core->>Board: checkWin()
-    Board-->>Core: Winner or continue
-
-    alt Winner found
-        Core->>P1: You win!
-        Core->>P2: You lose!
-    else No winner
-        Core->>Core: Switch turn
-        Note over P1,P2: Player 2's Turn
-    end
-```
-
-### Matchmaking Flow
-
-```mermaid
-flowchart TD
-    Start([Player Connects]) --> Find{Find Available Game?}
-
-    Find -->|Game Found| Join[Join as Player 2]
-    Find -->|No Game| Create[Create New Game as Player 1]
-
-    Join --> Wait2[Wait for Other Player]
-    Create --> Wait1[Wait for Player 2]
-
-    Wait1 --> Check{Player 2 Joined?}
-    Wait2 --> Check
-
-    Check -->|Yes| StartGame[Start Game<br/>Both draw 3 cards]
-    Check -->|No| Wait1
-
-    StartGame --> Play[Play Game]
-    Play --> End{Game Ends?}
-
-    End -->|Win/Loss| Cleanup[Remove from game]
-    End -->|Disconnect| Cleanup
-
-    Cleanup --> Find
-```
-
----
-
-## Data Models
-
-### Board State Structure
-
-The game board consists of four separate layers, all 4x4 grids:
+### WebSocket Persistence Strategy
 
 ```mermaid
 graph TB
-    subgraph "Board State"
-        Results["results[][]<br/>Piece Placement<br/>0 = empty<br/>1 = Player 1<br/>-1 = Player 2"]
-        Frost["frost[][]<br/>Frozen Squares<br/>Duration counter"]
-        Rock["rock[][]<br/>Blocked Squares<br/>Duration counter"]
-        Shields["shields[][]<br/>Shield Count<br/>Per square"]
+    subgraph "Next.js Custom Server"
+        NextApp[Next.js App]
+        HTTPServer[HTTP Server]
+        SocketIO[Socket.IO Server]
     end
 
-    Results --> BoardState[Complete Board State]
-    Frost --> BoardState
-    Rock --> BoardState
-    Shields --> BoardState
+    subgraph "WebSocket Lifecycle"
+        Connect[Client Connect]
+        Upgrade[HTTP → WebSocket Upgrade]
+        Persistent[Persistent Connection]
+        Heartbeat[Ping/Pong Heartbeat]
+        Disconnect[Graceful Disconnect]
+    end
+
+    subgraph "State Management"
+        InMemory[In-Memory Active Connections]
+        SessionMap[User ID → Socket Mapping]
+        GameMap[Game ID → Players Mapping]
+    end
+
+    subgraph "Failover & Recovery"
+        RedisStore[Redis Game State Snapshot]
+        Reconnect[Reconnection Logic]
+        StateRestore[State Restoration]
+    end
+
+    NextApp --> HTTPServer
+    HTTPServer --> SocketIO
+
+    SocketIO --> Connect
+    Connect --> Upgrade
+    Upgrade --> Persistent
+    Persistent --> Heartbeat
+    Heartbeat --> Disconnect
+
+    SocketIO --> InMemory
+    InMemory --> SessionMap
+    InMemory --> GameMap
+
+    GameMap -.->|Periodic Sync| RedisStore
+    Disconnect --> RedisStore
+    Reconnect --> RedisStore
+    RedisStore --> StateRestore
+    StateRestore --> Persistent
+
+    style SocketIO fill:#ffd93d
+    style Persistent fill:#6bcf7f
+    style RedisStore fill:#ff6b6b
 ```
 
-### Player State
+---
 
-```typescript
-interface GamePlayer {
-  // Core state
-  host: boolean; // Is this player the host?
-  state: string; // "connecting", "waiting", "playing"
+## System Components
 
-  // Card management
-  hand: Card[]; // Current hand (max 7)
-  deck: Card[]; // Remaining deck
-  discard: Card[]; // Discard pile
+### 1. Next.js Custom Server (`server.js`)
 
-  // Action state flags (set by card effects)
-  cards_to_play: number; // Must play N more cards
-  pieces_to_play: number; // Must place N more pieces
-  discarding: number; // Must discard N cards
-  shielding: number; // Must shield N pieces
-  damage_to_apply: number; // Must deal N damage
-  destroying: number; // Must destroy N pieces
-  drawing: number; // Must draw N cards
-  deshielding: number; // Must remove N shields
-  thawing: number; // Must thaw N squares
-  blocking: number; // Must block N squares
-  freezing: number; // Must freeze N squares
+**Purpose**: Bootstrap Next.js with custom HTTP and WebSocket server
+
+**Key Responsibilities**:
+- Create HTTP server for Next.js
+- Attach Socket.IO to HTTP server
+- Initialize GameServer with Socket.IO instance
+- Handle server lifecycle
+
+```javascript
+// server.js
+const httpServer = createServer((req, res) => {
+  const parsedUrl = parse(req.url, true);
+  handle(req, res, parsedUrl);
+});
+
+const io = new Server(httpServer, {
+  cors: { origin: "*" }, // Configure for production
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
+
+const gameServer = new GameServer(io, httpServer);
+```
+
+**Why Custom Server?**
+- Next.js serverless functions timeout after 10 seconds
+- WebSockets require persistent connections
+- Game state needs to persist across requests
+- Custom server allows Socket.IO integration
+
+### 2. GameServer (`src/game.server.js`)
+
+**Purpose**: Manage WebSocket connections and player sessions
+
+**Key Responsibilities**:
+- Handle Socket.IO connection/disconnection events
+- Assign unique IDs to players
+- Delegate game finding to GameService
+- Route messages to MessageHandler
+- Clean up disconnected players
+
+**Key Methods**:
+```javascript
+class GameServer {
+  setupSocketHandlers() {
+    this.io.on('connection', (client) => {
+      // Assign player ID and name
+      client.userid = UUID();
+      client.playername = 'Player ' + client.userid.slice(0, 4);
+
+      // Find or create game
+      this.gameService.findGame(client);
+
+      // Handle messages
+      client.on('message', (message) => {
+        this.messageHandler.handleMessage(client, message);
+      });
+
+      // Handle disconnection
+      client.on('disconnect', () => {
+        if (client.game?.id) {
+          this.gameService.endGame(client.game.id, client.userid);
+        }
+      });
+    });
+  }
 }
 ```
 
-### Card Structure
+### 3. GameService (`src/server/services/GameService.js`)
 
-```typescript
-interface Card {
-  name: string; // e.g., "Fire Blast"
-  rarity: "Basic" | "Rare" | "Elite";
-  effects: string[]; // Effect descriptions
+**Purpose**: Game lifecycle and matchmaking
 
-  // Deck constraints
-  // Basic: max 3 copies
-  // Rare: max 2 copies
-  // Elite: max 1 copy, max 5 elite cards per deck
+**Key Responsibilities**:
+- Create new games
+- Find available games for matchmaking
+- Manage game state persistence to Redis
+- Handle game end and cleanup
+- Track player statistics and MMR
+
+**Matchmaking Algorithm**:
+```javascript
+async findGame(player) {
+  // 1. Check in-memory games (fast path)
+  for (const game of Object.values(this.games)) {
+    if (game.player_count < 2) {
+      game.addClient(player);
+      await this.saveGameToKV(game);
+      return game;
+    }
+  }
+
+  // 2. Check Redis for games from other instances
+  if (this.storage) {
+    const availableGame = await this.storage.findAvailableGame();
+    if (availableGame) {
+      const game = await this.loadGameFromKV(availableGame.id, null, player);
+      if (game) {
+        game.addClient(player);
+        await this.saveGameToKV(game);
+        return game;
+      }
+    }
+  }
+
+  // 3. No games found - create new
+  return await this.createGame(player);
 }
 ```
 
-### Game Entity Model
+### 4. GameCore (`src/game.core.server.js`)
 
-```typescript
-interface Game {
-  id: string; // Unique game ID
-  player_host: Player; // First player
-  player_client: Player | null; // Second player (null if waiting)
-  player_count: number; // 1 or 2
-  active: boolean; // Is game running?
-  gamecore: GameCore; // Game logic engine
+**Purpose**: Server-authoritative game logic engine
+
+**Key Responsibilities**:
+- Maintain board state
+- Process player inputs
+- Apply card effects
+- Validate moves
+- Detect win conditions
+- Synchronize state to clients
+
+**State Structure**:
+```javascript
+class GameCore {
+  constructor(game) {
+    this.board = {
+      results: [], // 4x4 grid: 0=empty, 1=player1, -1=player2
+      frost: [],   // Frozen squares
+      rock: [],    // Blocked squares
+      shields: []  // Shield counts per square
+    };
+
+    this.players = {
+      self: new GamePlayer(true),  // Host
+      other: new GamePlayer(false) // Client
+    };
+
+    this.turn = 1; // Current turn number
+  }
+
+  handleServerInput(commands) {
+    // Parse and validate input
+    // Apply card effects via CardResolver
+    // Update board state
+    // Check win conditions
+    // Broadcast state changes
+  }
+}
+```
+
+### 5. Redis Storage (`src/server/storage/RedisGameStorage.js`)
+
+**Purpose**: Persistent game metadata for serverless environments
+
+**Data Stored**:
+- Game metadata (ID, player count, active status)
+- Game state snapshots
+- Player statistics (MMR, wins, losses)
+
+**TTL Strategy**:
+- Active games: 1 hour TTL (auto-cleanup)
+- Player stats: No expiration
+
+**Key Methods**:
+```javascript
+class RedisGameStorage {
+  async saveGame(game) {
+    await kv.set(`game:${game.id}`, {
+      id: game.id,
+      playerCount: game.player_count,
+      active: game.active,
+      createdAt: Date.now()
+    }, { ex: 3600 }); // 1 hour TTL
+  }
+
+  async findAvailableGame() {
+    const keys = await kv.keys('game:*');
+    for (const key of keys) {
+      const game = await kv.get(key);
+      if (game.playerCount < 2) return game;
+    }
+    return null;
+  }
 }
 ```
 
 ---
 
-## Communication Protocol
+## Multiplayer Infrastructure
 
-### Socket.IO Message Format
+### WebSocket Connection Management
 
-Messages use a period-delimited format:
+**Connection Lifecycle**:
+
+1. **Client connects** → Server assigns unique ID
+2. **Matchmaking** → Find existing game or create new
+3. **Game start** → When 2 players matched
+4. **Active gameplay** → Real-time message exchange
+5. **Game end** → Return both players to matchmaking
+6. **Disconnect handling** → Clean up game, rematch opponent
+
+**Heartbeat Mechanism**:
+```javascript
+// Socket.IO configuration
+const io = new Server(httpServer, {
+  pingTimeout: 60000,  // 60 seconds
+  pingInterval: 25000, // 25 seconds
+  upgradeTimeout: 30000,
+  transports: ['websocket', 'polling']
+});
+```
+
+**Reconnection Strategy**:
+```javascript
+// Client-side
+const socket = io({
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  reconnectionAttempts: 5
+});
+
+socket.on('reconnect', () => {
+  // Request game state restoration
+  socket.emit('restore_session', { userId: savedUserId });
+});
+```
+
+### Message Protocol
+
+**Format**: Period-delimited strings for efficiency
 
 ```
 TYPE.DATA1.DATA2.DATA3
 ```
 
-### Client → Server Messages
+**Message Types**:
 
-| Type | Format                     | Description                        |
-| ---- | -------------------------- | ---------------------------------- |
-| `i`  | `i.COMMANDS.TIME.SEQUENCE` | Input (card play, piece placement) |
-| `p`  | `p.TIMESTAMP`              | Ping for latency measurement       |
-| `r`  | `r.LATENCY`                | Latency report                     |
-| `m`  | `m.MMR`                    | MMR (rating) report                |
-| `w`  | `w`                        | Win notification                   |
+| Direction | Type | Format | Description |
+|-----------|------|--------|-------------|
+| C→S | `i` | `i.COMMANDS.TIME.SEQ` | Player input (card/piece) |
+| C→S | `p` | `p.TIMESTAMP` | Ping for latency |
+| C→S | `m` | `m.MMR` | MMR rating report |
+| C→S | `w` | `w` | Win notification |
+| S→C | `s.h` | `s.h.TIME` | You are host |
+| S→C | `s.j` | `s.j.HOST_ID` | Player 2 joined |
+| S→C | `s.r` | `s.r.TIME` | Game ready to start |
+| S→C | `s.e` | `s.e` | Game ended |
+| S→C | `s.n` | `s.n.NAME` | Player name change |
+| S→C | `onconnected` | `{id, name}` | Connection established |
 
-### Server → Client Messages
-
-| Type          | Format            | Description               |
-| ------------- | ----------------- | ------------------------- |
-| `s.h`         | `s.h.TIME`        | Hosted (you are player 1) |
-| `s.j`         | `s.j.HOST_ID`     | Joined (player 2 joined)  |
-| `s.r`         | `s.r.TIME`        | Ready (game starting)     |
-| `s.n`         | `s.n.PLAYER_NAME` | Name change               |
-| `s.e`         | `s.e`             | End game                  |
-| `s.p`         | `s.p.TIMESTAMP`   | Pong (ping response)      |
-| `onconnected` | `{id, name}`      | Connection acknowledgment |
-
-### Input Command Format
-
-The input message (`i`) contains comma-separated commands:
-
+**Input Command Format**:
 ```
-CARD_INDEX-PIECE_POSITION,CARD_INDEX-PIECE_POSITION,...
+CARD_INDEX-PIECE_POSITION,CARD_INDEX-PIECE_POSITION
 ```
 
 Example: `i.3-7,5-12.1234567.001`
-
 - Play card at index 3, place piece at position 7
 - Play card at index 5, place piece at position 12
-- Timestamp: 1234567
-- Sequence: 001
+- Client timestamp: 1234567
+- Sequence number: 001
+
+### State Synchronization
+
+**Server-Authoritative Model**:
+- Server is source of truth
+- Clients send inputs
+- Server validates and applies
+- Server broadcasts state updates
+
+**State Update Flow**:
+```mermaid
+graph LR
+    P1[Player 1] -->|Input| Server[Game Server]
+    Server -->|Validate| Core[GameCore]
+    Core -->|Apply| State[Board State]
+    State -->|Broadcast| P1
+    State -->|Broadcast| P2[Player 2]
+```
+
+**Optimistic Updates** (Client-side):
+- Render local prediction immediately
+- Await server confirmation
+- Rollback if server rejects
 
 ---
 
-## AI System
+## Game Flow
 
-### AI Architecture
+### Matchmaking Flow
 
 ```mermaid
-graph TB
-    subgraph "AI Manager"
-        Manager[AI Manager<br/>ai_manager.js]
-        Spawner[Instance Spawner]
-        Tracker[Performance Tracker]
-    end
-
-    subgraph "AI Instance"
-        AICore[AI GameCore<br/>Decision Engine]
-        Evaluator[Board Evaluator]
-        Params[Genetic Parameters]
-    end
-
-    subgraph "Evolution System"
-        GA[Genetic Algorithm]
-        Crossover[Crossover Function]
-        Mutation[Mutation 20%]
-        Selection[Fitness Selection]
-    end
-
-    subgraph "Rating System"
-        Elo[Elo Rating System]
-        MMR[MMR Tracking]
-    end
-
-    Manager --> Spawner
-    Spawner --> AICore
-    AICore --> Evaluator
-    Evaluator --> Params
-    AICore --> Server[Game Server]
-
-    Tracker --> Elo
-    Elo --> MMR
-    MMR --> GA
-    GA --> Crossover
-    GA --> Mutation
-    GA --> Selection
-    Selection --> Params
-
-    style GA fill:#ffe1ff
-    style Elo fill:#e1ffe1
+stateDiagram-v2
+    [*] --> Connecting: Player connects
+    Connecting --> SearchingGame: Socket connected
+    SearchingGame --> WaitingForOpponent: Created new game (Host)
+    SearchingGame --> GameStarting: Joined existing game (Client)
+    WaitingForOpponent --> GameStarting: Opponent found
+    GameStarting --> Playing: Both players ready
+    Playing --> GameEnded: Win condition met
+    Playing --> GameEnded: Player disconnect
+    GameEnded --> SearchingGame: Auto-rematch
+    GameEnded --> [*]: Player leaves
 ```
 
-### AI Decision Algorithm
+### Game Lifecycle
 
-The AI evaluates board states using a parameterized scoring function:
-
-```typescript
-function evaluateBoard(board: GameBoard, params: AIParams): number {
-  let score = 0;
-
-  // Evaluate all rows, columns, and diagonals
-  for (const line of getAllLines(board)) {
-    const playerPieces = countPieces(line, AI_PLAYER);
-    const enemyPieces = countPieces(line, ENEMY_PLAYER);
-    const shields = countShields(line);
-    const frozen = countFrozen(line);
-    const blocked = countBlocked(line);
-
-    // Apply genetic parameters
-    score += playerPieces * params.playerCardValue;
-    score -= enemyPieces * params.enemyCardValue;
-    score += shields * params.shieldMod;
-    score += frozen * params.freezeMod;
-    score += blocked * params.rockMod;
-
-    // Center position bonus
-    if (isCenterPosition(line)) {
-      score += params.centerMod;
+```mermaid
+stateDiagram-v2
+    state Playing {
+        [*] --> DrawPhase
+        DrawPhase --> CardPhase: Card drawn
+        CardPhase --> CardPhase: Play another card
+        CardPhase --> PlacePhase: Cards played/skipped
+        PlacePhase --> CheckWin: Piece placed
+        CheckWin --> [*]: Winner found
+        CheckWin --> NextTurn: No winner
+        NextTurn --> DrawPhase: Switch player
     }
-
-    // Enemy proximity modifier
-    if (hasEnemyAdjacent(line)) {
-      score *= params.enemyMod;
-    }
-  }
-
-  return score;
-}
 ```
 
-### Genetic Parameters
+### Turn Phases
 
-The AI uses 7 evolved parameters for decision-making:
+**1. Draw Phase**
+- Automatic: Player draws 1 card from deck
+- Skip if deck empty
+- Skip if hand full (7 cards)
 
-| Parameter         | Range   | Purpose                   |
-| ----------------- | ------- | ------------------------- |
-| `playerCardValue` | 0-97    | Weight of own pieces      |
-| `enemyCardValue`  | 0-70    | Weight of opponent pieces |
-| `centerMod`       | 0.6-2.7 | Center square preference  |
-| `enemyMod`        | 1.4-2.2 | Opponent position weight  |
-| `shieldMod`       | 0.6-1.8 | Shield priority           |
-| `freezeMod`       | 0.6     | Freeze effect priority    |
-| `rockMod`         | 0.8     | Block priority            |
+**2. Card Phase**
+- Player may play 0+ cards
+- Each card has effects (damage, shield, freeze, etc.)
+- Effects resolved immediately via CardResolver
+- Some cards allow playing multiple cards
+- End card phase when player chooses
 
-### Evolution Process
+**3. Place Phase**
+- Player must place 1 piece on board
+- Validate: Square not frozen, not blocked, not occupied
+- Update board state
+- Some cards allow placing multiple pieces
 
-```mermaid
-flowchart TD
-    Start([Generation N]) --> Create[Create AI Pool<br/>Population Size: 20-30]
-    Create --> Play[Play Games<br/>Round Robin]
-    Play --> Track[Track Performance<br/>Elo Rating System]
-    Track --> Evaluate[Evaluate Fitness<br/>Based on MMR]
-    Evaluate --> Select[Select Top Performers<br/>Weighted Selection]
-    Select --> Crossover[Crossover<br/>Inherit parameters 1-6]
-    Crossover --> Mutate{Mutation?<br/>20% chance}
-    Mutate -->|Yes| Random[Random Parameters]
-    Mutate -->|No| Inherit[Inherited Parameters]
-    Random --> NewGen[Generation N+1]
-    Inherit --> NewGen
-    NewGen --> Converge{Variance Small?}
-    Converge -->|No| Play
-    Converge -->|Yes| End([Evolution Complete])
-```
-
----
-
-## Card System
-
-### Card Effect Resolution Flow
-
-```mermaid
-flowchart TD
-    Start([Player Plays Card]) --> Parse[CardParser<br/>Parse effect descriptions]
-    Parse --> Resolve[CardResolver<br/>Resolve all effects]
-
-    Resolve --> Loop{More Effects?}
-    Loop -->|Yes| CheckType{Effect Type?}
-    Loop -->|No| Complete[Effect Complete]
-
-    CheckType -->|Damage| Damage[Apply Damage<br/>Reduce shields first]
-    CheckType -->|Destroy| Destroy[Remove Pieces]
-    CheckType -->|Shield| Shield[Add Shields]
-    CheckType -->|Freeze| Freeze[Freeze Squares]
-    CheckType -->|Draw| Draw[Draw Cards]
-    CheckType -->|Discard| Discard[Discard Cards]
-    CheckType -->|Block| Block[Block Squares]
-
-    Damage --> UpdateState[Update Game State]
-    Destroy --> UpdateState
-    Shield --> UpdateState
-    Freeze --> UpdateState
-    Draw --> UpdateState
-    Discard --> UpdateState
-    Block --> UpdateState
-
-    UpdateState --> Loop
-    Complete --> CheckFlags{State Flags Set?}
-    CheckFlags -->|Yes| WaitAction[Wait for Player Action]
-    CheckFlags -->|No| TurnContinue[Continue Turn]
-```
-
-### Effect Types
-
-```typescript
-enum EffectType {
-  DAMAGE = "damage", // Deal damage to pieces
-  DESTROY = "destroy", // Remove pieces outright
-  SHIELD = "shield", // Protect pieces
-  DESHIELD = "deshield", // Remove shields
-  FREEZE = "freeze", // Block square usage
-  THAW = "thaw", // Unfreeze squares
-  BLOCK = "block", // Place blocking rock
-  DRAW = "draw", // Draw cards
-  DISCARD = "discard", // Discard cards
-  RETURN_TO_HAND = "return", // Return card to hand
-  END_TURN = "end_turn", // End turn immediately
-}
-
-enum TargetType {
-  SELF = "self", // Own pieces
-  OPPONENT = "opponent", // Enemy pieces
-  SQUARE = "square", // Specific square
-  ALL = "all", // All pieces
-  CONDITIONAL = "conditional", // Conditional targeting
-}
-```
-
-### Card Examples
-
-**Fire Blast** (Basic)
-
-```json
-{
-  "name": "Fire Blast",
-  "rarity": "Basic",
-  "effects": ["Deal 1 damage"]
-}
-```
-
-**Floods** (Rare)
-
-```json
-{
-  "name": "Floods",
-  "rarity": "Rare",
-  "effects": ["Destroy all pieces", "End your turn"]
-}
-```
-
-**Armour Up** (Basic)
-
-```json
-{
-  "name": "Armour Up",
-  "rarity": "Basic",
-  "effects": ["Shield a piece", "Draw a card"]
-}
-```
+**4. Check Win**
+- Check all rows, columns, diagonals for 4-in-a-row
+- If winner found: End game, update stats
+- If no winner: Next player's turn
 
 ---
 
 ## Technology Stack
 
-### Frontend Stack
+### Frontend
 
-```mermaid
-graph LR
-    Browser[Browser] --> React[React 19]
-    React --> NextJS[Next.js 15]
-    NextJS --> TypeScript[TypeScript]
-    React --> Canvas[Canvas API<br/>2D Rendering]
-    Browser --> jQuery[jQuery<br/>Legacy Support]
-    Browser --> SocketIOClient[Socket.IO Client 4.8]
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Next.js | 15.5.6 | React framework, SSR, routing |
+| React | 19.2.0 | UI component library |
+| TypeScript | 5.3.3 | Type-safe JavaScript |
+| Socket.IO Client | 4.8.1 | WebSocket client |
+| Canvas API | Native | Game rendering |
+| jQuery | 3.7.1 | Legacy game code support |
+| dat.GUI | 0.7.9 | Debug controls |
 
-    style React fill:#61dafb
-    style NextJS fill:#000000,color:#fff
-    style TypeScript fill:#3178c6
-```
+### Backend
 
-### Backend Stack
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Node.js | 20+ | JavaScript runtime |
+| Next.js | 15.5.6 | Server framework |
+| Express | 4.18.2 | HTTP server |
+| Socket.IO | 4.7.4 | WebSocket server |
+| Vercel KV | 3.0.0 | Redis for serverless |
+| Winston | 3.11.0 | Logging |
+| UUID | 9.0.1 | Unique ID generation |
 
-```mermaid
-graph LR
-    Node[Node.js] --> Express[Express 4.18]
-    Express --> SocketIO[Socket.IO 4.7]
-    Node --> NextJS[Next.js 15]
-    Express --> Winston[Winston<br/>Logging]
-    NextJS --> Redis[Vercel KV<br/>Redis]
+### Development
 
-    style Node fill:#68a063
-    style Express fill:#000000,color:#fff
-    style SocketIO fill:#010101,color:#fff
-```
-
-### Technology Matrix
-
-| Category       | Technology | Version | Purpose                         |
-| -------------- | ---------- | ------- | ------------------------------- |
-| **Framework**  | Next.js    | 15.5.6  | Full-stack React framework, SSR |
-| **Frontend**   | React      | 19.2.0  | UI component library            |
-| **Language**   | TypeScript | 5.3.3   | Type-safe JavaScript            |
-| **Backend**    | Express    | 4.18.2  | HTTP server, routing            |
-| **Real-time**  | Socket.IO  | 4.7.4   | WebSocket communication         |
-| **Database**   | Vercel KV  | 3.0.0   | Redis for serverless            |
-| **Rendering**  | Canvas API | Native  | Game visualization              |
-| **Logging**    | Winston    | 3.11.0  | Structured logging              |
-| **Testing**    | Jest       | 29.7.0  | Unit testing                    |
-| **Linting**    | ESLint     | 8.56.0  | Code quality                    |
-| **Formatting** | Prettier   | 3.6.2   | Code formatting                 |
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Jest | 29.7.0 | Unit testing |
+| ESLint | 8.56.0 | Code linting |
+| Prettier | 3.6.2 | Code formatting |
+| TypeScript | 5.3.3 | Type checking |
+| Nodemon | 3.0.3 | Dev server auto-reload |
 
 ---
 
-## Deployment
+## Deployment Strategy
 
 ### Deployment Modes
 
+#### 1. Local Development
+
+```bash
+npm run dev
+```
+
+**Configuration**:
+- HTTP Server: `localhost:3000`
+- WebSocket: `ws://localhost:3000`
+- Storage: In-memory only
+- Redis: Optional (development can skip)
+
+**Pros**:
+- Fast iteration
+- Full debugging
+- No external dependencies
+
+**Cons**:
+- No persistent state
+- Single instance only
+
+#### 2. Production Server (VPS/Dedicated)
+
+```bash
+npm run build
+npm start
+```
+
+**Configuration**:
+- HTTP Server: Custom domain
+- WebSocket: `wss://yourdomain.com`
+- Storage: In-memory + Redis
+- Redis: Vercel KV or self-hosted
+
+**Pros**:
+- Persistent WebSocket connections
+- Full control over server
+- No cold starts
+
+**Cons**:
+- Manual scaling
+- Server management overhead
+- Single point of failure
+
+#### 3. Vercel Serverless (Hybrid)
+
+**Configuration**:
+- Static pages: Vercel CDN
+- API routes: Serverless functions
+- WebSocket server: External (Railway, Render, Fly.io)
+- Redis: Vercel KV
+
+**Architecture**:
 ```mermaid
 graph TB
-    subgraph "Local Development"
-        LocalNode[Node.js Server<br/>Port 3000]
-        LocalMem[In-Memory<br/>Game Storage]
-        LocalNode --> LocalMem
-    end
+    Client[Web Browser]
+    VercelCDN[Vercel CDN<br/>Static Assets]
+    VercelFunc[Vercel Serverless<br/>API Routes]
+    External[External WebSocket Server<br/>Railway/Render]
+    Redis[Vercel KV Redis]
 
-    subgraph "Production Server"
-        ProdNode[Node.js Server<br/>Configurable Port]
-        ProdMem[In-Memory<br/>Game Storage]
-        ProdNode --> ProdMem
-    end
-
-    subgraph "Vercel Serverless"
-        VercelFunc[Serverless Functions]
-        VercelMem[In-Memory Cache]
-        VercelKV[Vercel KV Redis<br/>Metadata Storage]
-        VercelFunc --> VercelMem
-        VercelFunc --> VercelKV
-    end
-
-    Dev[Developer] --> LocalNode
-    Users[Users] --> ProdNode
-    Internet[Internet] --> VercelFunc
-
-    style LocalNode fill:#e1f5ff
-    style ProdNode fill:#e1ffe1
-    style VercelFunc fill:#ffe1e1
+    Client --> VercelCDN
+    Client --> VercelFunc
+    Client <-->|WSS| External
+    VercelFunc --> Redis
+    External --> Redis
 ```
 
-### Build and Run Scripts
+**Pros**:
+- Scalable static delivery
+- Managed infrastructure
+- Global CDN
+
+**Cons**:
+- WebSocket server must be separate
+- More complex deployment
+- Additional cost for WebSocket server
+
+### Recommended Production Setup
+
+**Option A: Single Server** (Simplest)
+- Deploy to Railway, Render, or Fly.io
+- Use Vercel KV for Redis
+- Configure custom domain with SSL
+
+**Option B: Hybrid** (Most Scalable)
+- Static assets on Vercel
+- WebSocket server on Railway/Render
+- Vercel KV for Redis
+- CloudFlare for DNS and SSL
+
+### Environment Variables
 
 ```bash
-# Development
-npm run dev           # Copy assets + start dev server
-
-# Production Build
-npm run build         # Copy assets + build Next.js
-
-# Production Run
-npm start             # Start production server
-
-# AI Training
-npm run create-ai     # Spawn AI instances for training
-
-# Testing
-npm test              # Run Jest tests
-
-# Code Quality
-npm run lint          # Run ESLint
-npm run format        # Run Prettier
-```
-
-### Environment Configuration
-
-```bash
-# Optional: Vercel KV (Redis) for serverless deployment
-KV_REST_API_URL=https://your-kv.vercel.com
-KV_REST_API_TOKEN=your-token
-KV_URL=redis://...
-
 # Server Configuration
-PORT=3000                    # Server port (default: 3000)
-NODE_ENV=production          # Environment mode
+PORT=3000
+NODE_ENV=production
+
+# Redis (Vercel KV)
+KV_REST_API_URL=https://your-kv.vercel.com
+KV_REST_API_TOKEN=your_token_here
+KV_URL=redis://default:token@endpoint:port
+
+# Optional: Analytics
+ANALYTICS_ID=your_analytics_id
 ```
 
-### Redis Integration
+### Monitoring and Logging
 
-The game uses a hybrid storage approach:
+**Winston Logger Configuration**:
+```javascript
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' }),
+    new winston.transports.Console({
+      format: winston.format.simple()
+    })
+  ]
+});
+```
 
-1. **In-Memory (Fast)**: All game state is kept in memory for performance
-2. **Redis (Persistence)**: Game metadata is persisted to Redis for:
-   - Cross-instance game discovery (serverless environments)
-   - Recovery from instance restarts
-   - Automatic cleanup with 1-hour TTL
+**Key Metrics to Monitor**:
+- Active WebSocket connections
+- Active games count
+- Average game duration
+- Player reconnection rate
+- Redis hit/miss ratio
+- Server memory usage
+- Message throughput
 
-```typescript
-// Storage strategy
-class GameService {
-  private games: Map<string, Game> = new Map(); // In-memory
-  private storage?: RedisGameStorage; // Optional Redis
+---
 
-  async createGame(player: Player): Promise<Game> {
-    const game = new Game(player);
+## Scalability Considerations
 
-    // Always store in memory (fast)
-    this.games.set(game.id, game);
+### Current Limitations
 
-    // Optionally persist metadata to Redis (serverless)
-    if (this.storage) {
-      await this.storage.saveGame({
-        id: game.id,
-        player_host: player.id,
-        player_count: 1,
-      });
+1. **Single Server Instance**
+   - All games run in one Node.js process
+   - Memory limited by instance size
+   - No horizontal scaling
+
+2. **In-Memory State**
+   - Game state lost on server restart
+   - No load balancing across servers
+
+3. **WebSocket Stickiness**
+   - Players must connect to same server instance
+   - Can't migrate games between servers
+
+### Future Improvements
+
+#### 1. Redis Pub/Sub for Multi-Server
+
+```mermaid
+graph TB
+    subgraph "Server Instance 1"
+        S1[Game Server 1]
+        M1[Memory Cache 1]
+    end
+
+    subgraph "Server Instance 2"
+        S2[Game Server 2]
+        M2[Memory Cache 2]
+    end
+
+    subgraph "Shared State"
+        RedisPubSub[Redis Pub/Sub]
+        RedisStore[Redis Game Store]
+    end
+
+    S1 --> M1
+    S2 --> M2
+    S1 --> RedisPubSub
+    S2 --> RedisPubSub
+    S1 -.-> RedisStore
+    S2 -.-> RedisStore
+    RedisPubSub --> RedisStore
+```
+
+**Implementation**:
+```javascript
+// Subscribe to game updates
+redis.subscribe(`game:${gameId}`);
+redis.on('message', (channel, message) => {
+  const update = JSON.parse(message);
+  this.syncGameState(update);
+});
+
+// Publish state changes
+redis.publish(`game:${gameId}`, JSON.stringify(stateUpdate));
+```
+
+#### 2. Kubernetes Deployment
+
+**Pod Configuration**:
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: game-server
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: game-server
+  template:
+    spec:
+      containers:
+      - name: game-server
+        image: knights-crosses:latest
+        env:
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: url
+```
+
+#### 3. Load Balancer Configuration
+
+**Sticky Sessions** (required for WebSockets):
+```nginx
+upstream game_servers {
+    ip_hash;  # Sticky sessions based on client IP
+    server game-server-1:3000;
+    server game-server-2:3000;
+    server game-server-3:3000;
+}
+
+server {
+    listen 443 ssl;
+    server_name game.example.com;
+
+    location / {
+        proxy_pass http://game_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
-
-    return game;
-  }
 }
 ```
 
 ---
 
-## Key Implementation Files
+## Security Considerations
 
-### Critical Files Reference
+### Input Validation
 
-| File                                 | LOC  | Description        | Key Classes/Functions                |
-| ------------------------------------ | ---- | ------------------ | ------------------------------------ |
-| `src/game.core.server.js`            | 606  | Server game engine | GameCore, GameBoard, GamePlayer      |
-| `src/game.server.js`                 | 185+ | Connection manager | GameServer                           |
-| `src/server/services/GameService.js` | 140+ | Game lifecycle     | GameService.findGame(), createGame() |
-| `src/game.core.client.js`            | 500+ | Client renderer    | Canvas rendering, input handling     |
-| `src/cards/card-resolver.cjs`        | 200+ | Card effects       | resolveCard(), applyEffect()         |
-| `src/ai/core/GameCore.ts`            | 300+ | AI decision engine | evaluateBoard(), getMoves()          |
-| `components/Game.tsx`                | 150+ | React component    | Game component, library loading      |
+**Server-Side Validation**:
+```javascript
+handleServerInput(commands) {
+  // Validate input format
+  if (!this.validateInputFormat(commands)) {
+    return; // Reject invalid input
+  }
+
+  // Validate move legality
+  if (!this.validateMove(cardIndex, piecePosition)) {
+    return; // Reject illegal move
+  }
+
+  // Apply input
+  this.applyInput(commands);
+}
+```
+
+### Rate Limiting
+
+**Socket.IO Rate Limiting**:
+```javascript
+const rateLimiter = new Map();
+
+io.on('connection', (socket) => {
+  const limit = { count: 0, resetTime: Date.now() + 1000 };
+  rateLimiter.set(socket.id, limit);
+
+  socket.on('message', (msg) => {
+    const limit = rateLimiter.get(socket.id);
+
+    if (Date.now() > limit.resetTime) {
+      limit.count = 0;
+      limit.resetTime = Date.now() + 1000;
+    }
+
+    if (limit.count >= 10) {
+      socket.emit('rate_limit_exceeded');
+      return;
+    }
+
+    limit.count++;
+    this.handleMessage(socket, msg);
+  });
+});
+```
+
+### Authentication (Future)
+
+**JWT Token-Based Auth**:
+```javascript
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err) return next(new Error('Authentication error'));
+
+    socket.userId = decoded.userId;
+    next();
+  });
+});
+```
 
 ---
 
-## Future Architecture Considerations
+## Performance Optimizations
 
-### Potential Improvements
+### 1. Message Compression
 
-1. **State Management**
-   - Consider Redux/Zustand for client state management
-   - Migrate from Canvas to React components for better maintainability
+**Binary Protocol** instead of JSON:
+```javascript
+// Current: JSON (verbose)
+{ type: 'input', cardIndex: 3, position: 7 }
 
-2. **Performance**
-   - Implement delta compression for network messages
-   - Add client-side prediction for reduced latency
+// Optimized: Binary buffer
+const buffer = Buffer.allocUnsafe(5);
+buffer.writeUInt8(1, 0);  // Message type
+buffer.writeUInt8(3, 1);  // Card index
+buffer.writeUInt8(7, 2);  // Position
+buffer.writeUInt16BE(sequence, 3);
+```
 
-3. **Scalability**
-   - Implement Redis pub/sub for multi-server coordination
-   - Add game session migration for server restarts
+### 2. Delta Updates
 
-4. **Code Organization**
-   - Migrate all JavaScript to TypeScript
-   - Separate client/server code into distinct packages
-   - Create shared types package for client/server
+**Send only changed state**:
+```javascript
+// Current: Full state
+{ board: [[...]], players: {...} }
 
-5. **Testing**
-   - Add integration tests for game flow
-   - Implement E2E tests with Playwright
-   - Add AI unit tests with known scenarios
+// Optimized: Delta only
+{ type: 'delta', position: 7, value: 1, shields: 2 }
+```
+
+### 3. Client-Side Prediction
+
+**Predict moves locally, reconcile with server**:
+```javascript
+// Client predicts move result
+this.localBoard[pos] = 1;
+this.render();
+
+// Server confirms or corrects
+socket.on('state_update', (serverState) => {
+  if (this.localBoard !== serverState.board) {
+    // Rollback and apply server state
+    this.localBoard = serverState.board;
+    this.render();
+  }
+});
+```
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+
+**GameCore Logic**:
+```javascript
+describe('GameCore', () => {
+  it('should detect horizontal win', () => {
+    const game = new GameCore();
+    game.board.results[0] = [1, 1, 1, 1];
+    expect(game.checkWin()).toBe(1);
+  });
+
+  it('should apply damage correctly', () => {
+    const game = new GameCore();
+    game.board.shields[0][0] = 2;
+    game.applyDamage(0, 1);
+    expect(game.board.shields[0][0]).toBe(1);
+  });
+});
+```
+
+### Integration Tests
+
+**Multiplayer Flow**:
+```javascript
+describe('Multiplayer', () => {
+  it('should match two players', async () => {
+    const player1 = createMockSocket();
+    const player2 = createMockSocket();
+
+    await gameService.findGame(player1);
+    const game = await gameService.findGame(player2);
+
+    expect(game.player_count).toBe(2);
+    expect(game.active).toBe(true);
+  });
+});
+```
+
+### Load Testing
+
+**Socket.IO Load Test**:
+```javascript
+import { io } from 'socket.io-client';
+
+async function loadTest(concurrentPlayers) {
+  const sockets = [];
+
+  for (let i = 0; i < concurrentPlayers; i++) {
+    const socket = io('ws://localhost:3000');
+    sockets.push(socket);
+
+    await new Promise(resolve => {
+      socket.on('onconnected', resolve);
+    });
+  }
+
+  console.log(`${concurrentPlayers} players connected`);
+}
+
+loadTest(1000);
+```
 
 ---
 
 ## Glossary
 
-| Term                  | Definition                                                  |
-| --------------------- | ----------------------------------------------------------- |
-| **TCG**               | Trading Card Game - a card-based strategy game              |
-| **Elo Rating**        | Chess rating system adapted for AI performance tracking     |
-| **MMR**               | Matchmaking Rating - player/AI skill level                  |
-| **Genetic Algorithm** | Evolutionary optimization technique for AI parameters       |
-| **Serverless**        | Cloud execution model where server management is abstracted |
-| **Socket.IO**         | Real-time bidirectional event-based communication library   |
-| **SSR**               | Server-Side Rendering - rendering React on the server       |
+| Term | Definition |
+|------|------------|
+| **Socket.IO** | Real-time bidirectional event-based communication library |
+| **WebSocket** | Protocol for persistent, full-duplex connections |
+| **MMR** | Matchmaking Rating - player skill level |
+| **TTL** | Time To Live - expiration time for cached data |
+| **Pub/Sub** | Publish/Subscribe messaging pattern |
+| **Redis** | In-memory data structure store used for caching |
+| **SSR** | Server-Side Rendering |
+| **CSR** | Client-Side Rendering |
+| **App Router** | Next.js 13+ file-based routing system |
+| **TCG** | Trading Card Game |
 
 ---
 
-## Documentation Maintenance
-
-This documentation should be updated when:
-
-- New features are added to the game
-- Architecture changes are made (new components, refactoring)
-- Technology stack is updated (version bumps, new libraries)
-- Game mechanics are modified (rules, cards, win conditions)
-- Deployment strategy changes
-
-See `.claude/instructions.md` for guidelines on keeping this documentation current.
-
----
-
-**Last Updated**: 2025-10-22
-**Version**: 1.2.0
+**Last Updated**: 2025-11-21
+**Version**: 2.0.0
 **Maintained By**: Development Team
