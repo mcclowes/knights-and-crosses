@@ -10,10 +10,11 @@ declare global {
       socket?: unknown;
     };
     game_core?: unknown;
-    $?: any;
-    jQuery?: any;
-    io?: any;
-    dat?: any;
+    __WS_URL__?: string;
+    $?: unknown;
+    jQuery?: unknown;
+    io?: unknown;
+    dat?: unknown;
   }
 }
 
@@ -35,6 +36,10 @@ export default function Game() {
     // This ensures they only load on the client side, avoiding SSR issues
     const loadLibraries = async () => {
       if (typeof window !== "undefined") {
+        // Set WebSocket URL from environment variable
+        // For Railway deployment, this should be set to your Railway WebSocket server URL
+        window.__WS_URL__ = process.env.NEXT_PUBLIC_WS_URL || undefined;
+
         // Load jQuery
         const jQuery = (await import("jquery")).default;
         window.$ = jQuery;
@@ -49,6 +54,7 @@ export default function Game() {
         window.dat = dat;
 
         console.log("Client libraries loaded successfully");
+        console.log("WebSocket URL:", window.__WS_URL__ || "Using default (same origin)");
       }
     };
 

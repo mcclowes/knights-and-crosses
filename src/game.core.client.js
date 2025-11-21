@@ -778,11 +778,28 @@ game_core.prototype.client_connect_to_server = function() {
 		return;
 	}
 
-	// Configure Socket.IO for Vercel serverless (polling-only, no WebSocket)
-	this.socket = io({
+	// Get WebSocket URL from window.__WS_URL__ (injected by Next.js) or use current location
+	// For Railway/standalone deployment, use WebSocket
+	// For Vercel serverless, use polling via API route
+	const wsUrl = window.__WS_URL__ || (window.location.hostname === 'localhost'
+		? 'http://localhost:3000'
+		: window.location.origin);
+
+	// Configure Socket.IO
+	// - For Railway/standalone: Use WebSocket transport
+	// - For Vercel: Use polling via /api/socket
+	const isVercelServerless = wsUrl.includes('vercel');
+
+	this.socket = isVercelServerless ? io({
 		path: '/api/socket',
-		transports: ['polling'], // Only use polling on Vercel (no WebSocket support)
-		upgrade: false, // Don't try to upgrade to WebSocket
+		transports: ['polling'], // Vercel serverless: polling only
+		upgrade: false,
+		reconnection: true,
+		reconnectionDelay: 1000,
+		reconnectionDelayMax: 5000,
+		reconnectionAttempts: 5
+	}) : io(wsUrl, {
+		transports: ['websocket', 'polling'], // Railway: prefer WebSocket
 		reconnection: true,
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
