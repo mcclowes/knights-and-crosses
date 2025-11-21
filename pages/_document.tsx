@@ -6,7 +6,11 @@ export default function Document() {
       <Head>
         <meta charSet="utf-8" />
         <link rel="icon" href="/assets/favicon/favicon.ico" />
-        <link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg" />
+        <link
+          rel="icon"
+          type="image/svg+xml"
+          href="/assets/favicon/favicon.svg"
+        />
         <link
           rel="apple-touch-icon"
           sizes="180x180"

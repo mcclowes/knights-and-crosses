@@ -181,21 +181,21 @@ In the centre of the image a 4x4 game board is visible, where the Tic Tac Toe ga
 
 Currently 14 cards are included in the decks.
 
-| Card Name | Rarity | Effects |
-|-----------|--------|---------|
-| Armour Up | Basic | Shield a piece, Draw a card |
-| Barrage | Basic | Damage all pieces, Discard 2 cards |
-| Bezerker | Rare | Discard a card, Deal 1 damage, If you have the least pieces, return this card to your hand |
-| Boulder | Rare | Discard a card, Block a square |
-| Fire Blast | Basic | Deal 1 damage |
-| Floods | Rare | Destroy all pieces, End your turn |
-| Flurry | Rare | Deal 2 damage to your pieces, Deal 2 damage to enemy pieces |
-| Frost | Basic | Freeze all squares |
-| Ice Blast | Basic | Freeze a square |
-| Reckless | Rare | Your opponent draws 2 cards, Destroy a piece |
-| Sabotage | Elite | Remove 5 shields |
-| Sacrifice | Rare | Destroy a piece of yours, Draw 3 cards |
-| Summer | Basic | Thaw 1 square, Draw a card |
-| Taxes | Rare | Discard 2 cards, Shield 3 pieces |
+| Card Name  | Rarity | Effects                                                                                    |
+| ---------- | ------ | ------------------------------------------------------------------------------------------ |
+| Armour Up  | Basic  | Shield a piece, Draw a card                                                                |
+| Barrage    | Basic  | Damage all pieces, Discard 2 cards                                                         |
+| Bezerker   | Rare   | Discard a card, Deal 1 damage, If you have the least pieces, return this card to your hand |
+| Boulder    | Rare   | Discard a card, Block a square                                                             |
+| Fire Blast | Basic  | Deal 1 damage                                                                              |
+| Floods     | Rare   | Destroy all pieces, End your turn                                                          |
+| Flurry     | Rare   | Deal 2 damage to your pieces, Deal 2 damage to enemy pieces                                |
+| Frost      | Basic  | Freeze all squares                                                                         |
+| Ice Blast  | Basic  | Freeze a square                                                                            |
+| Reckless   | Rare   | Your opponent draws 2 cards, Destroy a piece                                               |
+| Sabotage   | Elite  | Remove 5 shields                                                                           |
+| Sacrifice  | Rare   | Destroy a piece of yours, Draw 3 cards                                                     |
+| Summer     | Basic  | Thaw 1 square, Draw a card                                                                 |
+| Taxes      | Rare   | Discard 2 cards, Shield 3 pieces                                                           |
 
 Note: All art assetts are (c) Max Clayton Clowes, 2016

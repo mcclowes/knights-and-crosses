@@ -3,15 +3,15 @@ name: Vercel Log Monitor
 on:
   # Run every 30 minutes to check for new errors
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: "*/30 * * * *"
 
   # Allow manual trigger
   workflow_dispatch:
     inputs:
       time_range:
-        description: 'Time range to check (in minutes)'
+        description: "Time range to check (in minutes)"
         required: false
-        default: '30'
+        default: "30"
 
 jobs:
   monitor-logs:
@@ -24,8 +24,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Install dependencies
         run: |

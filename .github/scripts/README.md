@@ -23,6 +23,7 @@ This automation fetches error logs from Vercel deployments and automatically cre
 ### 1. Get Your Vercel Credentials
 
 #### Get Vercel Token:
+
 1. Go to [Vercel Account Settings](https://vercel.com/account/tokens)
 2. Click "Create Token"
 3. Give it a name (e.g., "GitHub Actions Log Monitor")
@@ -30,6 +31,7 @@ This automation fetches error logs from Vercel deployments and automatically cre
 5. Copy the token
 
 #### Get Project ID:
+
 ```bash
 # Option 1: From Vercel Dashboard URL
 # URL format: https://vercel.com/{team}/{project}/settings
@@ -41,6 +43,7 @@ npx vercel ls
 ```
 
 #### Get Team ID (if using team):
+
 ```bash
 # Using Vercel CLI
 npx vercel teams ls
@@ -55,17 +58,18 @@ Add the following secrets to your GitHub repository:
 2. Click **Settings** > **Secrets and variables** > **Actions**
 3. Click **New repository secret** and add each of the following:
 
-| Secret Name | Description | Required |
-|-------------|-------------|----------|
-| `VERCEL_TOKEN` | Your Vercel API token | Yes |
-| `VERCEL_PROJECT_ID` | Your Vercel project ID | Yes |
-| `VERCEL_TEAM_ID` | Your Vercel team ID (if applicable) | If using team |
+| Secret Name         | Description                         | Required      |
+| ------------------- | ----------------------------------- | ------------- |
+| `VERCEL_TOKEN`      | Your Vercel API token               | Yes           |
+| `VERCEL_PROJECT_ID` | Your Vercel project ID              | Yes           |
+| `VERCEL_TEAM_ID`    | Your Vercel team ID (if applicable) | If using team |
 
 **Note:** `GITHUB_TOKEN` is automatically provided by GitHub Actions.
 
 ### 3. Enable the Workflow
 
 The workflow is located at `.github/workflows/vercel-log-monitor.yml` and will:
+
 - Run automatically every 30 minutes
 - Check for errors in the last 30 minutes of logs
 - Can be manually triggered with custom time ranges
@@ -84,11 +88,13 @@ To manually trigger the workflow:
 ### Error Fingerprinting
 
 Each error is fingerprinted using:
+
 ```
 MD5( errorType + errorMessage + firstStackTraceLine )
 ```
 
 Example:
+
 - Error: `TypeError: Cannot read property 'foo' of undefined`
 - Stack: `at GameService.findGame (/src/server/services/GameService.js:123:45)`
 - Fingerprint: `a1b2c3d4` (8-character hash)
@@ -96,6 +102,7 @@ Example:
 ### Label-Based Tracking
 
 Issues are tagged with:
+
 - `vercel-error` - All auto-created issues
 - `error-hash:a1b2c3d4` - Specific error fingerprint
 - `bug` - Standard bug label
@@ -103,6 +110,7 @@ Issues are tagged with:
 ### Duplicate Detection
 
 When a new error is found:
+
 1. Calculate its fingerprint
 2. Search for open issues with matching `error-hash:*` label
 3. If found: Add comment with new occurrence details
@@ -111,6 +119,7 @@ When a new error is found:
 ## Issue Format
 
 ### New Issue
+
 ```markdown
 [Vercel Error] TypeError: Cannot read property 'foo' of undefined
 
@@ -124,8 +133,10 @@ When a new error is found:
 
 ### Stack Trace
 ```
+
 at GameService.findGame (/src/server/services/GameService.js:123:45)
 at async handler (/pages/api/socket.ts:67:12)
+
 ```
 
 ---
@@ -136,6 +147,7 @@ This issue was automatically created from Vercel logs.
 ```
 
 ### Recurring Error Comment
+
 ```markdown
 ## New Occurrence
 
@@ -154,10 +166,10 @@ Edit `.github/workflows/vercel-log-monitor.yml`:
 
 ```yaml
 schedule:
-  - cron: '*/30 * * * *'  # Every 30 minutes
+  - cron: "*/30 * * * *" # Every 30 minutes
   # Change to:
-  - cron: '0 * * * *'     # Every hour
-  - cron: '*/15 * * * *'  # Every 15 minutes
+  - cron: "0 * * * *" # Every hour
+  - cron: "*/15 * * * *" # Every 15 minutes
 ```
 
 ### Adjust Time Range
@@ -167,7 +179,7 @@ Edit the workflow default time range:
 ```yaml
 inputs:
   time_range:
-    default: '30'  # Change this value (in minutes)
+    default: "30" # Change this value (in minutes)
 ```
 
 ### Modify Error Parsing
@@ -182,8 +194,8 @@ Edit `.github/scripts/fetch-vercel-logs.js`:
 Edit the script constants:
 
 ```javascript
-const AUTO_ISSUE_LABEL = 'vercel-error';        // Main label
-const DEDUP_LABEL_PREFIX = 'error-hash:';       // Fingerprint prefix
+const AUTO_ISSUE_LABEL = "vercel-error"; // Main label
+const DEDUP_LABEL_PREFIX = "error-hash:"; // Fingerprint prefix
 ```
 
 ## Troubleshooting
@@ -193,6 +205,7 @@ const DEDUP_LABEL_PREFIX = 'error-hash:';       // Fingerprint prefix
 **Problem:** Workflow runs but finds no logs.
 
 **Solutions:**
+
 - Verify `VERCEL_PROJECT_ID` is correct
 - Check that deployments exist in the time range
 - Ensure Vercel token has proper permissions
@@ -203,6 +216,7 @@ const DEDUP_LABEL_PREFIX = 'error-hash:';       // Fingerprint prefix
 **Problem:** "Failed to fetch deployments: 401" or "403"
 
 **Solutions:**
+
 - Regenerate Vercel token
 - Ensure token has access to the project/team
 - Verify token is correctly set in GitHub secrets
@@ -212,6 +226,7 @@ const DEDUP_LABEL_PREFIX = 'error-hash:';       // Fingerprint prefix
 **Problem:** Errors found but no issues created.
 
 **Solutions:**
+
 - Check workflow logs for error messages
 - Verify `GITHUB_TOKEN` has write permissions
 - Ensure repository settings allow GitHub Actions to create issues:
@@ -222,6 +237,7 @@ const DEDUP_LABEL_PREFIX = 'error-hash:';       // Fingerprint prefix
 **Problem:** Multiple issues for same error.
 
 **Solutions:**
+
 - Check if `error-hash:*` labels are being created
 - Verify deduplication logic in `findExistingIssue()`
 - Issues may be closed - script only checks open issues
@@ -297,13 +313,13 @@ Tag issues based on error type:
 
 ```javascript
 function getSeverity(error) {
-  if (error.type.includes('Fatal')) return 'critical';
-  if (error.type.includes('TypeError')) return 'high';
-  return 'medium';
+  if (error.type.includes("Fatal")) return "critical";
+  if (error.type.includes("TypeError")) return "high";
+  return "medium";
 }
 
 // In createIssueForError()
-labels: [AUTO_ISSUE_LABEL, hashLabel, 'bug', `severity:${getSeverity(error)}`]
+labels: [AUTO_ISSUE_LABEL, hashLabel, "bug", `severity:${getSeverity(error)}`];
 ```
 
 ### Integration with Alerts
@@ -312,7 +328,7 @@ Add notifications when critical errors occur:
 
 ```javascript
 // After creating issue
-if (error.type.includes('Fatal')) {
+if (error.type.includes("Fatal")) {
   // Send Slack notification, PagerDuty alert, etc.
 }
 ```

@@ -19,6 +19,7 @@ This is the Knights and Crosses game - a multiplayer TCG (Trading Card Game) tha
 **Location**: `/home/user/knights-and-crosses/ARCHITECTURE.md`
 
 This file contains comprehensive architecture documentation with mermaid diagrams showing:
+
 - System architecture overview
 - Component relationships and class hierarchies
 - Game flow and state machines
@@ -33,40 +34,47 @@ This file contains comprehensive architecture documentation with mermaid diagram
 **ALWAYS** update `ARCHITECTURE.md` when you make changes in these areas:
 
 #### 1. Structural Changes
+
 - **New Components/Classes**: Add to class hierarchy diagrams and component descriptions
 - **New Files/Directories**: Update the directory structure section
 - **Removed Components**: Remove from diagrams and update descriptions
 - **Component Refactoring**: Update class diagrams and component relationships
 
 #### 2. Game Logic Changes
+
 - **New Game Mechanics**: Update game flow diagrams and mechanics description
 - **Modified Win Conditions**: Update game flow state machine
 - **Turn Structure Changes**: Update turn sequence diagrams
 - **Board State Changes**: Update data models section
 
 #### 3. Card System Changes
+
 - **New Cards**: Update card examples and card count
 - **New Effect Types**: Add to EffectType enum in Card System section
 - **Card Resolution Logic Changes**: Update card effect resolution flow diagram
 - **Rarity Changes**: Update deck constraint documentation
 
 #### 4. AI System Changes
+
 - **New AI Parameters**: Update genetic parameters table
 - **AI Algorithm Changes**: Update AI decision algorithm pseudocode
 - **Evolution Process Changes**: Update evolution process flowchart
 - **Rating System Changes**: Update rating system documentation
 
 #### 5. Communication Protocol Changes
+
 - **New Message Types**: Add to protocol tables (Client→Server and Server→Client)
 - **Message Format Changes**: Update message format examples
 - **New Socket Events**: Document in communication protocol section
 
 #### 6. Technology Stack Changes
+
 - **New Dependencies**: Add to technology matrix table
 - **Version Updates**: Update version numbers in technology matrix
 - **Library Replacements**: Update technology stack diagrams and descriptions
 
 #### 7. Deployment Changes
+
 - **New Deployment Targets**: Add to deployment modes diagram
 - **Environment Variables**: Update environment configuration section
 - **Build Script Changes**: Update build and run scripts section
@@ -93,12 +101,14 @@ When making code changes, identify which sections of ARCHITECTURE.md are affecte
 The documentation uses multiple mermaid diagram types:
 
 **Graph diagrams** - For architecture overviews:
+
 ```mermaid
 graph TB
     A[Component A] --> B[Component B]
 ```
 
 **Sequence diagrams** - For interaction flows:
+
 ```mermaid
 sequenceDiagram
     Client->>Server: Request
@@ -106,6 +116,7 @@ sequenceDiagram
 ```
 
 **State diagrams** - For state machines:
+
 ```mermaid
 stateDiagram-v2
     [*] --> State1
@@ -113,6 +124,7 @@ stateDiagram-v2
 ```
 
 **Class diagrams** - For class hierarchies:
+
 ```mermaid
 classDiagram
     class ClassName {
@@ -121,6 +133,7 @@ classDiagram
 ```
 
 **Flowcharts** - For process flows:
+
 ```mermaid
 flowchart TD
     Start([Start]) --> Process[Process]
@@ -129,6 +142,7 @@ flowchart TD
 ### 3. Update Version and Date
 
 Always update the footer:
+
 ```markdown
 **Last Updated**: [Current Date]
 **Version**: [Current Version from package.json]
@@ -148,6 +162,7 @@ When adding a new card to `src/json/cards.json`:
 
 ```markdown
 **New Card Name** (Rarity):
+
 - Effect 1
 - Effect 2
 ```
@@ -204,6 +219,7 @@ When updating a diagram:
 ### Common Mermaid Patterns in This Project
 
 **Component connections:**
+
 ```mermaid
 A --> B    # Direct dependency
 A -.-> B   # Optional/conditional dependency
@@ -211,6 +227,7 @@ A <--> B   # Bidirectional communication
 ```
 
 **Styling:**
+
 ```mermaid
 style ComponentName fill:#e1f5ff    # Light blue for client
 style ComponentName fill:#ffe1e1    # Light red for storage
@@ -222,21 +239,25 @@ style ComponentName fill:#ffe1ff    # Light purple for AI
 ## Documentation Quality Standards
 
 ### 1. Accuracy
+
 - **Always test changes**: Ensure code changes work before documenting
 - **Verify diagrams**: Check that mermaid diagrams render correctly
 - **Update related sections**: Don't just update one section - update all affected
 
 ### 2. Clarity
+
 - **Use clear language**: Avoid jargon where possible
 - **Provide examples**: Show concrete examples of concepts
 - **Explain "why"**: Not just "what" but "why" architectural decisions were made
 
 ### 3. Completeness
+
 - **Don't leave gaps**: If you change component A that connects to B, update both
 - **Update all diagrams**: Text, diagrams, and code examples should all align
 - **Cross-reference**: Link related sections together
 
 ### 4. Consistency
+
 - **Follow existing patterns**: Match the style and structure of existing docs
 - **Use consistent terminology**: Don't call something "Game" in one place and "Match" elsewhere
 - **Maintain formatting**: Keep tables, code blocks, and headers formatted consistently
@@ -265,6 +286,7 @@ style ComponentName fill:#ffe1ff    # Light purple for AI
 ### Bug Fixes
 
 Most bug fixes don't require documentation updates unless:
+
 - The fix reveals incorrect architecture documentation
 - The fix changes behavior that's documented
 - The fix adds new error handling that should be documented
@@ -315,17 +337,20 @@ Before committing changes to ARCHITECTURE.md:
 ### Understanding the Codebase
 
 **File Extensions**:
+
 - `.ts` / `.tsx` - TypeScript (AI system, React components)
 - `.js` - JavaScript (game logic, server)
 - `.cjs` - CommonJS modules (card system)
 
 **Key Entry Points**:
+
 - `server.js` - Server bootstrap
 - `pages/index.tsx` - Client entry
 - `src/game.core.server.js` - Game logic
 - `src/ai/core/GameCore.ts` - AI logic
 
 **Data Flow**:
+
 ```
 Client Canvas → Socket.IO → GameServer → GameService → Game → GameCore → CardResolver
                                                                     ↓
@@ -372,6 +397,7 @@ When working on features:
 If you're unsure whether something needs documentation:
 
 **Ask yourself**:
+
 - Would a new developer need to know this to understand the system?
 - Does this change how components interact?
 - Does this add/remove/modify a public interface?

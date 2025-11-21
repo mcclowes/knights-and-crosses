@@ -181,7 +181,9 @@ export default async function handler(
       engine.handleRequest(req, res);
       // Don't call res.end() - engine.io will handle it
     } else {
-      console.log("[Socket.IO] Engine handleRequest not available, returning 200");
+      console.log(
+        "[Socket.IO] Engine handleRequest not available, returning 200",
+      );
       // Fallback: return 200 if we can't access engine
       if (!res.headersSent) {
         res.status(200).end();

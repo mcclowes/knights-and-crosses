@@ -9,6 +9,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ## Pattern Overview
 
 **The useSearchParams hook requires TWO things:**
+
 1. Component must have `'use client'` directive
 2. Component must be wrapped in a `<Suspense>` boundary
 
@@ -17,6 +18,7 @@ This is a Next.js requirement, not optional!
 ## Why This Pattern?
 
 **useSearchParams** reads URL query parameters:
+
 - `/search?q=shoes` → `searchParams.get('q')` returns `"shoes"`
 - `/products?category=electronics&sort=price` → Read multiple params
 
@@ -539,14 +541,14 @@ export default async function Page({
 
 ## Server vs Client searchParams
 
-| Feature | Server Component | Client Component |
-|---------|-----------------|------------------|
-| Access method | `searchParams` prop | `useSearchParams()` hook |
-| Requires 'use client' | ❌ No | ✅ Yes |
-| Requires Suspense | ❌ No | ✅ Yes |
-| Can be async | ✅ Yes | ❌ No |
-| Can update params | ❌ No (use Link/redirect) | ✅ Yes (use router.push) |
-| Best for | Initial load, SEO | Dynamic filters, real-time updates |
+| Feature               | Server Component          | Client Component                   |
+| --------------------- | ------------------------- | ---------------------------------- |
+| Access method         | `searchParams` prop       | `useSearchParams()` hook           |
+| Requires 'use client' | ❌ No                     | ✅ Yes                             |
+| Requires Suspense     | ❌ No                     | ✅ Yes                             |
+| Can be async          | ✅ Yes                    | ❌ No                              |
+| Can update params     | ❌ No (use Link/redirect) | ✅ Yes (use router.push)           |
+| Best for              | Initial load, SEO         | Dynamic filters, real-time updates |
 
 ## Quick Checklist
 
@@ -563,6 +565,7 @@ When using useSearchParams:
 ## Summary
 
 **useSearchParams with Suspense:**
+
 - ✅ Requires `'use client'` directive
 - ✅ Requires `<Suspense>` wrapper
 - ✅ Use for client-side URL param reading

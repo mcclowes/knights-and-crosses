@@ -89,9 +89,7 @@ export class GameService {
       this.games[gameId] = game;
       this.game_count = Object.keys(this.games).length;
 
-      console.log(
-        `[GameService] Game ${gameId} restored successfully from KV`,
-      );
+      console.log(`[GameService] Game ${gameId} restored successfully from KV`);
       return game;
     } catch (error) {
       console.error(`[GameService] Error loading game from KV:`, error);
@@ -158,7 +156,11 @@ export class GameService {
     console.log(
       `[GameService] Looking for a game. In-memory: ${this.game_count}`,
     );
-    console.log("[GameService] Player connecting:", player.userid, player.playername);
+    console.log(
+      "[GameService] Player connecting:",
+      player.userid,
+      player.playername,
+    );
 
     // First check in-memory games (fast path)
     for (const game of Object.values(this.games)) {
@@ -198,11 +200,7 @@ export class GameService {
         );
 
         // Restore the game from KV with the new player as client
-        const game = await this.loadGameFromKV(
-          availableGame.id,
-          null,
-          player,
-        );
+        const game = await this.loadGameFromKV(availableGame.id, null, player);
 
         if (game) {
           // Load client player stats from KV
@@ -279,10 +277,8 @@ export class GameService {
       const clientWon = winner === -1;
 
       // Get MMR changes from game
-      const hostMmrChange =
-        game.gamecore?.players?.self?.mmrChange || 0;
-      const clientMmrChange =
-        game.gamecore?.players?.other?.mmrChange || 0;
+      const hostMmrChange = game.gamecore?.players?.self?.mmrChange || 0;
+      const clientMmrChange = game.gamecore?.players?.other?.mmrChange || 0;
 
       // Update both players' stats
       await this.storage.updatePlayerStats(

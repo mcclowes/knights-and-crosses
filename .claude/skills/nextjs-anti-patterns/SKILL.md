@@ -15,12 +15,14 @@ Identify and correct common anti-patterns in Next.js App Router applications, fo
 **CRITICAL RULE:** This codebase has `@typescript-eslint/no-explicit-any` enabled. Using `any` will cause build failures.
 
 **❌ WRONG:**
+
 ```typescript
 function handleSubmit(e: any) { ... }
 const data: any[] = [];
 ```
 
 **✅ CORRECT:**
+
 ```typescript
 function handleSubmit(e: React.FormEvent<HTMLFormElement>) { ... }
 const data: string[] = [];
@@ -44,6 +46,7 @@ async function myAction(formData: FormData) { ... }
 ## When to Use This Skill
 
 Use this skill when:
+
 - Reviewing Next.js code for best practices
 - Debugging performance issues in App Router apps
 - Migrating from Pages Router with legacy patterns
@@ -93,6 +96,7 @@ This keeps the logic modular while ensuring the visible component still renders 
 #### Anti-Pattern 1.1: Using useEffect for Browser Detection
 
 **❌ WRONG - useEffect with useState:**
+
 ```typescript
 'use client';
 
@@ -110,12 +114,14 @@ export default function BrowserCheck() {
 ```
 
 **Why it's wrong:**
+
 - Causes flash of wrong content (renders default, then updates)
 - Unnecessary client-side state management
 - Can be detected directly in component body
 - Creates hydration mismatch
 
 **✅ CORRECT - Direct browser detection in component body:**
+
 ```typescript
 'use client';
 
@@ -137,6 +143,7 @@ export default function BrowserCheck() {
 ```
 
 **Key points:**
+
 - Use `typeof navigator !== 'undefined'` for SSR safety
 - Direct detection in component body (no hooks)
 - Use conditional rendering, not useState
@@ -145,6 +152,7 @@ export default function BrowserCheck() {
 - Ensure the logic is accessible from the component that consumers will render
 
 **Alternative: Use CSS media queries for responsive:**
+
 ```typescript
 export default function ResponsiveComponent() {
   return (
@@ -159,6 +167,7 @@ export default function ResponsiveComponent() {
 #### Anti-Pattern 1.2: Using useEffect for Data Fetching
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -196,6 +205,7 @@ export default function BlogPosts() {
 ```
 
 **Why it's wrong:**
+
 - Adds unnecessary client-side JavaScript
 - Creates loading states that could be avoided
 - Slower initial render (client-side fetch)
@@ -203,6 +213,7 @@ export default function BlogPosts() {
 - Breaks without JavaScript enabled
 
 **Correct:**
+
 ```typescript
 // Server Component (no 'use client')
 export default async function BlogPosts() {
@@ -227,6 +238,7 @@ export default async function BlogPosts() {
 ```
 
 **Benefits:**
+
 - Zero client-side JavaScript for this component
 - No loading state needed
 - Faster initial render (server-side)
@@ -236,6 +248,7 @@ export default async function BlogPosts() {
 #### Anti-Pattern 1.3: Using useEffect for URL Detection
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -257,6 +270,7 @@ export default function ShareButton() {
 ```
 
 **Correct:**
+
 ```typescript
 'use client';
 
@@ -276,6 +290,7 @@ export default function ShareButton() {
 #### Anti-Pattern 2.1: Using useState for Server Data
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -297,6 +312,7 @@ export default function UserProfile({ userId }: { userId: string }) {
 ```
 
 **Correct:**
+
 ```typescript
 // Server Component
 export default async function UserProfile({ userId }: { userId: string }) {
@@ -310,6 +326,7 @@ export default async function UserProfile({ userId }: { userId: string }) {
 #### Anti-Pattern 2.2: Using useState for Derived Values
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -327,6 +344,7 @@ export default function ProductList({ products }: { products: Product[] }) {
 ```
 
 **Correct:**
+
 ```typescript
 'use client';
 
@@ -339,6 +357,7 @@ export default function ProductList({ products }: { products: Product[] }) {
 ```
 
 **Or, if truly expensive calculation:**
+
 ```typescript
 'use client';
 
@@ -359,6 +378,7 @@ export default function ProductList({ products }: { products: Product[] }) {
 #### Anti-Pattern 3.1: Using getServerSideProps
 
 **Wrong:**
+
 ```typescript
 // This doesn't work in App Router!
 export async function getServerSideProps() {
@@ -374,6 +394,7 @@ export default function Page({ data }) {
 ```
 
 **Correct:**
+
 ```typescript
 // App Router: Server Component with async
 export default async function Page() {
@@ -389,10 +410,11 @@ export default async function Page() {
 #### Anti-Pattern 3.2: Using getStaticProps
 
 **Wrong:**
+
 ```typescript
 // This doesn't work in App Router!
 export async function getStaticProps() {
-  const res = await fetch('https://api.example.com/data');
+  const res = await fetch("https://api.example.com/data");
   const data = await res.json();
 
   return { props: { data }, revalidate: 60 };
@@ -400,6 +422,7 @@ export async function getStaticProps() {
 ```
 
 **Correct:**
+
 ```typescript
 // App Router: Server Component with revalidation
 export default async function Page() {
@@ -415,6 +438,7 @@ export default async function Page() {
 #### Anti-Pattern 3.3: Using next/head in App Router
 
 **Wrong:**
+
 ```typescript
 import Head from 'next/head';
 
@@ -432,6 +456,7 @@ export default function Page() {
 ```
 
 **Correct:**
+
 ```typescript
 import type { Metadata } from 'next';
 
@@ -450,6 +475,7 @@ export default function Page() {
 #### Anti-Pattern 4.1: Serial Await (Waterfall Requests)
 
 **Wrong:**
+
 ```typescript
 export default async function Dashboard() {
   // This takes 3 seconds total if each request takes 1 second
@@ -468,6 +494,7 @@ export default async function Dashboard() {
 ```
 
 **Correct:**
+
 ```typescript
 export default async function Dashboard() {
   // This takes 1 second total (parallel fetching)
@@ -488,6 +515,7 @@ export default async function Dashboard() {
 ```
 
 **Even Better: Use Suspense for progressive rendering:**
+
 ```typescript
 import { Suspense } from 'react';
 
@@ -526,6 +554,7 @@ async function Comments() {
 #### Anti-Pattern 4.2: Over-using 'use client'
 
 **Wrong:**
+
 ```typescript
 // app/layout.tsx
 'use client'; // Unnecessary - makes entire app client-side!
@@ -540,6 +569,7 @@ export default function RootLayout({ children }) {
 ```
 
 **Correct:**
+
 ```typescript
 // app/layout.tsx
 // No 'use client' - keep as Server Component
@@ -555,6 +585,7 @@ export default function RootLayout({ children }) {
 **Rule:** Only add `'use client'` to the lowest level component that needs it.
 
 **Wrong:**
+
 ```typescript
 // app/page.tsx
 'use client'; // Entire page becomes client component
@@ -571,6 +602,7 @@ export default function Page() {
 ```
 
 **Correct:**
+
 ```typescript
 // app/page.tsx - Server Component
 export default function Page() {
@@ -595,6 +627,7 @@ export default function InteractiveButton() {
 #### Anti-Pattern 4.3: Importing Server Components into Client Components
 
 **Wrong:**
+
 ```typescript
 // ClientComponent.tsx
 'use client';
@@ -607,6 +640,7 @@ export default function ClientComponent() {
 ```
 
 **Correct:**
+
 ```typescript
 // ParentComponent.tsx (Server Component)
 import ClientComponent from './ClientComponent';
@@ -633,6 +667,7 @@ export default function ClientComponent({ children }) {
 #### Anti-Pattern 5.1: Using window.location for Navigation
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -646,6 +681,7 @@ export default function NavButton() {
 ```
 
 **Correct:**
+
 ```typescript
 'use client';
 
@@ -663,6 +699,7 @@ export default function NavButton() {
 ```
 
 **Even Better: Use Link component:**
+
 ```typescript
 import Link from 'next/link';
 
@@ -674,6 +711,7 @@ export default function NavButton() {
 #### Anti-Pattern 5.2: Using useRouter in Server Components
 
 **Wrong:**
+
 ```typescript
 // Server Component
 import { useRouter } from 'next/navigation'; // ERROR!
@@ -685,6 +723,7 @@ export default function Page() {
 ```
 
 **Correct for Server Components:**
+
 ```typescript
 // Server Component - use redirect
 import { redirect } from 'next/navigation';
@@ -701,6 +740,7 @@ export default async function Page() {
 ```
 
 **Correct for Client Components:**
+
 ```typescript
 // Client Component
 'use client';
@@ -723,6 +763,7 @@ export default function Page() {
 #### Anti-Pattern 6.1: Creating Unnecessary API Routes
 
 **Wrong:**
+
 ```typescript
 // app/api/posts/route.ts
 export async function GET() {
@@ -749,6 +790,7 @@ export default function Posts() {
 ```
 
 **Correct:**
+
 ```typescript
 // app/posts/page.tsx - Direct database access
 import { db } from '@/lib/db';
@@ -761,6 +803,7 @@ export default async function Posts() {
 ```
 
 **When API routes ARE appropriate:**
+
 - External webhooks
 - Client-side mutations
 - Third-party integrations
@@ -769,6 +812,7 @@ export default async function Posts() {
 #### Anti-Pattern 6.2: Not Handling Loading States Properly
 
 **Wrong:**
+
 ```typescript
 // No loading UI - page blocks until all data loads
 export default async function Dashboard() {
@@ -779,6 +823,7 @@ export default async function Dashboard() {
 ```
 
 **Correct:**
+
 ```typescript
 import { Suspense } from 'react';
 

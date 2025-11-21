@@ -15,12 +15,14 @@ Provide comprehensive guidance for choosing between Server Components and Client
 **CRITICAL RULE:** This codebase has `@typescript-eslint/no-explicit-any` enabled. Using `any` will cause build failures.
 
 **❌ WRONG:**
+
 ```typescript
 function handleSubmit(e: any) { ... }
 const data: any[] = [];
 ```
 
 **✅ CORRECT:**
+
 ```typescript
 function handleSubmit(e: React.FormEvent<HTMLFormElement>) { ... }
 const data: string[] = [];
@@ -44,6 +46,7 @@ async function myAction(formData: FormData) { ... }
 ## When to Use This Skill
 
 Use this skill when:
+
 - Deciding whether to use Server or Client Components
 - Accessing cookies, headers, or other server-side data
 - Working with searchParams or route parameters
@@ -76,6 +79,7 @@ export default async function ProductList() {
 ```
 
 **When to use Server Components:**
+
 - Fetching data from APIs or databases
 - Accessing backend resources (environment variables, file system)
 - Processing sensitive information (API keys, tokens)
@@ -84,6 +88,7 @@ export default async function ProductList() {
 - Static or infrequently changing content
 
 **Benefits:**
+
 - Zero client-side JavaScript by default
 - Direct database/API access
 - Secure handling of secrets
@@ -113,6 +118,7 @@ export default function Counter() {
 ```
 
 **When to use Client Components:**
+
 - Need React hooks (useState, useEffect, useContext, etc.)
 - Event handlers (onClick, onChange, onSubmit, etc.)
 - Browser-only APIs (window, localStorage, navigator)
@@ -121,6 +127,7 @@ export default function Counter() {
 - Real-time features (WebSocket, animations)
 
 **Requirements for Client Components:**
+
 - Must have `'use client'` directive at top of file
 - Cannot use async/await directly in component
 - Cannot access server-only APIs (cookies, headers)
@@ -131,6 +138,7 @@ export default function Counter() {
 **Server Components are the DEFAULT. DO NOT add 'use client' unless you specifically need client-side features.**
 
 **✅ CORRECT - Server Component with Navigation:**
+
 ```typescript
 // app/page.tsx - Server Component (NO 'use client' needed!)
 import Link from 'next/link';
@@ -154,6 +162,7 @@ export default async function Page() {
 ```
 
 **❌ WRONG - Adding 'use client' to Server Component:**
+
 ```typescript
 // app/page.tsx
 'use client';  // ❌ WRONG! Don't add this to server components!
@@ -165,11 +174,13 @@ export default async function Page() {  // ❌ Will fail - async client componen
 ```
 
 **Server Navigation Methods (NO 'use client' needed):**
+
 - `<Link>` component from `next/link`
 - `redirect()` function from `next/navigation`
 - Server Actions (see Advanced Routing skill)
 
 **Client Navigation Methods (REQUIRES 'use client'):**
+
 - `useRouter()` hook from `next/navigation`
 - `usePathname()` hook
 - `useSearchParams()` hook (also requires Suspense)
@@ -199,6 +210,7 @@ export default async function Dashboard() {
 ```
 
 **Important Notes:**
+
 - `cookies()` must be awaited in Next.js 15+
 - Cookies are read-only in Server Components
 - To set cookies, use Server Actions (see Advanced Routing skill)
@@ -246,6 +258,7 @@ export default async function SearchPage({
 ```
 
 **Important Notes:**
+
 - `searchParams` is only available in `page.tsx` files
 - In Next.js 15+, `searchParams` must be awaited
 - searchParams is NOT available in `layout.tsx`
@@ -276,21 +289,22 @@ When extracting parameters from `searchParams`, **ALWAYS use inline access** to 
 
 ```typescript
 // ✅ CORRECT: Inline access (REQUIRED PATTERN)
-const name = (await searchParams).name || '';
+const name = (await searchParams).name || "";
 
 // ✅ ALSO CORRECT: Multiple parameters
-const category = (await searchParams).category || 'all';
-const sort = (await searchParams).sort || 'asc';
+const category = (await searchParams).category || "all";
+const sort = (await searchParams).sort || "asc";
 
 // ❌ WRONG: Using intermediate variable separates searchParams from parameter
-const params = await searchParams;  // DON'T DO THIS
-const name = params.name;           // searchParams not visible here
+const params = await searchParams; // DON'T DO THIS
+const name = params.name; // searchParams not visible here
 
 // ❌ WRONG: Destructuring (searchParams and name on same line but missing second 'name')
-const { name } = await searchParams;  // Not preferred
+const { name } = await searchParams; // Not preferred
 ```
 
 **Why inline access:**
+
 - Keeps `searchParams` identifier visible on the same line as parameter extraction
 - Makes the relationship between URL parameter and variable explicit
 - Satisfies code review and testing patterns that check for proper searchParams usage
@@ -357,6 +371,7 @@ export default function Breadcrumbs() {
 ### ⚠️ CRITICAL: useSearchParams ALWAYS Requires Suspense
 
 **When using `useSearchParams()` hook, you MUST:**
+
 1. Add `'use client'` directive at the top of the file
 2. Wrap the component in a Suspense boundary
 
@@ -391,6 +406,7 @@ export default function SearchComponent() {
 ```
 
 **❌ WRONG - Missing 'use client':**
+
 ```typescript
 // This will fail - useSearchParams requires 'use client'
 import { useSearchParams } from 'next/navigation';
@@ -402,6 +418,7 @@ export default function SearchComponent() {
 ```
 
 **❌ WRONG - Missing Suspense wrapper:**
+
 ```typescript
 // This will cause issues - useSearchParams requires Suspense
 export default function Page() {
@@ -641,6 +658,7 @@ export default async function ServerContent() {
 ### Anti-Pattern 1: Using 'use client' Everywhere
 
 **Wrong:**
+
 ```typescript
 // app/components/Header.tsx
 'use client';  // Unnecessary!
@@ -651,6 +669,7 @@ export default function Header() {
 ```
 
 **Correct:**
+
 ```typescript
 // app/components/Header.tsx
 // No directive needed - keep it as Server Component
@@ -664,6 +683,7 @@ export default function Header() {
 ### Anti-Pattern 2: Fetching Data in Client Components
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -683,6 +703,7 @@ export default function Products() {
 ```
 
 **Correct:**
+
 ```typescript
 // Server Component - no 'use client'
 export default async function Products() {
@@ -698,6 +719,7 @@ export default async function Products() {
 ### Anti-Pattern 3: Accessing Server APIs in Client Components
 
 **Wrong:**
+
 ```typescript
 'use client';
 
@@ -710,6 +732,7 @@ export default function ClientComponent() {
 ```
 
 **Correct:**
+
 ```typescript
 // Server Component
 import { cookies } from 'next/headers';
@@ -728,6 +751,7 @@ export default async function ServerComponent() {
 ### Anti-Pattern 4: Serial Await (Waterfall)
 
 **Wrong:**
+
 ```typescript
 export default async function Page() {
   const user = await fetchUser();
@@ -739,6 +763,7 @@ export default async function Page() {
 ```
 
 **Correct:**
+
 ```typescript
 export default async function Page() {
   // Fetch in parallel
@@ -757,6 +782,7 @@ export default async function Page() {
 ### Anti-Pattern 5: Importing Server Component into Client Component
 
 **Wrong:**
+
 ```typescript
 // ClientComponent.tsx
 'use client';
@@ -769,6 +795,7 @@ export default function ClientComponent() {
 ```
 
 **Correct:**
+
 ```typescript
 // ParentServerComponent.tsx (Server Component)
 import ClientComponent from './ClientComponent';

@@ -15,12 +15,14 @@ Provide comprehensive guidance for advanced Next.js App Router features includin
 **CRITICAL RULE:** This codebase has `@typescript-eslint/no-explicit-any` enabled. Using `any` will cause build failures.
 
 **❌ WRONG:**
+
 ```typescript
 function handleSubmit(e: any) { ... }
 const data: any[] = [];
 ```
 
 **✅ CORRECT:**
+
 ```typescript
 function handleSubmit(e: React.FormEvent<HTMLFormElement>) { ... }
 const data: string[] = [];
@@ -44,6 +46,7 @@ async function myAction(formData: FormData) { ... }
 ## When to Use This Skill
 
 Use this skill when:
+
 - Creating API endpoints with Route Handlers
 - Implementing parallel or intercepting routes
 - Building forms with Server Actions
@@ -64,11 +67,13 @@ When work requirements mention a specific filename, follow that instruction exac
 - **Explicit requirement:** If stakeholders call out a specific name, do not change it.
 
 **Location guidelines**
+
 - Server actions belong under the `app/` directory so they can participate in the App Router tree.
 - Keep the file alongside the UI that invokes it unless shared across multiple routes.
 - Avoid placing actions in `lib/` or `utils/` unless they are triggered from multiple distant routes and remain server-only utilities.
 
 **Example placement**
+
 ```
 app/
 ├── actions.ts       ← Shared actions that support multiple routes
@@ -80,12 +85,12 @@ app/
 
 ```typescript
 // app/action.ts (single-action example)
-'use server';
+"use server";
 
 export async function submitForm(formData: FormData) {
-  const name = formData.get('name') as string;
+  const name = formData.get("name") as string;
   // Process the form
-  console.log('Submitted:', name);
+  console.log("Submitted:", name);
 }
 ```
 
@@ -93,7 +98,7 @@ export async function submitForm(formData: FormData) {
 
 ```typescript
 // app/actions.ts (multiple related actions)
-'use server';
+"use server";
 
 export async function createPost(formData: FormData) {
   // ...
@@ -111,11 +116,13 @@ export async function deletePost(id: string) {
 **This is a TypeScript requirement, not optional. Even if you see code that returns data from form actions, that code is WRONG.**
 
 When using form action attribute: `<form action={serverAction}>`
+
 - The function **MUST have no return statement** (implicitly returns void)
 - TypeScript will **REJECT any return value**, even `return undefined` or `return null`
 - **IMPORTANT:** If you see example code in the codebase that returns data from a form action, ignore it - it's an anti-pattern. Fix it by removing the return statement.
 
 ❌ WRONG (causes build error):
+
 ```typescript
 export async function saveForm(formData: FormData) {
   'use server';
@@ -134,6 +141,7 @@ export async function saveForm(formData: FormData) {
 ```
 
 ✅ CORRECT - Option 1 (Simple form action, no response):
+
 ```typescript
 export async function saveForm(formData: FormData) {
   'use server';
@@ -156,6 +164,7 @@ export async function saveForm(formData: FormData) {
 ```
 
 ✅ CORRECT - Option 2 (With useActionState for feedback):
+
 ```typescript
 export async function saveForm(prevState: any, formData: FormData) {
   'use server';
@@ -192,15 +201,15 @@ Route Handlers replace API Routes from the Pages Router. Create them in `route.t
 ```typescript
 // app/api/hello/route.ts
 export async function GET(request: Request) {
-  return Response.json({ message: 'Hello World' });
+  return Response.json({ message: "Hello World" });
 }
 
 export async function POST(request: Request) {
   const body = await request.json();
 
   return Response.json({
-    message: 'Data received',
-    data: body
+    message: "Data received",
+    data: body,
   });
 }
 ```
@@ -209,13 +218,13 @@ export async function POST(request: Request) {
 
 ```typescript
 // app/api/items/route.ts
-export async function GET(request: Request) { }
-export async function POST(request: Request) { }
-export async function PUT(request: Request) { }
-export async function PATCH(request: Request) { }
-export async function DELETE(request: Request) { }
-export async function HEAD(request: Request) { }
-export async function OPTIONS(request: Request) { }
+export async function GET(request: Request) {}
+export async function POST(request: Request) {}
+export async function PUT(request: Request) {}
+export async function PATCH(request: Request) {}
+export async function DELETE(request: Request) {}
+export async function HEAD(request: Request) {}
+export async function OPTIONS(request: Request) {}
 ```
 
 ### Dynamic Route Handlers
@@ -224,7 +233,7 @@ export async function OPTIONS(request: Request) { }
 // app/api/posts/[id]/route.ts
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   const id = params.id;
   const post = await db.posts.findUnique({ where: { id } });
@@ -234,7 +243,7 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string } },
 ) {
   await db.posts.delete({ where: { id: params.id } });
 
@@ -246,19 +255,19 @@ export async function DELETE(
 
 ```typescript
 // app/api/profile/route.ts
-import { cookies, headers } from 'next/headers';
+import { cookies, headers } from "next/headers";
 
 export async function GET(request: Request) {
   // Access headers
   const headersList = await headers();
-  const authorization = headersList.get('authorization');
+  const authorization = headersList.get("authorization");
 
   // Access cookies
   const cookieStore = await cookies();
-  const sessionToken = cookieStore.get('session-token');
+  const sessionToken = cookieStore.get("session-token");
 
   if (!sessionToken) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const user = await fetchUser(sessionToken.value);
@@ -271,7 +280,7 @@ export async function GET(request: Request) {
 
 ```typescript
 // app/api/login/route.ts
-import { cookies } from 'next/headers';
+import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   const { email, password } = await request.json();
@@ -279,16 +288,16 @@ export async function POST(request: Request) {
   const token = await authenticate(email, password);
 
   if (!token) {
-    return Response.json({ error: 'Invalid credentials' }, { status: 401 });
+    return Response.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
   // Set cookie
   const cookieStore = await cookies();
-  cookieStore.set('session-token', token, {
+  cookieStore.set("session-token", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 7, // 1 week
-    path: '/',
+    path: "/",
   });
 
   return Response.json({ success: true });
@@ -304,9 +313,9 @@ export async function GET(request: Request) {
 
   return Response.json(data, {
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },
   });
 }
@@ -315,9 +324,9 @@ export async function OPTIONS(request: Request) {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     },
   });
 }
@@ -334,7 +343,7 @@ export async function GET() {
     async start(controller) {
       for (let i = 0; i < 10; i++) {
         controller.enqueue(encoder.encode(`data: ${i}\n\n`));
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       controller.close();
     },
@@ -342,9 +351,9 @@ export async function GET() {
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
 }
@@ -358,19 +367,19 @@ Server Actions enable server-side mutations without creating API endpoints.
 
 ```typescript
 // app/actions.ts
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
 export async function createPost(formData: FormData) {
-  const title = formData.get('title') as string;
-  const content = formData.get('content') as string;
+  const title = formData.get("title") as string;
+  const content = formData.get("content") as string;
 
   const post = await db.posts.create({
     data: { title, content },
   });
 
-  revalidatePath('/posts');
+  revalidatePath("/posts");
   // No return statement - Server Actions with forms should return void
 }
 ```
@@ -380,6 +389,7 @@ export async function createPost(formData: FormData) {
 ### ⚠️ CRITICAL: Server Actions File Organization
 
 **File Naming Precision:**
+
 - When stakeholders specify a filename (e.g., “create a server action in a file called `action.ts`”), mirror it exactly.
 - Common filenames: `action.ts` (singular) or `actions.ts` (plural)—choose the one that matches the brief or existing code.
 - Place the file in the appropriate directory: typically `app/action.ts` or `app/actions.ts`.
@@ -387,6 +397,7 @@ export async function createPost(formData: FormData) {
 **Two Patterns for 'use server' Directive:**
 
 **Pattern 1: File-level (recommended for multiple actions):**
+
 ```typescript
 // app/actions.ts
 'use server';  // At the top - ALL exports are server actions
@@ -397,12 +408,13 @@ export async function deletePost(postId: string) { ... }
 ```
 
 **Pattern 2: Function-level (for single action or mixed file):**
+
 ```typescript
 // app/action.ts or any file
 export async function createPost(formData: FormData) {
-  'use server';  // Inside the function - ONLY this function is a server action
+  "use server"; // Inside the function - ONLY this function is a server action
 
-  const title = formData.get('title') as string;
+  const title = formData.get("title") as string;
   await db.posts.create({ data: { title } });
 }
 ```
@@ -410,10 +422,12 @@ export async function createPost(formData: FormData) {
 **Client Component Calling Server Action:**
 
 When a client component needs to call a server action (e.g., onClick, form submission):
+
 1. Create the server action in a SEPARATE file with 'use server' directive
 2. Import and use it in the client component
 
 **✅ CORRECT Pattern:**
+
 ```typescript
 // app/actions.ts - Server Actions file
 'use server';
@@ -447,12 +461,13 @@ export default function InteractiveButton() {
 ```
 
 **❌ WRONG - Mixing 'use server' and 'use client' in same file:**
+
 ```typescript
 // app/CookieButton.tsx
-'use client';  // This file is a client component
+"use client"; // This file is a client component
 
 export async function setCookie() {
-  'use server';  // ERROR! Can't have server actions in client component file
+  "use server"; // ERROR! Can't have server actions in client component file
   // ...
 }
 ```
@@ -466,6 +481,7 @@ export async function setCookie() {
 **VALIDATION RULE:** Check all inputs and throw errors if validation fails. Do NOT return error objects.
 
 ⚠️ **IMPORTANT:** Even if you see example code in the codebase that returns `{ success: true }` from a form action, **do NOT copy that pattern**. That code is an anti-pattern. Always:
+
 1. Check/validate inputs
 2. Throw errors if validation fails (don't return error objects)
 3. Process the request
@@ -551,6 +567,7 @@ export default function NewPost() {
 ```
 
 **Key difference:**
+
 - **Pattern 1:** Form action only, Server Action returns void, use `revalidatePath`
 - **Pattern 2:** With `useActionState`, Server Action returns data for display
 
@@ -559,26 +576,27 @@ export default function NewPost() {
 When validating multiple required fields, check them all together and throw if any are missing:
 
 ```typescript
-'use server';
+"use server";
 
 export async function saveContactMessage(formData: FormData) {
-  const name = formData.get('name') as string;
-  const email = formData.get('email') as string;
-  const message = formData.get('message') as string;
+  const name = formData.get("name") as string;
+  const email = formData.get("email") as string;
+  const message = formData.get("message") as string;
 
   // Validate all fields - throw if any are missing
   if (!name || !email || !message) {
-    throw new Error('All fields are required');
+    throw new Error("All fields are required");
   }
 
   // Save to database
-  console.log('Saving contact message:', { name, email, message });
+  console.log("Saving contact message:", { name, email, message });
 
   // No return - returns void implicitly
 }
 ```
 
 This will:
+
 1. ✅ Pass TypeScript checks (returns void)
 2. ✅ Validate all inputs before processing
 3. ✅ Throw error if validation fails (prevents database save)
@@ -639,25 +657,25 @@ When using form actions directly, throw errors for validation failures (don't re
 
 ```typescript
 // app/actions.ts
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
 export async function createPost(formData: FormData) {
-  const title = formData.get('title') as string;
-  const content = formData.get('content') as string;
+  const title = formData.get("title") as string;
+  const content = formData.get("content") as string;
 
   // Validation - throw error if invalid
   if (!title || !content) {
-    throw new Error('Title and content are required');
+    throw new Error("Title and content are required");
   }
 
   if (title.length > 100) {
-    throw new Error('Title must be less than 100 characters');
+    throw new Error("Title must be less than 100 characters");
   }
 
   if (content.length < 10) {
-    throw new Error('Content must be at least 10 characters');
+    throw new Error("Content must be at least 10 characters");
   }
 
   // Save to database
@@ -665,7 +683,7 @@ export async function createPost(formData: FormData) {
     data: { title, content },
   });
 
-  revalidatePath('/posts');
+  revalidatePath("/posts");
   // No return - form actions return void
 }
 ```
@@ -676,18 +694,18 @@ export async function createPost(formData: FormData) {
 
 ```typescript
 // app/actions.ts
-'use server';
+"use server";
 
-import { cookies } from 'next/headers';
+import { cookies } from "next/headers";
 
-export async function setTheme(theme: 'light' | 'dark') {
+export async function setTheme(theme: "light" | "dark") {
   const cookieStore = await cookies();
 
-  cookieStore.set('theme', theme, {
+  cookieStore.set("theme", theme, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * 365, // 1 year
-    path: '/',
+    path: "/",
   });
 
   return { success: true };
@@ -698,22 +716,22 @@ export async function setTheme(theme: 'light' | 'dark') {
 
 ```typescript
 // app/actions.ts
-'use server';
+"use server";
 
-import { revalidatePath, revalidateTag } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function deletePost(postId: string) {
   await db.posts.delete({ where: { id: postId } });
 
   // Revalidate specific path
-  revalidatePath('/posts');
+  revalidatePath("/posts");
 
   // Or revalidate by cache tag
-  revalidateTag('posts');
+  revalidateTag("posts");
 
   // Redirect after deletion
-  redirect('/posts');
+  redirect("/posts");
 }
 ```
 
@@ -731,12 +749,14 @@ Before implementing parallel routes, identify WHERE they should live in your rou
 ### Route Scope Decision Process
 
 **When the requirement mentions a specific feature or page:**
+
 ```
 "Create a [feature-name] with parallel routes for X and Y"
 → Structure: app/[feature-name]/@x/ and app/[feature-name]/@y/
 ```
 
 **When the requirement covers app-wide layout:**
+
 ```
 "Create an app with parallel routes for X and Y"
 → Structure: app/@x/ and app/@y/
@@ -745,6 +765,7 @@ Before implementing parallel routes, identify WHERE they should live in your rou
 ### Common Scope Mistake
 
 ❌ **WRONG - Parallel routes at incorrect scope:**
+
 ```
 Request: "Create a [specific-feature] with sections for X and Y"
 
@@ -757,6 +778,7 @@ app/
 This makes the parallel routes global when they should be feature-specific.
 
 ✅ **CORRECT - Parallel routes properly scoped:**
+
 ```
 Request: "Create a [specific-feature] with sections for X and Y"
 
@@ -787,6 +809,7 @@ app/
 ### Practical Examples
 
 **Example 1: Feature-specific parallel routes**
+
 ```
 Scenario: a user profile page needs tabs for posts and activity
 
@@ -806,6 +829,7 @@ app/
 ```
 
 **Example 2: App-wide parallel routes**
+
 ```
 Scenario: the overall application layout must expose sidebar and main content slots
 
@@ -824,6 +848,7 @@ app/
 ```
 
 **Example 3: Nested section parallel routes**
+
 ```
 Scenario: the admin area adds an analytics view with charts and tables
 
@@ -846,12 +871,12 @@ app/
 
 ### Quick Reference
 
-| Requirement Pattern | Route Scope | Example Structure |
-|---------------|-------------|-------------------|
-| Feature-specific requirement | `app/[feature]/` | `app/profile/@tab/` |
+| Requirement Pattern          | Route Scope               | Example Structure            |
+| ---------------------------- | ------------------------- | ---------------------------- |
+| Feature-specific requirement | `app/[feature]/`          | `app/profile/@tab/`          |
 | Section inside a parent area | `app/[parent]/[section]/` | `app/admin/analytics/@view/` |
-| App-wide layout requirement | `app/` | `app/@sidebar/` |
-| Page with multiple panels | `app/[page]/` | `app/settings/@panel/` |
+| App-wide layout requirement  | `app/`                    | `app/@sidebar/`              |
+| Page with multiple panels    | `app/[page]/`             | `app/settings/@panel/`       |
 
 **CRITICAL RULE:** Always analyze the requirement for scope indicators before defaulting to root-level parallel routes.
 
@@ -1207,17 +1232,17 @@ Draft Mode allows you to preview draft content from a headless CMS.
 
 ```typescript
 // app/api/draft/route.ts
-import { draftMode } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { draftMode } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
-  const slug = searchParams.get('slug');
+  const secret = searchParams.get("secret");
+  const slug = searchParams.get("slug");
 
   // Check secret
   if (secret !== process.env.DRAFT_SECRET) {
-    return Response.json({ message: 'Invalid token' }, { status: 401 });
+    return Response.json({ message: "Invalid token" }, { status: 401 });
   }
 
   // Enable Draft Mode
@@ -1225,7 +1250,7 @@ export async function GET(request: Request) {
   draft.enable();
 
   // Redirect to the path from the fetched post
-  redirect(slug || '/');
+  redirect(slug || "/");
 }
 ```
 
@@ -1233,13 +1258,13 @@ export async function GET(request: Request) {
 
 ```typescript
 // app/api/draft/disable/route.ts
-import { draftMode } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { draftMode } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function GET() {
   const draft = await draftMode();
   draft.disable();
-  redirect('/');
+  redirect("/");
 }
 ```
 

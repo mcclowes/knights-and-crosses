@@ -9,6 +9,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ## When This Pattern Applies
 
 Use this pattern whenever a page needs to load data based on whatever identifier appears in the URL. Common scenarios include:
+
 - Detail pages for products, posts, or users (`/products/{id}`, `/blog/{slug}`)
 - Admin dashboards that drill into a selected resource (`/admin/orders/{orderId}`)
 - Documentation or knowledge bases with nested paths (`/docs/getting-started/installation`)
@@ -18,6 +19,7 @@ If the requirement says the data should change depending on the current URL path
 ## The Pattern
 
 **✅ Recommended implementation**
+
 ```
 1. Create a dynamic folder: app/[id]/page.tsx
 2. Access the parameter: const { id } = await params;
@@ -26,6 +28,7 @@ If the requirement says the data should change depending on the current URL path
 ```
 
 **❌ Pitfall**
+
 ```
 Using app/page.tsx for this scenario prevents access to per-path identifiers.
 ```
@@ -68,6 +71,7 @@ app/
 ```
 
 **URL Mapping:**
+
 - `/123` → params = `{ id: '123' }`
 - `/abc` → params = `{ id: 'abc' }`
 - `/product-xyz` → params = `{ id: 'product-xyz' }`
@@ -75,6 +79,7 @@ app/
 ## Key Rules
 
 ### 1. Folder Name MUST Use Brackets
+
 ```
 ✅ app/[id]/page.tsx
 ✅ app/[productId]/page.tsx
@@ -84,6 +89,7 @@ app/
 ```
 
 ### 2. This is a Server Component (Default)
+
 ```typescript
 // ✅ CORRECT - No 'use client' needed
 export default async function Page({ params }) {
@@ -98,6 +104,7 @@ export default async function Page({ params }) { ... }
 ```
 
 ### 3. Params Must Be Awaited (Next.js 15+)
+
 ```typescript
 // ✅ CORRECT - Next.js 15+
 export default async function Page({
@@ -105,22 +112,19 @@ export default async function Page({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;  // Must await
+  const { id } = await params; // Must await
   // ...
 }
 
 // ⚠️ OLD (Next.js 14 and earlier - deprecated)
-export default async function Page({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = params;  // No await needed in old versions
+export default async function Page({ params }: { params: { id: string } }) {
+  const { id } = params; // No await needed in old versions
   // ...
 }
 ```
 
 ### 4. Keep It Simple - Don't Over-Nest
+
 ```
 ✅ app/[id]/page.tsx              (simple, clean)
 ❌ app/products/[id]/page.tsx     (only if explicitly required!)
@@ -157,6 +161,7 @@ function processData(data: unknown) {
 ## Common Variations
 
 ### Different Parameter Names
+
 ```typescript
 // app/[productId]/page.tsx
 export default async function Page({
@@ -180,6 +185,7 @@ export default async function Page({
 ```
 
 ### Multiple Parameters
+
 ```typescript
 // app/[category]/[id]/page.tsx
 export default async function Page({
@@ -260,6 +266,7 @@ Before shipping a pathname-driven detail page, confirm:
 ## When to Use the Comprehensive Skill Instead
 
 This micro-skill covers the simple "pathname ID fetch" pattern. Use the comprehensive `nextjs-dynamic-routes-params` skill for:
+
 - Catch-all routes (`[...slug]`)
 - Optional catch-all routes (`[[...slug]]`)
 - Complex multi-parameter routing

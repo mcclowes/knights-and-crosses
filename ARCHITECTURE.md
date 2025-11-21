@@ -310,14 +310,14 @@ classDiagram
 
 ### Component Responsibilities
 
-| Component | File | Lines | Responsibility |
-|-----------|------|-------|----------------|
-| **GameServer** | `src/game.server.js` | 185+ | Socket.IO connection management, player session handling |
-| **GameService** | `src/server/services/GameService.js` | 140+ | Game lifecycle, matchmaking, Redis integration |
-| **Game** | `src/server/models/Game.js` | 80+ | Game entity, player tracking, start/stop logic |
-| **GameCore** | `src/game.core.server.js` | 606 | Game logic, turn management, win conditions |
-| **MessageHandler** | `src/server/handlers/MessageHandler.js` | 60+ | Socket message routing by type |
-| **CardResolver** | `src/cards/card-resolver.cjs` | 200+ | Card effect application to game state |
+| Component          | File                                    | Lines | Responsibility                                           |
+| ------------------ | --------------------------------------- | ----- | -------------------------------------------------------- |
+| **GameServer**     | `src/game.server.js`                    | 185+  | Socket.IO connection management, player session handling |
+| **GameService**    | `src/server/services/GameService.js`    | 140+  | Game lifecycle, matchmaking, Redis integration           |
+| **Game**           | `src/server/models/Game.js`             | 80+   | Game entity, player tracking, start/stop logic           |
+| **GameCore**       | `src/game.core.server.js`               | 606   | Game logic, turn management, win conditions              |
+| **MessageHandler** | `src/server/handlers/MessageHandler.js` | 60+   | Socket message routing by type                           |
+| **CardResolver**   | `src/cards/card-resolver.cjs`           | 200+  | Card effect application to game state                    |
 
 ---
 
@@ -439,26 +439,26 @@ graph TB
 ```typescript
 interface GamePlayer {
   // Core state
-  host: boolean;           // Is this player the host?
-  state: string;           // "connecting", "waiting", "playing"
+  host: boolean; // Is this player the host?
+  state: string; // "connecting", "waiting", "playing"
 
   // Card management
-  hand: Card[];           // Current hand (max 7)
-  deck: Card[];           // Remaining deck
-  discard: Card[];        // Discard pile
+  hand: Card[]; // Current hand (max 7)
+  deck: Card[]; // Remaining deck
+  discard: Card[]; // Discard pile
 
   // Action state flags (set by card effects)
-  cards_to_play: number;  // Must play N more cards
+  cards_to_play: number; // Must play N more cards
   pieces_to_play: number; // Must place N more pieces
-  discarding: number;     // Must discard N cards
-  shielding: number;      // Must shield N pieces
-  damage_to_apply: number;// Must deal N damage
-  destroying: number;     // Must destroy N pieces
-  drawing: number;        // Must draw N cards
-  deshielding: number;    // Must remove N shields
-  thawing: number;        // Must thaw N squares
-  blocking: number;       // Must block N squares
-  freezing: number;       // Must freeze N squares
+  discarding: number; // Must discard N cards
+  shielding: number; // Must shield N pieces
+  damage_to_apply: number; // Must deal N damage
+  destroying: number; // Must destroy N pieces
+  drawing: number; // Must draw N cards
+  deshielding: number; // Must remove N shields
+  thawing: number; // Must thaw N squares
+  blocking: number; // Must block N squares
+  freezing: number; // Must freeze N squares
 }
 ```
 
@@ -466,9 +466,9 @@ interface GamePlayer {
 
 ```typescript
 interface Card {
-  name: string;           // e.g., "Fire Blast"
-  rarity: 'Basic' | 'Rare' | 'Elite';
-  effects: string[];      // Effect descriptions
+  name: string; // e.g., "Fire Blast"
+  rarity: "Basic" | "Rare" | "Elite";
+  effects: string[]; // Effect descriptions
 
   // Deck constraints
   // Basic: max 3 copies
@@ -481,12 +481,12 @@ interface Card {
 
 ```typescript
 interface Game {
-  id: string;                    // Unique game ID
-  player_host: Player;           // First player
-  player_client: Player | null;  // Second player (null if waiting)
-  player_count: number;          // 1 or 2
-  active: boolean;               // Is game running?
-  gamecore: GameCore;            // Game logic engine
+  id: string; // Unique game ID
+  player_host: Player; // First player
+  player_client: Player | null; // Second player (null if waiting)
+  player_count: number; // 1 or 2
+  active: boolean; // Is game running?
+  gamecore: GameCore; // Game logic engine
 }
 ```
 
@@ -504,25 +504,25 @@ TYPE.DATA1.DATA2.DATA3
 
 ### Client → Server Messages
 
-| Type | Format | Description |
-|------|--------|-------------|
-| `i` | `i.COMMANDS.TIME.SEQUENCE` | Input (card play, piece placement) |
-| `p` | `p.TIMESTAMP` | Ping for latency measurement |
-| `r` | `r.LATENCY` | Latency report |
-| `m` | `m.MMR` | MMR (rating) report |
-| `w` | `w` | Win notification |
+| Type | Format                     | Description                        |
+| ---- | -------------------------- | ---------------------------------- |
+| `i`  | `i.COMMANDS.TIME.SEQUENCE` | Input (card play, piece placement) |
+| `p`  | `p.TIMESTAMP`              | Ping for latency measurement       |
+| `r`  | `r.LATENCY`                | Latency report                     |
+| `m`  | `m.MMR`                    | MMR (rating) report                |
+| `w`  | `w`                        | Win notification                   |
 
 ### Server → Client Messages
 
-| Type | Format | Description |
-|------|--------|-------------|
-| `s.h` | `s.h.TIME` | Hosted (you are player 1) |
-| `s.j` | `s.j.HOST_ID` | Joined (player 2 joined) |
-| `s.r` | `s.r.TIME` | Ready (game starting) |
-| `s.n` | `s.n.PLAYER_NAME` | Name change |
-| `s.e` | `s.e` | End game |
-| `s.p` | `s.p.TIMESTAMP` | Pong (ping response) |
-| `onconnected` | `{id, name}` | Connection acknowledgment |
+| Type          | Format            | Description               |
+| ------------- | ----------------- | ------------------------- |
+| `s.h`         | `s.h.TIME`        | Hosted (you are player 1) |
+| `s.j`         | `s.j.HOST_ID`     | Joined (player 2 joined)  |
+| `s.r`         | `s.r.TIME`        | Ready (game starting)     |
+| `s.n`         | `s.n.PLAYER_NAME` | Name change               |
+| `s.e`         | `s.e`             | End game                  |
+| `s.p`         | `s.p.TIMESTAMP`   | Pong (ping response)      |
+| `onconnected` | `{id, name}`      | Connection acknowledgment |
 
 ### Input Command Format
 
@@ -533,6 +533,7 @@ CARD_INDEX-PIECE_POSITION,CARD_INDEX-PIECE_POSITION,...
 ```
 
 Example: `i.3-7,5-12.1234567.001`
+
 - Play card at index 3, place piece at position 7
 - Play card at index 5, place piece at position 12
 - Timestamp: 1234567
@@ -630,15 +631,15 @@ function evaluateBoard(board: GameBoard, params: AIParams): number {
 
 The AI uses 7 evolved parameters for decision-making:
 
-| Parameter | Range | Purpose |
-|-----------|-------|---------|
-| `playerCardValue` | 0-97 | Weight of own pieces |
-| `enemyCardValue` | 0-70 | Weight of opponent pieces |
-| `centerMod` | 0.6-2.7 | Center square preference |
-| `enemyMod` | 1.4-2.2 | Opponent position weight |
-| `shieldMod` | 0.6-1.8 | Shield priority |
-| `freezeMod` | 0.6 | Freeze effect priority |
-| `rockMod` | 0.8 | Block priority |
+| Parameter         | Range   | Purpose                   |
+| ----------------- | ------- | ------------------------- |
+| `playerCardValue` | 0-97    | Weight of own pieces      |
+| `enemyCardValue`  | 0-70    | Weight of opponent pieces |
+| `centerMod`       | 0.6-2.7 | Center square preference  |
+| `enemyMod`        | 1.4-2.2 | Opponent position weight  |
+| `shieldMod`       | 0.6-1.8 | Shield priority           |
+| `freezeMod`       | 0.6     | Freeze effect priority    |
+| `rockMod`         | 0.8     | Block priority            |
 
 ### Evolution Process
 
@@ -701,31 +702,32 @@ flowchart TD
 
 ```typescript
 enum EffectType {
-  DAMAGE = 'damage',              // Deal damage to pieces
-  DESTROY = 'destroy',            // Remove pieces outright
-  SHIELD = 'shield',              // Protect pieces
-  DESHIELD = 'deshield',          // Remove shields
-  FREEZE = 'freeze',              // Block square usage
-  THAW = 'thaw',                  // Unfreeze squares
-  BLOCK = 'block',                // Place blocking rock
-  DRAW = 'draw',                  // Draw cards
-  DISCARD = 'discard',            // Discard cards
-  RETURN_TO_HAND = 'return',      // Return card to hand
-  END_TURN = 'end_turn'           // End turn immediately
+  DAMAGE = "damage", // Deal damage to pieces
+  DESTROY = "destroy", // Remove pieces outright
+  SHIELD = "shield", // Protect pieces
+  DESHIELD = "deshield", // Remove shields
+  FREEZE = "freeze", // Block square usage
+  THAW = "thaw", // Unfreeze squares
+  BLOCK = "block", // Place blocking rock
+  DRAW = "draw", // Draw cards
+  DISCARD = "discard", // Discard cards
+  RETURN_TO_HAND = "return", // Return card to hand
+  END_TURN = "end_turn", // End turn immediately
 }
 
 enum TargetType {
-  SELF = 'self',                  // Own pieces
-  OPPONENT = 'opponent',          // Enemy pieces
-  SQUARE = 'square',              // Specific square
-  ALL = 'all',                    // All pieces
-  CONDITIONAL = 'conditional'     // Conditional targeting
+  SELF = "self", // Own pieces
+  OPPONENT = "opponent", // Enemy pieces
+  SQUARE = "square", // Specific square
+  ALL = "all", // All pieces
+  CONDITIONAL = "conditional", // Conditional targeting
 }
 ```
 
 ### Card Examples
 
 **Fire Blast** (Basic)
+
 ```json
 {
   "name": "Fire Blast",
@@ -735,6 +737,7 @@ enum TargetType {
 ```
 
 **Floods** (Rare)
+
 ```json
 {
   "name": "Floods",
@@ -744,6 +747,7 @@ enum TargetType {
 ```
 
 **Armour Up** (Basic)
+
 ```json
 {
   "name": "Armour Up",
@@ -789,19 +793,19 @@ graph LR
 
 ### Technology Matrix
 
-| Category | Technology | Version | Purpose |
-|----------|-----------|---------|---------|
-| **Framework** | Next.js | 15.5.6 | Full-stack React framework, SSR |
-| **Frontend** | React | 19.2.0 | UI component library |
-| **Language** | TypeScript | 5.3.3 | Type-safe JavaScript |
-| **Backend** | Express | 4.18.2 | HTTP server, routing |
-| **Real-time** | Socket.IO | 4.7.4 | WebSocket communication |
-| **Database** | Vercel KV | 3.0.0 | Redis for serverless |
-| **Rendering** | Canvas API | Native | Game visualization |
-| **Logging** | Winston | 3.11.0 | Structured logging |
-| **Testing** | Jest | 29.7.0 | Unit testing |
-| **Linting** | ESLint | 8.56.0 | Code quality |
-| **Formatting** | Prettier | 3.6.2 | Code formatting |
+| Category       | Technology | Version | Purpose                         |
+| -------------- | ---------- | ------- | ------------------------------- |
+| **Framework**  | Next.js    | 15.5.6  | Full-stack React framework, SSR |
+| **Frontend**   | React      | 19.2.0  | UI component library            |
+| **Language**   | TypeScript | 5.3.3   | Type-safe JavaScript            |
+| **Backend**    | Express    | 4.18.2  | HTTP server, routing            |
+| **Real-time**  | Socket.IO  | 4.7.4   | WebSocket communication         |
+| **Database**   | Vercel KV  | 3.0.0   | Redis for serverless            |
+| **Rendering**  | Canvas API | Native  | Game visualization              |
+| **Logging**    | Winston    | 3.11.0  | Structured logging              |
+| **Testing**    | Jest       | 29.7.0  | Unit testing                    |
+| **Linting**    | ESLint     | 8.56.0  | Code quality                    |
+| **Formatting** | Prettier   | 3.6.2   | Code formatting                 |
 
 ---
 
@@ -890,7 +894,7 @@ The game uses a hybrid storage approach:
 // Storage strategy
 class GameService {
   private games: Map<string, Game> = new Map(); // In-memory
-  private storage?: RedisGameStorage;           // Optional Redis
+  private storage?: RedisGameStorage; // Optional Redis
 
   async createGame(player: Player): Promise<Game> {
     const game = new Game(player);
@@ -903,7 +907,7 @@ class GameService {
       await this.storage.saveGame({
         id: game.id,
         player_host: player.id,
-        player_count: 1
+        player_count: 1,
       });
     }
 
@@ -918,15 +922,15 @@ class GameService {
 
 ### Critical Files Reference
 
-| File | LOC | Description | Key Classes/Functions |
-|------|-----|-------------|----------------------|
-| `src/game.core.server.js` | 606 | Server game engine | GameCore, GameBoard, GamePlayer |
-| `src/game.server.js` | 185+ | Connection manager | GameServer |
-| `src/server/services/GameService.js` | 140+ | Game lifecycle | GameService.findGame(), createGame() |
-| `src/game.core.client.js` | 500+ | Client renderer | Canvas rendering, input handling |
-| `src/cards/card-resolver.cjs` | 200+ | Card effects | resolveCard(), applyEffect() |
-| `src/ai/core/GameCore.ts` | 300+ | AI decision engine | evaluateBoard(), getMoves() |
-| `components/Game.tsx` | 150+ | React component | Game component, library loading |
+| File                                 | LOC  | Description        | Key Classes/Functions                |
+| ------------------------------------ | ---- | ------------------ | ------------------------------------ |
+| `src/game.core.server.js`            | 606  | Server game engine | GameCore, GameBoard, GamePlayer      |
+| `src/game.server.js`                 | 185+ | Connection manager | GameServer                           |
+| `src/server/services/GameService.js` | 140+ | Game lifecycle     | GameService.findGame(), createGame() |
+| `src/game.core.client.js`            | 500+ | Client renderer    | Canvas rendering, input handling     |
+| `src/cards/card-resolver.cjs`        | 200+ | Card effects       | resolveCard(), applyEffect()         |
+| `src/ai/core/GameCore.ts`            | 300+ | AI decision engine | evaluateBoard(), getMoves()          |
+| `components/Game.tsx`                | 150+ | React component    | Game component, library loading      |
 
 ---
 
@@ -960,15 +964,15 @@ class GameService {
 
 ## Glossary
 
-| Term | Definition |
-|------|------------|
-| **TCG** | Trading Card Game - a card-based strategy game |
-| **Elo Rating** | Chess rating system adapted for AI performance tracking |
-| **MMR** | Matchmaking Rating - player/AI skill level |
-| **Genetic Algorithm** | Evolutionary optimization technique for AI parameters |
-| **Serverless** | Cloud execution model where server management is abstracted |
-| **Socket.IO** | Real-time bidirectional event-based communication library |
-| **SSR** | Server-Side Rendering - rendering React on the server |
+| Term                  | Definition                                                  |
+| --------------------- | ----------------------------------------------------------- |
+| **TCG**               | Trading Card Game - a card-based strategy game              |
+| **Elo Rating**        | Chess rating system adapted for AI performance tracking     |
+| **MMR**               | Matchmaking Rating - player/AI skill level                  |
+| **Genetic Algorithm** | Evolutionary optimization technique for AI parameters       |
+| **Serverless**        | Cloud execution model where server management is abstracted |
+| **Socket.IO**         | Real-time bidirectional event-based communication library   |
+| **SSR**               | Server-Side Rendering - rendering React on the server       |
 
 ---
 
