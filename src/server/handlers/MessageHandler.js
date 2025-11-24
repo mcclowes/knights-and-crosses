@@ -1,6 +1,6 @@
 export class MessageHandler {
-  constructor(gameServer) {
-    this.gameServer = gameServer;
+  constructor(gameService) {
+    this.gameService = gameService;
   }
 
   handleMessage(client, message) {
@@ -40,6 +40,11 @@ export class MessageHandler {
         inputTime,
         inputSeq,
       );
+
+      // Update game activity timestamp to prevent cleanup
+      this.gameService.updateGameActivity(client.game.id).catch((error) => {
+        console.error("Error updating game activity:", error);
+      });
     }
   }
 
@@ -48,7 +53,11 @@ export class MessageHandler {
   }
 
   handleLatency(client, parts) {
-    this.gameServer.fake_latency = parseFloat(parts[1]);
+    // Note: fake_latency is typically used for testing, this may need adjustment
+    // based on where fake_latency should actually be stored
+    if (client.game) {
+      client.game.fake_latency = parseFloat(parts[1]);
+    }
   }
 
   handleMMR(client, parts) {
@@ -63,8 +72,10 @@ export class MessageHandler {
   }
 
   handleWin(client) {
-    this.gameServer.winGame(client.game.id).catch((error) => {
-      console.error("Error handling win:", error);
-    });
+    if (client?.game?.id) {
+      this.gameService.winGame(client.game.id).catch((error) => {
+        console.error("Error handling win:", error);
+      });
+    }
   }
 }

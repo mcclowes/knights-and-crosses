@@ -7,6 +7,9 @@ export class GameService {
     this.game_count = 0;
     this.logger = logger;
     this.storage = storage; // KV storage - source of truth for serverless
+    this.cleanupInterval = null;
+    this.CLEANUP_INTERVAL = 60 * 1000; // Check every 60 seconds
+    this.INACTIVITY_THRESHOLD = 5 * 60 * 1000; // 5 minutes of inactivity
   }
 
   /**
@@ -30,6 +33,133 @@ export class GameService {
       console.log(
         "[GameService] Running in memory-only mode (KV not configured)",
       );
+    }
+
+    // Start the cleanup interval for inactive games
+    this.startCleanupInterval();
+  }
+
+  /**
+   * Start the periodic cleanup interval for inactive games
+   */
+  startCleanupInterval() {
+    if (this.cleanupInterval) {
+      return; // Already running
+    }
+
+    console.log(
+      `[GameService] Starting inactive game cleanup (interval: ${this.CLEANUP_INTERVAL / 1000}s, threshold: ${this.INACTIVITY_THRESHOLD / 1000}s)`,
+    );
+
+    this.cleanupInterval = setInterval(async () => {
+      await this.cleanupInactiveGames();
+    }, this.CLEANUP_INTERVAL);
+  }
+
+  /**
+   * Stop the cleanup interval
+   */
+  stopCleanupInterval() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+      console.log("[GameService] Stopped inactive game cleanup");
+    }
+  }
+
+  /**
+   * Clean up inactive games from memory and storage
+   * Games are considered inactive if they haven't received any activity
+   * for longer than INACTIVITY_THRESHOLD
+   */
+  async cleanupInactiveGames() {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    // Clean up in-memory games
+    for (const [gameId, game] of Object.entries(this.games)) {
+      const lastActivity = game.lastActivity || game.createdAt || 0;
+      if (now - lastActivity > this.INACTIVITY_THRESHOLD) {
+        console.log(
+          `[GameService] Cleaning up inactive game ${gameId} (inactive for ${Math.round((now - lastActivity) / 1000)}s)`,
+        );
+
+        // Notify players that the game is ending due to inactivity
+        if (game.player_host) {
+          try {
+            game.player_host.send("s.e");
+          } catch (e) {
+            // Player may already be disconnected
+          }
+        }
+        if (game.player_client) {
+          try {
+            game.player_client.send("s.e");
+          } catch (e) {
+            // Player may already be disconnected
+          }
+        }
+
+        // Stop the game
+        game.stop();
+
+        // Remove from memory
+        delete this.games[gameId];
+        this.game_count--;
+
+        // Remove from storage
+        if (this.storage) {
+          await this.storage.deleteGame(gameId);
+          await this.storage.deleteGameState(gameId);
+        }
+
+        cleanedCount++;
+      }
+    }
+
+    // Also clean up stale games in Redis that aren't in memory
+    // (e.g., from crashed instances or serverless cold starts)
+    if (this.storage) {
+      try {
+        const inactiveRedisGames = await this.storage.getInactiveGames(
+          this.INACTIVITY_THRESHOLD,
+        );
+        for (const gameMetadata of inactiveRedisGames) {
+          // Skip if we already cleaned it up from memory
+          if (!this.games[gameMetadata.id]) {
+            console.log(
+              `[GameService] Cleaning up stale Redis game ${gameMetadata.id}`,
+            );
+            await this.storage.deleteGame(gameMetadata.id);
+            await this.storage.deleteGameState(gameMetadata.id);
+            cleanedCount++;
+          }
+        }
+      } catch (error) {
+        console.error("[GameService] Error cleaning up Redis games:", error);
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(
+        `[GameService] Cleaned up ${cleanedCount} inactive game(s). Remaining: ${this.game_count}`,
+      );
+    }
+  }
+
+  /**
+   * Update activity for a game
+   * Called when a game receives player input
+   */
+  async updateGameActivity(gameId) {
+    const game = this.games[gameId];
+    if (game) {
+      game.updateActivity();
+
+      // Also update in Redis storage
+      if (this.storage) {
+        await this.storage.updateGameActivity(gameId);
+      }
     }
   }
 
