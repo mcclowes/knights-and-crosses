@@ -4,6 +4,28 @@ import { Server as HTTPServer } from "http";
 import { Socket as NetSocket } from "net";
 import { GameServer } from "../../src/game.server.js";
 
+/**
+ * Get allowed CORS origins from environment variable
+ * Falls back to restrictive defaults in production
+ */
+function getAllowedOrigins(): string | string[] {
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+
+  // In development, allow localhost
+  if (process.env.NODE_ENV === "development") {
+    return ["http://localhost:3000", "http://127.0.0.1:3000"];
+  }
+
+  // If ALLOWED_ORIGINS is set, parse it (comma-separated)
+  if (envOrigins) {
+    return envOrigins.split(",").map((origin) => origin.trim());
+  }
+
+  // Production default: only allow same-origin requests
+  // This should be configured via ALLOWED_ORIGINS env var
+  return false as unknown as string; // Disallow cross-origin in production if not configured
+}
+
 interface SocketServer extends HTTPServer {
   io?: SocketIOServer | undefined;
 }
@@ -76,7 +98,7 @@ export default async function handler(
         path: "/api/socket",
         addTrailingSlash: false,
         cors: {
-          origin: "*",
+          origin: getAllowedOrigins(),
           methods: ["GET", "POST"],
           credentials: true,
         },
