@@ -9,6 +9,16 @@ export class Game {
     this.active = false;
     this.gamecore = null;
     this.logger = logger;
+    this.createdAt = Date.now();
+    this.lastActivity = Date.now();
+  }
+
+  /**
+   * Update the last activity timestamp
+   * Called when the game receives player input or other activity
+   */
+  updateActivity() {
+    this.lastActivity = Date.now();
   }
 
   addClient(client) {

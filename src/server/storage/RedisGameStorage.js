@@ -14,6 +14,7 @@ export class RedisGameStorage {
     this.GAME_TTL = 3600; // 1 hour TTL for game metadata
     this.GAME_STATE_TTL = 3600; // 1 hour TTL for game state
     this.PLAYER_STATS_TTL = 86400 * 30; // 30 days for player stats
+    this.INACTIVITY_THRESHOLD = 5 * 60 * 1000; // 5 minutes of inactivity before cleanup
     this.client = null;
     this.connected = false;
   }
@@ -65,13 +66,15 @@ export class RedisGameStorage {
   async saveGame(game) {
     await this.ensureConnected();
     const gameKey = this.GAME_KEY_PREFIX + game.id;
+    const now = Date.now();
     const metadata = {
       id: game.id,
       hostId: game.player_host?.userid || null,
       clientId: game.player_client?.userid || null,
       playerCount: game.player_count,
       active: game.active,
-      createdAt: Date.now(),
+      createdAt: game.createdAt || now,
+      lastActivity: game.lastActivity || now,
     };
 
     try {
@@ -177,6 +180,52 @@ export class RedisGameStorage {
     } catch (error) {
       console.error("Error deleting game from Redis:", error);
       return false;
+    }
+  }
+
+  /**
+   * Update game activity timestamp
+   * Called when a game receives player input or other activity
+   */
+  async updateGameActivity(gameId) {
+    await this.ensureConnected();
+    try {
+      const game = await this.getGame(gameId);
+      if (game) {
+        game.lastActivity = Date.now();
+        const gameKey = this.GAME_KEY_PREFIX + gameId;
+        await this.client.set(gameKey, JSON.stringify(game), {
+          EX: this.GAME_TTL,
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error updating game activity:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get all inactive games (games with no activity for longer than threshold)
+   * @param {number} threshold - Inactivity threshold in milliseconds (defaults to INACTIVITY_THRESHOLD)
+   * @returns {Array} Array of inactive game metadata objects
+   */
+  async getInactiveGames(threshold = null) {
+    const inactivityThreshold = threshold || this.INACTIVITY_THRESHOLD;
+    const now = Date.now();
+
+    try {
+      const allGames = await this.getAllGames();
+      const inactiveGames = allGames.filter((game) => {
+        const lastActivity = game.lastActivity || game.createdAt || 0;
+        return now - lastActivity > inactivityThreshold;
+      });
+
+      return inactiveGames;
+    } catch (error) {
+      console.error("Error getting inactive games:", error);
+      return [];
     }
   }
 
