@@ -69,7 +69,7 @@ export default function Game() {
       if (typeof window !== "undefined" && window.setPlayerName) {
         // Wait for game to be initialized before calling setPlayerName
         const checkGameInitialized = () => {
-          if (window.game && window.game.socket) {
+          if (window.game && window.game.socket && window.setPlayerName) {
             window.setPlayerName();
           } else {
             // Retry after a short delay if game isn't ready yet

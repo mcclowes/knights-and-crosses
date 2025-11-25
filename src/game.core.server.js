@@ -138,7 +138,7 @@ class GameCore {
 			}
 		}
 		return false;
-	};
+	}
 
 	// Checks that there is a target to shield
 	checkUnshielded() {
@@ -150,7 +150,7 @@ class GameCore {
 			}
 		}
 		return false;
-	};
+	}
 
 	checkFrozen() {
 		for (let i = 0; i < 4; i++) {
@@ -300,14 +300,15 @@ class GameCore {
 	}
 
 	//Handle server input (input into the server, from a client)
-	handleServerInput(client, input, input_time, input_seq) {
+	handleServerInput(client, input, _input_time, _input_seq) {
 		//Fetch which client this refers to out of the two
 		const player_client = (client.userid == this.players.self.instance.userid) ? this.players.self : this.players.other;
 		const player_other = (client.userid == this.players.self.instance.userid) ?  this.players.other : this.players.self;
 
 		if (input) {
 			//var c = input.length;
-			try { var input_parts = input.split('.'); } catch(err) { var input_parts = input;} // handle input accordingly
+			let input_parts;
+			try { input_parts = input.split('.'); } catch { input_parts = input; } // handle input accordingly
 			let target = [];
 
 			if (input_parts[0] == 'en' && player_client !== undefined && player_other !== undefined && ((player_client === this.players.self && this.turn === 1) || (player_client === this.players.other && this.turn === -1))) { //end turn
@@ -629,8 +630,8 @@ class GameBoard {
 	reduce_state() {
 		for (var i = 0; i < 4; i++){
 			for (var j = 0; j < 4; j++){
-				if (this.state.frost[i][j] > 0) { this.state.frost[i][j]--};
-				if (this.state.rock[i][j] > 0) { this.state.rock[i][j]--};
+				if (this.state.frost[i][j] > 0) { this.state.frost[i][j]-- }
+				if (this.state.rock[i][j] > 0) { this.state.rock[i][j]-- }
 			}
 		}
 	}

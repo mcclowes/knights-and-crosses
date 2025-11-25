@@ -38,6 +38,7 @@ export function validateMessage(message) {
   }
 
   // Check for null bytes or control characters (except reasonable whitespace)
+  // eslint-disable-next-line no-control-regex
   if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(message)) {
     return { valid: false, error: 'Message contains invalid control characters' };
   }
@@ -251,6 +252,7 @@ export class RateLimiter {
   }
 }
 
+// eslint-disable-next-line import/no-anonymous-default-export
 export default {
   validateMessage,
   RateLimiter,
