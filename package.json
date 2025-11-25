@@ -9,7 +9,7 @@
     "build": "npm run copy-assets && next build",
     "start": "NODE_ENV=production node server.js",
     "create-ai": "node src/ai_manager.js",
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "eslint . --ext .ts,.js,.tsx",
     "copy-assets": "cp src/game.core.client.js public/game.core.client.js",
     "format": "prettier --write ."

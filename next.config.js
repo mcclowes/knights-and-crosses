@@ -2,12 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   eslint: {
-    // Disable ESLint during builds for now
-    ignoreDuringBuilds: true,
+    // Re-enabled ESLint during builds
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    // Disable type checking during builds for now
-    ignoreBuildErrors: true,
+    // Re-enabled type checking during builds
+    ignoreBuildErrors: false,
   },
   webpack: (config) => {
     // Handle canvas and other node modules if needed
