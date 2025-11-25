@@ -86,7 +86,7 @@ class GameServer {
 	}
 
 	setupServer() {
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, _reject) => {
 			try {
 				// Try to get the hostname, but fallback to IPv4 localhost
 				dns.lookup(os.hostname(), { family: 4 }, (err, add) => {

@@ -22,12 +22,31 @@ export function scaleNumber(base: number, exp: number): number {
   return base < 0 ? -Math.pow(Math.abs(base), exp) : Math.pow(base, exp);
 }
 
+// Card input type
+interface CardInput {
+  cardName?: string;
+  [key: string]: unknown;
+}
+
+// Game card class for AI module
+class GameCard {
+  cardName: string;
+  cardImage: string = '';
+  pos: { x: number; y: number } = { x: 0, y: 0 };
+  size: { x: number; y: number; hx: number; hy: number };
+
+  constructor(cardName: string) {
+    this.cardName = cardName;
+    this.size = { x: 140, y: 210, hx: 70, hy: 105 };
+  }
+}
+
 /**
  * Creates an array of cards from card data
  * @param data Array of card data
  * @returns Array of created cards
  */
-export function createCardArray<T>(data: T[]): any[] {
+export function createCardArray<T extends CardInput | string>(data: T[]): GameCard[] {
   return data.map((item) => createCard(item));
 }
 
@@ -36,10 +55,13 @@ export function createCardArray<T>(data: T[]): any[] {
  * @param data Card data
  * @returns Created card
  */
-export function createCard(data: any): any {
+export function createCard(data: CardInput | string): GameCard {
+  if (typeof data === 'string') {
+    return new GameCard(data);
+  }
   return data.cardName !== undefined
     ? new GameCard(data.cardName)
-    : new GameCard(data);
+    : new GameCard(String(data));
 }
 
 /**

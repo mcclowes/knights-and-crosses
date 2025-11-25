@@ -1,12 +1,18 @@
 import { GameCore } from "../core/GameCore";
 import { state } from "../config/constants";
 
+// Card type for hand/deck/discard arrays
+interface Card {
+  cardName: string;
+  [key: string]: unknown;
+}
+
 export class GamePlayer {
   public host: boolean;
   public state: string;
-  public hand: any[];
-  public deck: any[];
-  public discard: any[];
+  public hand: Card[];
+  public deck: Card[];
+  public discard: Card[];
 
   constructor(
     private game: GameCore,

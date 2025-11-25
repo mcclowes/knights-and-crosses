@@ -2,8 +2,6 @@ import { GameBoard } from "../board/GameBoard";
 import { GamePlayer } from "../player/GamePlayer";
 import { AI_PARAMETERS, FRAME_TIME } from "../config/constants";
 import { setupAnimationFrame } from "../utils/helpers";
-import * as fs from "fs";
-import { CARD_DATA_PATH, CARDS_PATH } from "../config/constants";
 
 export class GameCore {
   private board: GameBoard;
@@ -15,7 +13,8 @@ export class GameCore {
   private localTime: number = FRAME_TIME;
   private lastUpdateTime: number = Date.now();
   private serverTime: number = 0;
-  private lastState: any = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private lastState: Record<string, any> = {};
   private mmr: number = 1;
   private gameCount: number = 0;
 
@@ -27,7 +26,8 @@ export class GameCore {
     private shieldMod: number = AI_PARAMETERS.SHIELD_MOD,
     private freezeMod: number = AI_PARAMETERS.FREEZE_MOD,
     private rockMod: number = AI_PARAMETERS.ROCK_MOD,
-    private gameInstance?: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private gameInstance?: unknown,
   ) {
     this.board = new GameBoard();
     this.players = {

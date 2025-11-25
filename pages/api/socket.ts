@@ -48,7 +48,6 @@ export const config = {
 // Global singleton to persist Socket.IO instance across requests in the same container
 // This is critical for serverless environments where the same container handles multiple requests
 let globalIO: SocketIOServer | null = null;
-let globalGameServer: GameServer | null = null;
 let isInitializing = false;
 
 /**
@@ -94,6 +93,7 @@ export default async function handler(
     try {
       // Initialize Socket.IO with proper configuration for serverless
       console.log("[Socket.IO] Creating Socket.IO server instance...");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       io = new SocketIOServer(res.socket.server as any, {
         path: "/api/socket",
         addTrailingSlash: false,
@@ -122,8 +122,8 @@ export default async function handler(
 
       // Initialize the game server with Socket.IO
       console.log("[Socket.IO] Creating GameServer instance...");
-      const gameServer = new GameServer(io, res.socket.server);
-      globalGameServer = gameServer;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const gameServer = new GameServer(io as any, res.socket.server as any);
       console.log("[Socket.IO] GameServer instance created");
 
       // Use non-blocking initialization to not delay the response
@@ -151,6 +151,7 @@ export default async function handler(
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : "No stack",
         name: error instanceof Error ? error.name : typeof error,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         code: (error as any)?.code,
       });
       isInitializing = false;
@@ -195,6 +196,7 @@ export default async function handler(
 
   try {
     // Access Socket.IO's underlying engine.io server
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const engine = (io as any).engine;
 
     if (engine && typeof engine.handleRequest === "function") {
