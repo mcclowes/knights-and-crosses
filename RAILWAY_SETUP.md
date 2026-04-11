@@ -27,14 +27,11 @@ The following files have been added/updated to support Railway deployment:
 npm install -g @railway/cli
 ```
 
-### 2. Setup Vercel KV (Redis)
+### 2. Provision Redis (Vercel Marketplace)
 
-1. Go to https://vercel.com/dashboard/stores
-2. Create a new KV database
-3. Copy these credentials:
-   - `KV_REST_API_URL`
-   - `KV_REST_API_TOKEN`
-   - `KV_URL`
+1. Go to your Vercel dashboard → **Storage** (or Marketplace)
+2. Install a Redis integration (e.g. Upstash)
+3. Copy the `KV_URL` value from the integration's `.env.local` tab
 
 ### 3. Deploy
 
@@ -57,8 +54,6 @@ railway open
 # 2. Add these variables:
 #    - NODE_ENV = production
 #    - PORT = 3000
-#    - KV_REST_API_URL = <your_kv_url>
-#    - KV_REST_API_TOKEN = <your_kv_token>
 #    - KV_URL = <your_redis_url>
 # 3. Railway will automatically redeploy
 
@@ -86,10 +81,8 @@ PORT=3000
 NODE_ENV=development
 NEXT_PUBLIC_WS_URL=http://localhost:3000
 
-# Optional: Add Vercel KV credentials if testing persistence
-# KV_REST_API_URL=...
-# KV_REST_API_TOKEN=...
-# KV_URL=...
+# Optional: add Redis URL if testing persistence locally
+# KV_URL=redis://default:...@host:6379
 ```
 
 ### 3. Run locally
@@ -145,9 +138,7 @@ Browser → Game.tsx → window.__WS_URL__ → game.core.client.js → Socket.IO
 |----------|-------------|---------|
 | `NODE_ENV` | Environment | `production` |
 | `PORT` | Server port | `3000` |
-| `KV_REST_API_URL` | Vercel KV API URL | `https://*.vercel-storage.com` |
-| `KV_REST_API_TOKEN` | Vercel KV token | `your_token` |
-| `KV_URL` | Redis URL | `redis://...` |
+| `KV_URL` | Redis URL (from Vercel Marketplace integration) | `redis://default:...@host:6379` |
 
 ### Optional
 
@@ -195,12 +186,12 @@ railway restart
 ### Games Not Persisting
 
 **Check:**
-1. Vercel KV credentials are set
-2. Redis connection succeeds
+1. `KV_URL` is set in Railway
+2. Redis connection succeeds (logs show "Redis client connected successfully")
 
 **Test:**
 ```bash
-railway run node -e "const kv = require('@vercel/kv'); kv.get('test').then(console.log)"
+railway run node scripts/test-redis.js
 ```
 
 ---

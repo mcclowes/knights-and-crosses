@@ -5,7 +5,9 @@
 This guide covers deploying Knights & Crosses using a **hybrid approach** with:
 - **Railway** for the WebSocket game server
 - **Vercel** for the Next.js frontend
-- **Vercel KV** for Redis persistence
+- **Redis (via Vercel Marketplace)** for persistence
+
+> **Note**: Earlier versions of this project used `@vercel/kv`. That package and the Vercel KV product are sunset. The codebase now uses the standard `redis` client and only reads the `KV_URL` environment variable — ignore any stray `KV_REST_API_*` references.
 
 ## Table of Contents
 
@@ -25,7 +27,7 @@ Before deploying, ensure you have:
 - ✅ GitHub account (for repository)
 - ✅ Railway account (https://railway.app)
 - ✅ Vercel account (https://vercel.com) - Optional for hybrid
-- ✅ Vercel KV database (for persistence)
+- ✅ A Redis instance (provisioned via the Vercel Marketplace, Upstash directly, or any Redis host)
 
 ---
 
@@ -33,14 +35,11 @@ Before deploying, ensure you have:
 
 Deploy everything (Next.js + WebSocket server) to Railway.
 
-### Step 1: Setup Vercel KV (Redis)
+### Step 1: Provision Redis (Vercel Marketplace)
 
-1. Go to https://vercel.com/dashboard/stores
-2. Create a new KV database
-3. Copy the connection credentials:
-   - `KV_REST_API_URL`
-   - `KV_REST_API_TOKEN`
-   - `KV_URL`
+1. Go to your Vercel dashboard → **Storage** (or Marketplace)
+2. Install a Redis integration (e.g. Upstash)
+3. Open the integration's `.env.local` tab and copy the `KV_URL` value
 
 ### Step 2: Deploy to Railway
 
@@ -74,8 +73,6 @@ railway open
 # 2. Add the following variables:
 #    - NODE_ENV = production
 #    - PORT = 3000
-#    - KV_REST_API_URL = <your_kv_url>
-#    - KV_REST_API_TOKEN = <your_kv_token>
 #    - KV_URL = <your_redis_url>
 # 3. Railway will automatically redeploy with new variables
 ```
@@ -93,11 +90,11 @@ Your game will be available at `https://your-app.railway.app`
 
 Deploy WebSocket server to Railway and frontend to Vercel.
 
-### Step 1: Setup Vercel KV
+### Step 1: Provision Redis (Vercel Marketplace)
 
-1. Go to https://vercel.com/dashboard/stores
-2. Create a new KV database
-3. Copy credentials (you'll need these for both deployments)
+1. Go to your Vercel dashboard → **Storage** (or Marketplace)
+2. Install a Redis integration (e.g. Upstash)
+3. Copy the `KV_URL` value (you'll reuse it in both deployments)
 
 ### Step 2: Deploy WebSocket Server to Railway
 
@@ -107,9 +104,7 @@ Deploy WebSocket server to Railway and frontend to Vercel.
 PORT=3000
 NODE_ENV=production
 
-# Vercel KV
-KV_REST_API_URL=<your_kv_url>
-KV_REST_API_TOKEN=<your_kv_token>
+# Redis (Vercel Marketplace integration)
 KV_URL=<your_redis_url>
 
 # CORS - Allow Vercel frontend
@@ -135,8 +130,6 @@ railway open
 # 2. Add environment variables:
 #    - NODE_ENV = production
 #    - PORT = 3000
-#    - KV_REST_API_URL = <your_kv_url>
-#    - KV_REST_API_TOKEN = <your_kv_token>
 #    - KV_URL = <your_redis_url>
 # 3. Railway auto-redeploys
 
@@ -160,9 +153,7 @@ Go to Project Settings → Environment Variables:
 # WebSocket Server URL (your Railway URL)
 NEXT_PUBLIC_WS_URL=https://your-game.railway.app
 
-# Vercel KV (same as Railway)
-KV_REST_API_URL=<your_kv_url>
-KV_REST_API_TOKEN=<your_kv_token>
+# Redis (same as Railway)
 KV_URL=<your_redis_url>
 ```
 
@@ -193,9 +184,7 @@ Update Railway environment variables to allow Vercel frontend:
 |----------|-------------|---------|
 | `NODE_ENV` | Environment mode | `production` |
 | `PORT` | Server port | `3000` |
-| `KV_REST_API_URL` | Vercel KV REST API URL | `https://*.vercel-storage.com` |
-| `KV_REST_API_TOKEN` | Vercel KV token | `your_token` |
-| `KV_URL` | Redis connection URL | `redis://...` |
+| `KV_URL` | Redis connection URL (from Vercel Marketplace integration) | `redis://default:...@host:6379` |
 
 ### Required for Hybrid Deployment
 
@@ -266,11 +255,11 @@ Update Railway environment variables to allow Vercel frontend:
 
 **Solutions:**
 1. Check Redis is configured correctly
-2. Verify KV credentials are set in Railway
+2. Verify `KV_URL` is set in Railway
 3. Check Railway logs: `railway logs`
 4. Test Redis connection:
    ```bash
-   railway run node -e "const kv = require('@vercel/kv'); kv.get('test').then(console.log)"
+   railway run node scripts/test-redis.js
    ```
 
 ### CORS Errors
@@ -307,13 +296,13 @@ Update Railway environment variables to allow Vercel frontend:
 **Problem:** Games lost after server restart
 
 **Solutions:**
-1. Verify Vercel KV credentials are set
-2. Check Redis connection in logs
-3. Test KV access:
+1. Verify `KV_URL` is set in Railway
+2. Check Redis connection in logs (look for "Redis client connected successfully")
+3. Inspect the env var:
    ```bash
-   railway variables get KV_REST_API_URL
+   railway variables get KV_URL
    ```
-4. Ensure KV is not expired (check Vercel dashboard)
+4. Confirm your Redis instance is healthy in the Vercel Marketplace dashboard
 
 ---
 
@@ -377,7 +366,7 @@ Or manually trigger:
 
 ### Vercel
 - Free: Hobby plan (sufficient for frontend)
-- KV: $1/month for 1GB storage
+- Redis (via Upstash on Marketplace): free tier available, paid tiers from ~$1/month
 
 ### Total Estimated Cost
 - Development: $0 (Railway free tier)
@@ -429,7 +418,7 @@ Before going to production:
 - [ ] Set `NODE_ENV=production`
 - [ ] Configure `CORS_ORIGIN` to your domain
 - [ ] Use HTTPS/WSS (Railway provides this automatically)
-- [ ] Rotate KV tokens regularly
+- [ ] Rotate `KV_URL` credentials regularly
 - [ ] Enable Railway health checks
 - [ ] Set up monitoring/alerts
 - [ ] Review Railway usage limits

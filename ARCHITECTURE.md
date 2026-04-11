@@ -20,7 +20,7 @@
 - **Matchmaking system** for pairing players
 - **Game room management** for concurrent matches
 - **State synchronization** between server and clients
-- **Scalable serverless deployment** with Vercel KV (Redis)
+- **Scalable deployment** with Redis (via the Vercel Marketplace) for persistent game state
 
 ### Key Features
 
@@ -71,7 +71,7 @@ graph TB
 
     subgraph "Persistence Layer"
         MemoryCache[In-Memory Game State<br/>Active Games]
-        Redis[Vercel KV Redis<br/>Game Metadata & Recovery]
+        Redis[Redis<br/>Game Metadata & Recovery]
         FileSystem[JSON Files<br/>Cards & AI Data]
     end
 
@@ -124,7 +124,7 @@ sequenceDiagram
     participant WS1 as WebSocket
     participant Server as Game Server
     participant Service as Game Service
-    participant Redis as Vercel KV
+    participant Redis as Redis
     participant Core as GameCore
     participant P2 as Player 2 Browser
     participant WS2 as WebSocket
@@ -412,20 +412,28 @@ class GameCore {
 
 **Key Methods**:
 ```javascript
+import { createClient } from "redis";
+
 class RedisGameStorage {
   async saveGame(game) {
-    await kv.set(`game:${game.id}`, {
-      id: game.id,
-      playerCount: game.player_count,
-      active: game.active,
-      createdAt: Date.now()
-    }, { ex: 3600 }); // 1 hour TTL
+    await this.client.set(
+      `game:${game.id}`,
+      JSON.stringify({
+        id: game.id,
+        playerCount: game.player_count,
+        active: game.active,
+        createdAt: Date.now(),
+      }),
+      { EX: 3600 } // 1 hour TTL
+    );
   }
 
   async findAvailableGame() {
-    const keys = await kv.keys('game:*');
-    for (const key of keys) {
-      const game = await kv.get(key);
+    const ids = await this.client.sMembers("games:active");
+    for (const id of ids) {
+      const raw = await this.client.get(`game:${id}`);
+      if (!raw) continue;
+      const game = JSON.parse(raw);
       if (game.playerCount < 2) return game;
     }
     return null;
@@ -617,7 +625,7 @@ stateDiagram-v2
 | Next.js | 15.5.6 | Server framework |
 | Express | 4.18.2 | HTTP server |
 | Socket.IO | 4.7.4 | WebSocket server |
-| Vercel KV | 3.0.0 | Redis for serverless |
+| redis (node client) | 5.10.0 | Redis client for persistence |
 | Winston | 3.11.0 | Logging |
 | UUID | 9.0.1 | Unique ID generation |
 
@@ -669,7 +677,7 @@ npm start
 - HTTP Server: Custom domain
 - WebSocket: `wss://yourdomain.com`
 - Storage: In-memory + Redis
-- Redis: Vercel KV or self-hosted
+- Redis: Vercel Marketplace integration (Upstash) or self-hosted
 
 **Pros**:
 - Persistent WebSocket connections
@@ -687,7 +695,7 @@ npm start
 - Static pages: Vercel CDN
 - API routes: Serverless functions
 - WebSocket server: External (Railway, Render, Fly.io)
-- Redis: Vercel KV
+- Redis: provisioned via the Vercel Marketplace (e.g. Upstash)
 
 **Architecture**:
 ```mermaid
@@ -696,7 +704,7 @@ graph TB
     VercelCDN[Vercel CDN<br/>Static Assets]
     VercelFunc[Vercel Serverless<br/>API Routes]
     External[External WebSocket Server<br/>Railway/Render]
-    Redis[Vercel KV Redis]
+    Redis[Redis<br/>via Vercel Marketplace]
 
     Client --> VercelCDN
     Client --> VercelFunc
@@ -719,13 +727,13 @@ graph TB
 
 **Option A: Single Server** (Simplest)
 - Deploy to Railway, Render, or Fly.io
-- Use Vercel KV for Redis
+- Provision Redis via the Vercel Marketplace (Upstash) or any Redis host
 - Configure custom domain with SSL
 
 **Option B: Hybrid** (Most Scalable)
 - Static assets on Vercel
 - WebSocket server on Railway/Render
-- Vercel KV for Redis
+- Redis via Vercel Marketplace (shared by both)
 - CloudFlare for DNS and SSL
 
 ### Environment Variables
@@ -735,9 +743,7 @@ graph TB
 PORT=3000
 NODE_ENV=production
 
-# Redis (Vercel KV)
-KV_REST_API_URL=https://your-kv.vercel.com
-KV_REST_API_TOKEN=your_token_here
+# Redis (from Vercel Marketplace integration)
 KV_URL=redis://default:token@endpoint:port
 
 # Optional: Analytics
