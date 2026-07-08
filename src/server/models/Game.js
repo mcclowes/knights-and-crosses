@@ -57,6 +57,15 @@ export class Game {
   }
 
   start() {
+    // Defensive: a game can only start with both sockets and a game core
+    // present. Guards against a partially-restored/hostless game.
+    if (!this.player_host || !this.player_client || !this.gamecore) {
+      this.logger?.warn?.(
+        `Cannot start game ${this.id}: missing player socket(s) or game core`,
+      );
+      return;
+    }
+
     this.active = true;
     this.player_client.send("s.j." + this.player_host.userid);
     this.player_client.game = this;

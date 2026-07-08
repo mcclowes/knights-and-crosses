@@ -39,19 +39,16 @@ This will:
 
 ### Production
 
-To mount the core game server, in the root directory run:
+Build first (copies client assets from `src/` to `public/`, then runs `next build`), then start the production server:
 
 ```
+npm run build
 npm run start
 ```
 
-This will:
+`npm run start` runs `NODE_ENV=production node server.js` and serves on `PORT` (default 3000, bound to `0.0.0.0`). Visiting the address in a browser lets human players play; the server automatically handles matchmaking.
 
-1. Copy the game client assets from `src/` to `public/`
-2. Build the Next.js application
-3. Start the production server
-
-This server will print its IP address to console. Visiting this address in the browser will allow human players to play the game. The server automatically handles matchmaking.
+A health endpoint is available at **`/healthz`** (returns JSON with Redis status and active game count). The server shuts down gracefully on `SIGTERM`/`SIGINT`. See `DEPLOYMENT.md` for CORS (`ALLOWED_ORIGINS`), health checks, and the single-instance vs. horizontal-scaling notes.
 
 ### Deployment
 
@@ -86,9 +83,10 @@ node scripts/test-redis.js
 #### How it works
 
 - **Local / single server**: Games live in memory; Redis is optional
-- **Production**: Game metadata and full state are persisted to Redis for discovery and recovery
+- **Production**: Game metadata and full state are persisted to Redis so state survives restarts, plus durable per-player MMR/stats
 - Hot game logic stays in memory for speed; Redis is the durable source of truth
 - Game entries carry a 1-hour TTL so stale games self-clean
+- Matchmaking is single-instance (players are paired within one process). Multi-instance requires the work in `DEPLOYMENT.md` → "Path to horizontal scaling"
 
 AI instances can also be created:
 

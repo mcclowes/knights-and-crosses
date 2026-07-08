@@ -6,8 +6,10 @@ const rateLimiter = new RateLimiter({
   windowMs: 1000,
 });
 
-// Cleanup stale rate limiter entries every 30 seconds
-setInterval(() => rateLimiter.cleanup(), 30000);
+// Cleanup stale rate limiter entries every 30 seconds. unref() so this timer
+// never keeps the process (or a Jest worker) alive on its own.
+const cleanupTimer = setInterval(() => rateLimiter.cleanup(), 30000);
+cleanupTimer.unref?.();
 
 export class MessageHandler {
   constructor(gameService) {
@@ -137,5 +139,12 @@ export class MessageHandler {
   handleDisconnect(client) {
     const clientId = client.userid || client.id || 'unknown';
     rateLimiter.remove(clientId);
+  }
+
+  /**
+   * Release the shared cleanup timer (used during graceful shutdown/tests).
+   */
+  dispose() {
+    clearInterval(cleanupTimer);
   }
 }

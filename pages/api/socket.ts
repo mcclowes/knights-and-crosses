@@ -3,28 +3,9 @@ import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import { Socket as NetSocket } from "net";
 import { GameServer } from "../../src/game.server.js";
-
-/**
- * Get allowed CORS origins from environment variable
- * Falls back to restrictive defaults in production
- */
-function getAllowedOrigins(): string | string[] {
-  const envOrigins = process.env.ALLOWED_ORIGINS;
-
-  // In development, allow localhost
-  if (process.env.NODE_ENV === "development") {
-    return ["http://localhost:3000", "http://127.0.0.1:3000"];
-  }
-
-  // If ALLOWED_ORIGINS is set, parse it (comma-separated)
-  if (envOrigins) {
-    return envOrigins.split(",").map((origin) => origin.trim());
-  }
-
-  // Production default: only allow same-origin requests
-  // This should be configured via ALLOWED_ORIGINS env var
-  return false as unknown as string; // Disallow cross-origin in production if not configured
-}
+import { getConfig } from "../../src/server/config/env.js";
+import { buildSocketServerOptions } from "../../src/server/config/socketConfig.js";
+import { logger } from "../../src/server/utils/logger.js";
 
 interface SocketServer extends HTTPServer {
   io?: SocketIOServer | undefined;
@@ -38,183 +19,111 @@ interface NextApiResponseWithSocket extends NextApiResponse {
   socket: SocketWithIO;
 }
 
-// Configure Next.js to not parse the body for this API route
+// Configure Next.js to not parse the body for this API route.
 export const config = {
   api: {
     bodyParser: false,
   },
 };
 
-// Global singleton to persist Socket.IO instance across requests in the same container
-// This is critical for serverless environments where the same container handles multiple requests
+// Global singleton to persist Socket.IO across requests in the same container.
 let globalIO: SocketIOServer | null = null;
 let isInitializing = false;
 
 /**
- * Socket.IO API route for Vercel deployment
- * This route initializes Socket.IO on the serverless Next.js HTTP server
+ * Socket.IO API route for Vercel-style serverless deployment.
+ *
+ * NOTE: serverless platforms cannot hold persistent WebSocket connections, so
+ * this route only supports HTTP long-polling and is a best-effort fallback. The
+ * supported production path is the standalone server (server.js) on Railway.
  */
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponseWithSocket,
 ) {
-  console.log(`[Socket.IO] Request received: ${req.method} ${req.url}`);
+  logger.debug(`[Socket.IO] Request received: ${req.method} ${req.url}`);
 
-  // Check if socket and server exist
-  if (!res.socket) {
-    console.error(
-      "[Socket.IO] res.socket is undefined - cannot initialize Socket.IO in this environment",
+  if (!res.socket?.server) {
+    logger.error(
+      "[Socket.IO] res.socket.server is undefined - cannot attach Socket.IO in this environment",
     );
     return res.status(501).json({
       error: "Socket.IO not supported",
       message:
-        "This environment does not support Socket.IO. Please use a Node.js server deployment.",
+        "This environment does not support Socket.IO. Use a Node.js server deployment (server.js).",
     });
   }
 
-  if (!res.socket.server) {
-    console.error(
-      "[Socket.IO] res.socket.server is undefined - cannot attach Socket.IO",
-    );
-    return res.status(501).json({
-      error: "Socket.IO not supported",
-      message: "HTTP server not available in this serverless environment.",
-    });
-  }
-
-  // Use global singleton or initialize if needed
   let io = globalIO;
 
-  // Initialize Socket.IO if not already initialized
   if (!io && !isInitializing) {
     isInitializing = true;
-    console.log("[Socket.IO] Initializing server for the first time...");
+    logger.info("[Socket.IO] Initializing serverless Socket.IO server...");
 
     try {
-      // Initialize Socket.IO with proper configuration for serverless
-      console.log("[Socket.IO] Creating Socket.IO server instance...");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      io = new SocketIOServer(res.socket.server as any, {
+      io = new SocketIOServer(res.socket.server as unknown as HTTPServer, {
+        ...buildSocketServerOptions(getConfig()),
         path: "/api/socket",
         addTrailingSlash: false,
-        cors: {
-          origin: getAllowedOrigins(),
-          methods: ["GET", "POST"],
-          credentials: true,
-        },
-        // Configure transports - polling only for Vercel serverless (no WebSocket support)
+        // Serverless supports polling only; no WebSocket upgrade.
         transports: ["polling"],
-        allowUpgrades: false, // Don't allow upgrade to WebSocket on Vercel
-        // Increase timeouts for serverless environment
-        pingTimeout: 60000,
-        pingInterval: 25000,
-        // Increase max HTTP buffer size
-        maxHttpBufferSize: 1e8,
-        // Allow more permissive connection handling
-        allowEIO3: true,
-        // Serverless-specific settings
-        connectTimeout: 45000,
+        allowUpgrades: false,
       });
 
       globalIO = io;
       res.socket.server.io = io;
-      console.log("[Socket.IO] Server instance created and attached");
 
-      // Initialize the game server with Socket.IO
-      console.log("[Socket.IO] Creating GameServer instance...");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const gameServer = new GameServer(io as any, res.socket.server as any);
-      console.log("[Socket.IO] GameServer instance created");
+      const gameServer = new GameServer(
+        io as unknown as SocketIOServer,
+        res.socket.server as unknown as HTTPServer,
+      );
 
-      // Use non-blocking initialization to not delay the response
+      // Non-blocking init so we don't delay the HTTP response.
       setImmediate(() => {
-        console.log("[Socket.IO] Starting game server asynchronously...");
         gameServer
           .start()
           .then(() => {
-            console.log("[Socket.IO] Game server started successfully");
+            logger.info("[Socket.IO] Game server started");
             isInitializing = false;
           })
           .catch((error) => {
-            console.error("[Socket.IO] Game server start error:", error);
-            console.error("[Socket.IO] Error details:", {
-              message: error instanceof Error ? error.message : String(error),
-              stack: error instanceof Error ? error.stack : "No stack",
-              name: error instanceof Error ? error.name : typeof error,
-            });
+            logger.error("[Socket.IO] Game server start error:", error);
             isInitializing = false;
           });
       });
     } catch (error) {
-      console.error("[Socket.IO] Initialization failed:", error);
-      console.error("[Socket.IO] Error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : "No stack",
-        name: error instanceof Error ? error.name : typeof error,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        code: (error as any)?.code,
-      });
+      logger.error("[Socket.IO] Initialization failed:", error);
       isInitializing = false;
       if (!res.headersSent) {
-        return res.status(500).json({
-          error: "Failed to initialize Socket.IO",
-          message: error instanceof Error ? error.message : String(error),
-          details:
-            error instanceof Error
-              ? {
-                  name: error.name,
-                  stack: error.stack?.split("\n").slice(0, 5).join("\n"),
-                }
-              : {},
-        });
+        return res.status(500).json({ error: "Failed to initialize Socket.IO" });
       }
       return;
     }
   } else if (isInitializing) {
-    // If initialization is in progress, wait a bit and try again
-    console.log("[Socket.IO] Initialization in progress, waiting...");
     await new Promise((resolve) => setTimeout(resolve, 100));
     if (globalIO) {
       io = globalIO;
     } else {
-      console.error("[Socket.IO] Initialization timeout");
       return res.status(503).json({
         error: "Service temporarily unavailable",
         message: "Server is initializing, please try again",
       });
     }
   } else {
-    console.log(
-      "[Socket.IO] Server already initialized, reusing existing instance",
-    );
     io = globalIO!;
   }
 
-  // CRITICAL: Let Socket.IO's engine handle this request
-  // Don't just return 200 - we need to pass the request to Socket.IO's engine
-  console.log("[Socket.IO] Delegating request to Socket.IO engine");
-
+  // Hand the request to Socket.IO's engine.
   try {
-    // Access Socket.IO's underlying engine.io server
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const engine = (io as any).engine;
-
     if (engine && typeof engine.handleRequest === "function") {
-      console.log("[Socket.IO] Calling engine.handleRequest");
-      // Let engine.io handle the request
       engine.handleRequest(req, res);
-      // Don't call res.end() - engine.io will handle it
-    } else {
-      console.log(
-        "[Socket.IO] Engine handleRequest not available, returning 200",
-      );
-      // Fallback: return 200 if we can't access engine
-      if (!res.headersSent) {
-        res.status(200).end();
-      }
+    } else if (!res.headersSent) {
+      res.status(200).end();
     }
   } catch (error) {
-    console.error("[Socket.IO] Error delegating to engine:", error);
+    logger.error("[Socket.IO] Error delegating to engine:", error);
     if (!res.headersSent) {
       res.status(500).json({ error: "Internal server error" });
     }

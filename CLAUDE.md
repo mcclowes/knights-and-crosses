@@ -14,7 +14,7 @@ Knights and Crosses is a networked multiplayer TCG: a 4x4 Tic-Tac-Toe board comb
 - **Socket.IO** for real-time gameplay
 - **Redis** via Vercel Marketplace integration, using the standard `redis` client (NOT `@vercel/kv` — that package is sunset and the codebase has migrated away from it; only `KV_URL` is read from env)
 - **Jest** for tests (ESM mode via `--experimental-vm-modules`)
-- **Express** is a transitive dep but the primary HTTP handler is Next.js's own
+- The HTTP handler is Next.js's own (via `server.js`). Express was removed — the old standalone Express path was dead code; don't reintroduce it.
 
 ## Architecture at a glance
 
@@ -66,11 +66,15 @@ The `copy-assets` step copies `src/game.core.client.js` to `public/` so the clie
 
 ## Gotchas
 
-- `@vercel/kv` is still listed in `package.json` but unused — safe to remove; nothing imports it.
-- Vercel KV (the product) is sunset. If docs or tooling suggest provisioning "Vercel KV", that's outdated — use the Redis integration from the Vercel Marketplace instead.
+- Vercel KV (the product) and `@vercel/kv` are sunset and already removed. If docs or tooling suggest provisioning "Vercel KV", that's outdated — use the Redis integration from the Vercel Marketplace instead.
 - The `copy-assets` step is load-bearing: if `public/game.core.client.js` is missing after a fresh checkout, run `npm run dev` or `npm run build` before debugging.
 - `default.profraw` in the repo root is a stray coverage artifact — ignore it, or add to `.gitignore` if it keeps reappearing.
 - The custom `server.js` means Next.js middleware (`middleware.ts` / `proxy.ts`) has no effect in production — request interception has to happen in the custom server.
+- **Single-instance only.** Matchmaking holds raw socket references, so opponents must share a process. `ENABLE_REDIS_ADAPTER` + `src/server/config/socketConfig.js` are groundwork, not a working multi-instance path — see `DEPLOYMENT.md` → "Path to horizontal scaling".
+- **Win is server-authoritative.** The engine sets `gamecore.win`; `GameService.winGame` refuses to settle a game with no recorded winner, so a spoofed `w` message can't end a game or fake stats. Don't route wins through client input.
+- **Socket.IO config is centralised** in `src/server/config/socketConfig.js` (CORS via `ALLOWED_ORIGINS`, buffer limits). Both `server.js` and `pages/api/socket.ts` consume it — change options there, not inline.
+- **Logging is level-based** via `src/server/utils/logger.js` (`LOG_LEVEL`). Use the shared `logger` / injected logger, not raw `console.log`; `logger.log()` is debug-level.
+- Health endpoint: `GET /healthz` (and `/api/health`) on the standalone server. Railway's health check points at it.
 
 ## Documentation map
 

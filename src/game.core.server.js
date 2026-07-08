@@ -9,36 +9,37 @@ const __dirname = path.dirname(__filename);
 // Import the new card effect system with a static import so that bundlers
 // include the resolver file in serverless deployments (e.g. Vercel).
 import { resolveCard as resolveCardNew } from './cards/card-resolver.js';
+import { logger } from './server/utils/logger.js';
 
 const FRAME_TIME = 45;
 const MAX_HAND_SIZE = 10;
 
-// Load cards with error handling - try multiple paths for different environments
-let cards = [];
-const possibleCardsPaths = [
-	path.join(__dirname, 'json', 'cards.json'), // Development path
-	path.join(__dirname, '..', 'src', 'json', 'cards.json'), // Build path
-	path.join(process.cwd(), 'src', 'json', 'cards.json'), // Vercel path
-	path.join(process.cwd(), 'public', 'json', 'cards.json'), // Public fallback
-];
-
-for (const cardsPath of possibleCardsPaths) {
-	try {
-		console.log('[GameCore] Trying to load cards from:', cardsPath);
-		cards = JSON.parse(fs.readFileSync(cardsPath, 'utf-8'));
-		console.log('[GameCore] Cards loaded successfully from', cardsPath, ':', cards.length, 'cards');
-		break; // Success, exit loop
-	} catch (error) {
-		console.log('[GameCore] Failed to load from', cardsPath);
+// Load JSON assets once at module load. The candidate paths cover dev, build,
+// and serverless layouts. Previously these were read from disk (with verbose
+// per-attempt logging) on every game/player construction — a hot-path cost and
+// a source of log spam. Do it a single time here instead.
+function loadJsonAsset(filename, label) {
+	const candidatePaths = [
+		path.join(__dirname, 'json', filename), // Development path
+		path.join(__dirname, '..', 'src', 'json', filename), // Build path
+		path.join(process.cwd(), 'src', 'json', filename), // Vercel path
+		path.join(process.cwd(), 'public', 'json', filename), // Public fallback
+	];
+	for (const candidate of candidatePaths) {
+		try {
+			const data = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
+			logger.debug(`[GameCore] Loaded ${label} from ${candidate} (${Array.isArray(data) ? data.length : '?'} entries)`);
+			return data;
+		} catch {
+			// Try the next candidate path.
+		}
 	}
+	logger.error(`[GameCore] Failed to load ${label} (${filename}) from any known path. cwd=${process.cwd()}`);
+	return [];
 }
 
-if (cards.length === 0) {
-	console.error('[GameCore] Failed to load cards.json from any path');
-	console.error('[GameCore] __dirname:', __dirname);
-	console.error('[GameCore] process.cwd():', process.cwd());
-	console.error('[GameCore] Tried paths:', possibleCardsPaths);
-}
+const cards = loadJsonAsset('cards.json', 'cards');
+const deckTemplate = loadJsonAsset('deck_p1.json', 'deck');
 
 /*  -----------------------------  Frame/Update Handling  -----------------------------   */
 
@@ -348,24 +349,41 @@ class GameCore {
 					blocking 		: 0
 				}
 
-				if (this.board.check_win() !== undefined || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) || (this.players.self.deck.length === 0 && this.players.self.hand.length === 0) ){ //check for win
-					console.log('The game was won');
-					this.win = this.board.check_win() !== undefined ? this.board.check_win() : 1;
+				const boardWin = this.board.check_win();
+				const selfDecked = this.players.self.deck.length === 0 && this.players.self.hand.length === 0;
+				const otherDecked = this.players.other.deck.length === 0 && this.players.other.hand.length === 0;
 
-					//Update mmrs, via elo
-					console.log('Existing MMRs >> ' + this.players.self.mmr + ' vs. ' + this.players.other.mmr);
+				if (boardWin !== undefined || selfDecked || otherDecked) { // check for win
+					// Winner in board terms: 1 = host (self), -1 = client (other).
+					// On a deck-out with no completed line, the player who still
+					// holds cards wins (previously this only ever checked `self`).
+					this.win = boardWin !== undefined
+						? boardWin
+						: (selfDecked && !otherDecked ? -1 : 1);
 
-					var host_prob = 1 / (1 + Math.pow(10, (-this.players.self.mmr - this.players.other.mmr )/400));
-					var other_prob = 1 / (1 + Math.pow(10, (-this.players.other.mmr - this.players.self.mmr )/400));
-					host_prob = this.win === 1 ? (1 - host_prob) : (- host_prob);
-					other_prob = this.win === 1 ? (- other_prob) : (1 - other_prob);
+					// Elo update (K-factor 32). Expected score uses the standard
+					// (opponent - self)/400 exponent (previously (-self-other)/400,
+					// which is incorrect).
+					const K = 32;
+					const selfRating = this.players.self.mmr;
+					const otherRating = this.players.other.mmr;
+					const expectedSelf = 1 / (1 + Math.pow(10, (otherRating - selfRating) / 400));
+					const expectedOther = 1 / (1 + Math.pow(10, (selfRating - otherRating) / 400));
+					const scoreSelf = this.win === 1 ? 1 : 0;
+					const scoreOther = this.win === -1 ? 1 : 0;
+					const selfTerm = scoreSelf - expectedSelf; // normalized (S - E), range [-1, 1]
+					const otherTerm = scoreOther - expectedOther;
 
-					// Store MMR changes for player stats tracking
-					this.players.self.mmrChange = host_prob * 32; // K-factor of 32
-					this.players.other.mmrChange = other_prob * 32;
+					// Persist the full Elo delta for Redis-backed player stats.
+					this.players.self.mmrChange = K * selfTerm;
+					this.players.other.mmrChange = K * otherTerm;
 
-					player_client.instance.send('s.m.' + Number(host_prob).toFixed(3));
-					player_other.instance.send('s.m.' + Number(other_prob).toFixed(3));
+					// Wire protocol: send each player their own (S - E) term; the
+					// legacy client applies its own decaying K-factor on screen.
+					this.players.self.instance?.send('s.m.' + selfTerm.toFixed(3));
+					this.players.other.instance?.send('s.m.' + otherTerm.toFixed(3));
+
+					logger.debug(`[GameCore] Game won by ${this.win === 1 ? 'host' : 'client'}; Elo delta self=${this.players.self.mmrChange.toFixed(1)} other=${this.players.other.mmrChange.toFixed(1)}`);
 				} else {
 					this.board.reduce_state(); // Remove frost, and rocks
 					// Draw card
@@ -722,37 +740,11 @@ class GamePlayer {
 		}
 
 		//Player arrays
-		this.deck = [];
 		this.hand = [];
 
-		// Load deck with error handling - try multiple paths for different environments
-		const possibleDeckPaths = [
-			path.join(__dirname, 'json', 'deck_p1.json'), // Development path
-			path.join(__dirname, '..', 'src', 'json', 'deck_p1.json'), // Build path
-			path.join(process.cwd(), 'src', 'json', 'deck_p1.json'), // Vercel path
-			path.join(process.cwd(), 'public', 'json', 'deck_p1.json'), // Public fallback
-		];
-
-		let deck_loaded = false;
-		for (const deckPath of possibleDeckPaths) {
-			try {
-				console.log('[GamePlayer] Trying to load deck from:', deckPath);
-				var deck_temp = JSON.parse(fs.readFileSync(deckPath, 'utf-8'));
-				deck_temp = shuffle(deck_temp);
-				this.deck = createCardArray(deck_temp);
-				console.log('[GamePlayer] Deck loaded successfully from', deckPath, ':', this.deck.length, 'cards');
-				deck_loaded = true;
-				break; // Success, exit loop
-			} catch (error) {
-				console.log('[GamePlayer] Failed to load from', deckPath);
-			}
-		}
-
-		if (!deck_loaded) {
-			console.error('[GamePlayer] Failed to load deck_p1.json from any path');
-			console.error('[GamePlayer] Tried paths:', possibleDeckPaths);
-			this.deck = [];
-		}
+		// Build a fresh, shuffled deck from the template loaded once at startup.
+		// slice() so we shuffle a copy and never mutate the shared template.
+		this.deck = createCardArray(shuffle(deckTemplate.slice()));
 	}
 }
 

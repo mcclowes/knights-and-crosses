@@ -13,18 +13,21 @@ const config = {
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
+  // Coverage is scoped to the server modules that are unit-testable and carry
+  // the production-critical logic (matchmaking, storage, validation, config).
+  // The legacy canvas/game engine, AI trainer, and client bundle are exercised
+  // via integration/manual play, not Jest, and would otherwise mask regressions
+  // in the tested surface.
   collectCoverageFrom: [
-    'src/**/*.{js,ts}',
-    '!src/**/*.d.ts',
-    '!src/ai/**/*',
-    '!src/game.core.client.js',
+    'src/server/**/*.js',
+    '!src/server/**/*.test.js',
   ],
   coverageThreshold: {
     global: {
-      branches: 50,
-      functions: 50,
-      lines: 50,
-      statements: 50,
+      branches: 55,
+      functions: 60,
+      lines: 65,
+      statements: 65,
     },
   },
   verbose: true,

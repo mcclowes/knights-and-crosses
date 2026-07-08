@@ -108,7 +108,7 @@ NODE_ENV=production
 KV_URL=<your_redis_url>
 
 # CORS - Allow Vercel frontend
-CORS_ORIGIN=https://your-app.vercel.app
+ALLOWED_ORIGINS=https://your-app.vercel.app
 ```
 
 2. **Deploy to Railway:**
@@ -171,7 +171,7 @@ Update Railway environment variables to allow Vercel frontend:
 
 1. Open Railway dashboard: `railway open`
 2. Go to "Variables" tab
-3. Add variable: `CORS_ORIGIN` = `https://your-app.vercel.app`
+3. Add variable: `ALLOWED_ORIGINS` = `https://your-app.vercel.app`
 4. Railway will auto-redeploy
 
 ---
@@ -191,17 +191,63 @@ Update Railway environment variables to allow Vercel frontend:
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_WS_URL` | WebSocket server URL | `https://your-game.railway.app` |
-| `CORS_ORIGIN` | Allowed frontend origin | `https://your-app.vercel.app` |
+| `ALLOWED_ORIGINS` | Allowed browser origin(s) for CORS, **comma-separated** | `https://your-app.vercel.app,https://www.example.com` |
+
+> If `ALLOWED_ORIGINS` is unset in production, the server only accepts
+> **same-origin** WebSocket connections. A hybrid (separate frontend host)
+> deployment must set it or the browser handshake is rejected.
 
 ### Optional
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LOG_LEVEL` | Logging level | `info` |
-| `MAX_PLAYERS_PER_GAME` | Players per game | `2` |
-| `GAME_TIMEOUT` | Game timeout (ms) | `300000` |
+| `LOG_LEVEL` | `error` \| `warn` \| `info` \| `debug` | `info` (prod), `debug` (dev) |
+| `ENABLE_REDIS_ADAPTER` | Attach the Socket.IO Redis adapter (horizontal-scaling groundwork; needs `KV_URL` + sticky sessions) | `false` |
 
 ---
+
+## Health Checks & Graceful Shutdown
+
+The standalone server (`server.js`) exposes a lightweight health endpoint at
+**`/healthz`** (also `/api/health`). It returns `200` when healthy and `503`
+when Redis is configured but unreachable:
+
+```bash
+curl https://your-game.railway.app/healthz
+# {"ok":true,"status":"healthy","uptimeSeconds":42,"activeGames":3,"redis":"ok"}
+```
+
+`railway.json` points the platform health check at `/healthz`. Use the same
+endpoint for any external uptime monitor.
+
+On `SIGTERM`/`SIGINT` (Railway sends `SIGTERM` on redeploy/restart) the server
+shuts down gracefully: it stops accepting connections, clears timers, closes the
+Redis connection, and drains the HTTP server before exiting (10s hard cap).
+
+## Path to Horizontal Scaling
+
+**The server currently runs as a single instance.** Matchmaking holds raw socket
+references in memory, so two matched players must land on the same process. Redis
+persists game state and player stats, but it does not by itself let two instances
+exchange a game's real-time messages.
+
+Running more than one instance today would let the load balancer place opponents
+on different instances, and they would not see each other's moves. If you scale
+out, keep it to one replica until the work below is done.
+
+To support multiple instances:
+
+1. **Sticky sessions** at the load balancer so a client keeps hitting the same
+   instance for the life of its connection.
+2. **Socket.IO Redis adapter** — set `ENABLE_REDIS_ADAPTER=true` (requires
+   `KV_URL`). The wiring is in place (`src/server/config/socketConfig.js`); it
+   makes cross-instance *broadcasts* work.
+3. **Rooms instead of direct socket sends** — replace `player.send(...)` with
+   room emits so the adapter can route them across instances.
+4. **A shared matchmaking queue** in Redis so players are paired regardless of
+   which instance they connected to.
+
+Until 3 and 4 land, treat the deployment as single-instance.
 
 ## Testing Your Deployment
 
@@ -267,9 +313,9 @@ Update Railway environment variables to allow Vercel frontend:
 **Problem:** Browser shows CORS policy errors
 
 **Solutions:**
-1. Update `CORS_ORIGIN` in Railway:
+1. Update `ALLOWED_ORIGINS` in Railway:
    ```bash
-   railway variables set CORS_ORIGIN=https://your-app.vercel.app
+   railway variables set ALLOWED_ORIGINS=https://your-app.vercel.app
    ```
 2. Restart Railway deployment
 3. Clear browser cache
@@ -400,7 +446,7 @@ After adding custom domains:
 
 **Railway:**
 ```bash
-railway variables set CORS_ORIGIN=https://yourdomain.com
+railway variables set ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
 **Vercel:**
@@ -416,7 +462,7 @@ Before going to production:
 
 - [ ] Change default PORT if needed
 - [ ] Set `NODE_ENV=production`
-- [ ] Configure `CORS_ORIGIN` to your domain
+- [ ] Configure `ALLOWED_ORIGINS` to your domain
 - [ ] Use HTTPS/WSS (Railway provides this automatically)
 - [ ] Rotate `KV_URL` credentials regularly
 - [ ] Enable Railway health checks
@@ -434,5 +480,5 @@ Before going to production:
 
 ---
 
-**Last Updated:** 2025-11-21
-**Version:** 2.0.0
+**Last Updated:** 2026-07-08
+**Version:** 2.1.0

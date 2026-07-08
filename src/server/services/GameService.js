@@ -1,113 +1,97 @@
 import { Game } from "../models/Game.js";
 import game_core from "../../game.core.server.js";
+import { logger as defaultLogger } from "../utils/logger.js";
 
 export class GameService {
-  constructor(logger = null, storage = null) {
+  constructor(logger = defaultLogger, storage = null) {
     this.games = {}; // Ephemeral cache for active socket connections only
     this.game_count = 0;
-    this.logger = logger;
-    this.storage = storage; // KV storage - source of truth for serverless
+    this.logger = logger || defaultLogger;
+    this.storage = storage; // Redis storage - source of truth when configured
     this.cleanupInterval = null;
     this.CLEANUP_INTERVAL = 60 * 1000; // Check every 60 seconds
     this.INACTIVITY_THRESHOLD = 5 * 60 * 1000; // 5 minutes of inactivity
   }
 
   /**
-   * Initialize service - sync with KV if available
-   * In serverless mode, games are loaded on-demand from KV
+   * Initialize service - sync with Redis if available.
    */
   async initialize() {
     if (this.storage) {
       try {
         const redisCount = await this.storage.getGameCount();
-        console.log(
-          `GameService initialized. KV reports ${redisCount} active games.`,
-        );
-        console.log(
-          "[GameService] Running in KV-first mode for serverless persistence",
+        this.logger.info(
+          `[GameService] Initialized (Redis-backed). ${redisCount} active game(s) in Redis.`,
         );
       } catch (error) {
-        console.error("Error initializing GameService with KV:", error);
+        this.logger.error("Error initializing GameService with Redis:", error);
       }
     } else {
-      console.log(
-        "[GameService] Running in memory-only mode (KV not configured)",
-      );
+      this.logger.info("[GameService] Initialized in memory-only mode (Redis not configured).");
     }
 
-    // Start the cleanup interval for inactive games
     this.startCleanupInterval();
   }
 
   /**
-   * Start the periodic cleanup interval for inactive games
+   * Start the periodic cleanup interval for inactive games.
    */
   startCleanupInterval() {
     if (this.cleanupInterval) {
-      return; // Already running
+      return;
     }
 
-    console.log(
+    this.logger.debug(
       `[GameService] Starting inactive game cleanup (interval: ${this.CLEANUP_INTERVAL / 1000}s, threshold: ${this.INACTIVITY_THRESHOLD / 1000}s)`,
     );
 
-    this.cleanupInterval = setInterval(async () => {
-      await this.cleanupInactiveGames();
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupInactiveGames().catch((error) =>
+        this.logger.error("[GameService] Cleanup error:", error),
+      );
     }, this.CLEANUP_INTERVAL);
+    // Don't let the cleanup timer keep the process (or a Jest worker) alive.
+    this.cleanupInterval.unref?.();
   }
 
   /**
-   * Stop the cleanup interval
+   * Stop the cleanup interval.
    */
   stopCleanupInterval() {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
-      console.log("[GameService] Stopped inactive game cleanup");
+      this.logger.debug("[GameService] Stopped inactive game cleanup");
     }
   }
 
   /**
-   * Clean up inactive games from memory and storage
-   * Games are considered inactive if they haven't received any activity
-   * for longer than INACTIVITY_THRESHOLD
+   * Clean up inactive games from memory and storage.
    */
   async cleanupInactiveGames() {
     const now = Date.now();
     let cleanedCount = 0;
 
-    // Clean up in-memory games
     for (const [gameId, game] of Object.entries(this.games)) {
       const lastActivity = game.lastActivity || game.createdAt || 0;
       if (now - lastActivity > this.INACTIVITY_THRESHOLD) {
-        console.log(
-          `[GameService] Cleaning up inactive game ${gameId} (inactive for ${Math.round((now - lastActivity) / 1000)}s)`,
+        this.logger.debug(
+          `[GameService] Cleaning up inactive game ${gameId} (inactive ${Math.round((now - lastActivity) / 1000)}s)`,
         );
 
-        // Notify players that the game is ending due to inactivity
-        if (game.player_host) {
+        // Notify players that the game is ending due to inactivity.
+        for (const player of [game.player_host, game.player_client]) {
           try {
-            game.player_host.send("s.e");
-          } catch (e) {
-            // Player may already be disconnected
-          }
-        }
-        if (game.player_client) {
-          try {
-            game.player_client.send("s.e");
-          } catch (e) {
-            // Player may already be disconnected
+            player?.send?.("s.e");
+          } catch {
+            // Player may already be disconnected.
           }
         }
 
-        // Stop the game
         game.stop();
-
-        // Remove from memory
         delete this.games[gameId];
         this.game_count--;
 
-        // Remove from storage
         if (this.storage) {
           await this.storage.deleteGame(gameId);
           await this.storage.deleteGameState(gameId);
@@ -117,17 +101,16 @@ export class GameService {
       }
     }
 
-    // Also clean up stale games in Redis that aren't in memory
-    // (e.g., from crashed instances or serverless cold starts)
+    // Also clean up stale games in Redis that aren't in memory (crashed
+    // instances, restarts, cold starts).
     if (this.storage) {
       try {
         const inactiveRedisGames = await this.storage.getInactiveGames(
           this.INACTIVITY_THRESHOLD,
         );
         for (const gameMetadata of inactiveRedisGames) {
-          // Skip if we already cleaned it up from memory
           if (!this.games[gameMetadata.id]) {
-            console.log(
+            this.logger.debug(
               `[GameService] Cleaning up stale Redis game ${gameMetadata.id}`,
             );
             await this.storage.deleteGame(gameMetadata.id);
@@ -136,27 +119,25 @@ export class GameService {
           }
         }
       } catch (error) {
-        console.error("[GameService] Error cleaning up Redis games:", error);
+        this.logger.error("[GameService] Error cleaning up Redis games:", error);
       }
     }
 
     if (cleanedCount > 0) {
-      console.log(
+      this.logger.debug(
         `[GameService] Cleaned up ${cleanedCount} inactive game(s). Remaining: ${this.game_count}`,
       );
     }
+    return cleanedCount;
   }
 
   /**
-   * Update activity for a game
-   * Called when a game receives player input
+   * Update activity for a game. Called when a game receives player input.
    */
   async updateGameActivity(gameId) {
     const game = this.games[gameId];
     if (game) {
       game.updateActivity();
-
-      // Also update in Redis storage
       if (this.storage) {
         await this.storage.updateGameActivity(gameId);
       }
@@ -164,72 +145,7 @@ export class GameService {
   }
 
   /**
-   * Load a game from KV storage and restore it to memory
-   * Used for cross-instance access and recovery
-   */
-  async loadGameFromKV(gameId, hostSocket = null, clientSocket = null) {
-    if (!this.storage) {
-      return null;
-    }
-
-    try {
-      // Load metadata and state from KV
-      const metadata = await this.storage.getGame(gameId);
-      const state = await this.storage.getGameState(gameId);
-
-      if (!metadata || !state) {
-        console.log(`[GameService] Game ${gameId} not found in KV`);
-        return null;
-      }
-
-      console.log(`[GameService] Restoring game ${gameId} from KV`);
-
-      // Create Game instance with host socket
-      const game = new Game(hostSocket, this.logger);
-      game.id = gameId;
-      game.player_count = metadata.playerCount;
-      game.active = metadata.active;
-
-      // Initialize game core with storage
-      game.gamecore = new game_core(game, this.storage);
-
-      // Restore game state
-      game.gamecore.deserializeState(state);
-
-      // Reconnect sockets if provided
-      if (hostSocket) {
-        game.player_host = hostSocket;
-        game.gamecore.players.self.instance = hostSocket;
-        hostSocket.game = game;
-        hostSocket.hosting = true;
-      }
-
-      if (clientSocket) {
-        game.player_client = clientSocket;
-        game.gamecore.players.other.instance = clientSocket;
-        clientSocket.game = game;
-      }
-
-      // Restart game update loop if game is active
-      if (game.active) {
-        game.gamecore.update(new Date().getTime());
-      }
-
-      // Add to memory cache
-      this.games[gameId] = game;
-      this.game_count = Object.keys(this.games).length;
-
-      console.log(`[GameService] Game ${gameId} restored successfully from KV`);
-      return game;
-    } catch (error) {
-      console.error(`[GameService] Error loading game from KV:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Save complete game state to KV
-   * Called after any game state mutation
+   * Save complete game state to Redis. Called after any game state mutation.
    */
   async saveGameToKV(game) {
     if (!this.storage || !game.gamecore) {
@@ -237,135 +153,78 @@ export class GameService {
     }
 
     try {
-      // Save metadata
       await this.storage.saveGame(game);
-
-      // Save full game state
       const gameState = game.gamecore.serializeState();
       await this.storage.saveGameState(game.id, gameState);
-
       return true;
     } catch (error) {
-      console.error("[GameService] Error saving game to KV:", error);
+      this.logger.error("[GameService] Error saving game to Redis:", error);
       return false;
     }
   }
 
   async createGame(player) {
-    console.log("[GameService] Creating new game");
+    this.logger.debug("[GameService] Creating new game");
     const game = new Game(player, this.logger);
     this.games[game.id] = game;
     this.game_count++;
 
     game.gamecore = new game_core(game, this.storage);
-    game.gamecore.update(new Date().getTime());
+    game.gamecore.update(Date.now());
 
-    // Load player stats from KV and apply MMR
+    // Load player stats from Redis and apply MMR (server-authoritative).
     if (this.storage && player.userid) {
       const stats = await this.storage.getPlayerStats(player.userid);
       game.gamecore.players.self.mmr = stats.mmr || 1000;
-      console.log(
-        `[GameService] Loaded host player stats: MMR=${stats.mmr}, Games=${stats.totalGames}`,
+      this.logger.debug(
+        `[GameService] Loaded host stats: MMR=${stats.mmr}, Games=${stats.totalGames}`,
       );
     }
 
-    // Ping player as host
+    // Ping player as host.
     player.send("s.h." + String(game.gamecore.local_time).replace(".", "-"));
-    console.log("[GameService] Server host at " + game.gamecore.local_time);
     player.game = game;
     player.hosting = true;
 
-    // Persist complete game state to KV (source of truth for serverless)
     await this.saveGameToKV(game);
-
-    console.log(`[GameService] Created game ${game.id} and saved to KV`);
+    this.logger.debug(`[GameService] Created game ${game.id}`);
     return game;
   }
 
   async findGame(player) {
-    console.log(
-      `[GameService] Looking for a game. In-memory: ${this.game_count}`,
-    );
-    console.log(
-      "[GameService] Player connecting:",
-      player.userid,
-      player.playername,
+    this.logger.debug(
+      `[GameService] Finding a game for ${player.userid} (${player.playername}). In-memory: ${this.game_count}`,
     );
 
-    // First check in-memory games (fast path)
+    // Join an existing in-memory game with an open slot.
+    //
+    // NOTE: matchmaking is intentionally in-memory only. Two players must be on
+    // the same instance to exchange messages, because games hold raw socket
+    // references. Cross-instance matchmaking requires the Redis adapter + a
+    // shared matchmaking queue (see DEPLOYMENT.md "Path to horizontal scaling").
     for (const game of Object.values(this.games)) {
-      if (game.player_count < 2) {
-        console.log(
-          `[GameService] Adding player to existing in-memory game: ${game.id}`,
-        );
+      if (game.player_count < 2 && game.player_host && game.gamecore) {
+        this.logger.debug(`[GameService] Adding player to game ${game.id}`);
 
-        // Load player stats from KV and apply MMR before adding client
         if (this.storage && player.userid) {
           const stats = await this.storage.getPlayerStats(player.userid);
-          // The client will be assigned to players.other, so set their MMR
           game.gamecore.players.other.mmr = stats.mmr || 1000;
-          console.log(
-            `[GameService] Loaded client player stats: MMR=${stats.mmr}, Games=${stats.totalGames}`,
-          );
         }
 
         game.addClient(player);
-
-        // Persist updated state to KV
         await this.saveGameToKV(game);
-
         return game;
       }
     }
 
-    // Check KV for games from other instances or previous invocations (serverless recovery)
-    if (this.storage) {
-      const availableGame = await this.storage.findAvailableGame();
-      if (availableGame) {
-        console.log(
-          `[GameService] Found available game in KV: ${availableGame.id}`,
-        );
-        console.log(
-          "[GameService] Restoring game from KV for cross-instance/recovery",
-        );
-
-        // Restore the game from KV with the new player as client
-        const game = await this.loadGameFromKV(availableGame.id, null, player);
-
-        if (game) {
-          // Load client player stats from KV
-          if (player.userid) {
-            const stats = await this.storage.getPlayerStats(player.userid);
-            game.gamecore.players.other.mmr = stats.mmr || 1000;
-            console.log(
-              `[GameService] Loaded client player stats: MMR=${stats.mmr}, Games=${stats.totalGames}`,
-            );
-          }
-
-          // Add the client to the restored game
-          game.addClient(player);
-
-          // Save updated state back to KV
-          await this.saveGameToKV(game);
-
-          return game;
-        } else {
-          console.log(
-            "[GameService] Failed to restore game from KV, creating new game",
-          );
-        }
-      }
-    }
-
-    // No open games found, create new one
-    console.log("[GameService] No open games found, creating new game");
+    this.logger.debug("[GameService] No open games; creating a new one");
     return await this.createGame(player);
   }
 
   async endGame(gameId, userId) {
     const game = this.games[gameId];
     if (!game) {
-      console.log("[GameService] Game not found.");
+      this.logger.debug(`[GameService] endGame: game ${gameId} not found`);
       return;
     }
 
@@ -381,36 +240,42 @@ export class GameService {
 
     delete this.games[gameId];
     this.game_count--;
-    console.log(
-      `[GameService] Game removed. There are ${this.game_count} games`,
-    );
+    this.logger.debug(`[GameService] Game ${gameId} removed. ${this.game_count} remaining`);
 
-    // Remove from KV (both metadata and state)
     if (this.storage) {
       await this.storage.deleteGame(gameId);
       await this.storage.deleteGameState(gameId);
     }
   }
 
-  async winGame(gameId, winner) {
+  /**
+   * End a won game. The winner is decided server-side by the game engine
+   * (game.gamecore.win: 1 = host, -1 = client). A client 'w' message can only
+   * request settlement of an already-decided game; it can never declare a win.
+   */
+  async winGame(gameId) {
     const game = this.games[gameId];
     if (!game) {
-      console.log("[GameService] Game not found.");
+      this.logger.debug(`[GameService] winGame: game ${gameId} not found`);
+      return;
+    }
+
+    const winner = game.gamecore?.win;
+    if (winner !== 1 && winner !== -1) {
+      this.logger.warn(
+        `[GameService] Ignoring win for ${gameId}: no server-recorded winner (possible spoofed 'w').`,
+      );
       return;
     }
 
     game.stop();
 
-    // Update player statistics in KV
+    // Update player statistics in Redis using the server-decided winner.
     if (this.storage && game.player_host && game.player_client) {
       const hostWon = winner === 1;
-      const clientWon = winner === -1;
-
-      // Get MMR changes from game
       const hostMmrChange = game.gamecore?.players?.self?.mmrChange || 0;
       const clientMmrChange = game.gamecore?.players?.other?.mmrChange || 0;
 
-      // Update both players' stats
       await this.storage.updatePlayerStats(
         game.player_host.userid,
         hostMmrChange,
@@ -419,11 +284,10 @@ export class GameService {
       await this.storage.updatePlayerStats(
         game.player_client.userid,
         clientMmrChange,
-        clientWon,
+        !hostWon,
       );
     }
 
-    // Handle both players
     if (game.player_client) {
       game.player_client.send("s.e");
       await this.findGame(game.player_client);
@@ -436,11 +300,8 @@ export class GameService {
 
     delete this.games[gameId];
     this.game_count--;
-    console.log(
-      `[GameService] Game removed. There are ${this.game_count} games`,
-    );
+    this.logger.debug(`[GameService] Game ${gameId} won and removed. ${this.game_count} remaining`);
 
-    // Remove from KV (both metadata and state)
     if (this.storage) {
       await this.storage.deleteGame(gameId);
       await this.storage.deleteGameState(gameId);
